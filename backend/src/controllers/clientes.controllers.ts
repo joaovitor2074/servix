@@ -1,19 +1,23 @@
 import type { Request, Response } from "express"
-import type { Cliente } from "../types/Cliente.js"
+import {
+  atualizarClienteService,
+  buscarClienteService,
+  criarClienteService,
+  listarClientesService,
+  removerClienteService
+} from "../services/clientes.services.js"
+import type { DadosCliente } from "../services/clientes.services.js"
 
-const clientes: Cliente[] = [
-  {
-    id: 1,
-    nome: "João Vitor",
-    telefone: "99999-9999",
-    criadoEm: new Date()
-  }
-]
+function idEhInvalido(id: number): boolean {
+  return !Number.isInteger(id) || id <= 0
+}
 
 export const listarClientes = (
-  req: Request,
+  _req: Request,
   res: Response
 ) => {
+  const clientes = listarClientesService()
+
   return res.status(200).json(clientes)
 }
 
@@ -23,15 +27,13 @@ export const buscarCliente = (
 ) => {
   const idCliente = Number(req.params.id)
 
-  if (Number.isNaN(idCliente)) {
+  if (idEhInvalido(idCliente)) {
     return res.status(400).json({
       erro: "ID inválido"
     })
   }
 
-  const clienteEncontrado = clientes.find(
-    cliente => cliente.id === idCliente
-  )
+  const clienteEncontrado = buscarClienteService(idCliente)
 
   if (!clienteEncontrado) {
     return res.status(404).json({
@@ -62,34 +64,107 @@ export const criarCliente = (
     })
   }
 
-  const telefoneJaCadastrado = clientes.some(
-    cliente => cliente.telefone === telefone
-  )
-
-  if (telefoneJaCadastrado) {
-    return res.status(409).json({
-      erro: "Já existe um cliente com esse telefone"
-    })
-  }
-
-  const maiorId =
-    clientes.length > 0
-      ? Math.max(...clientes.map(cliente => cliente.id))
-      : 0
-
-  const novoCliente: Cliente = {
-    id: maiorId + 1,
+  const dadosCliente: DadosCliente = {
     nome,
     telefone,
     email,
     cpfCnpj,
     endereco,
     observacoes,
-    historicoDePecas,
-    criadoEm: new Date()
+    historicoDePecas
   }
 
-  clientes.push(novoCliente)
+  const resultado = criarClienteService(dadosCliente)
 
-  return res.status(201).json(novoCliente)
+  if (!resultado.sucesso) {
+    return res.status(409).json({
+      erro: "Já existe um cliente com esse telefone"
+    })
+  }
+
+  return res.status(201).json(resultado.cliente)
+}
+
+export const atualizarCliente = (
+  req: Request,
+  res: Response
+) => {
+  const idCliente = Number(req.params.id)
+
+  if (idEhInvalido(idCliente)) {
+    return res.status(400).json({
+      erro: "ID inválido"
+    })
+  }
+
+  const {
+    nome,
+    telefone,
+    email,
+    cpfCnpj,
+    endereco,
+    observacoes,
+    historicoDePecas
+  } = req.body
+
+  if (!nome || !telefone) {
+    return res.status(400).json({
+      erro: "Nome e telefone são obrigatórios"
+    })
+  }
+
+  const dadosCliente: DadosCliente = {
+    nome,
+    telefone,
+    email,
+    cpfCnpj,
+    endereco,
+    observacoes,
+    historicoDePecas
+  }
+
+  const resultado = atualizarClienteService(idCliente, dadosCliente)
+
+  if (!resultado.sucesso) {
+    if (resultado.motivo === "cliente_nao_encontrado") {
+      return res.status(404).json({
+        erro: "Cliente não encontrado"
+      })
+    }
+
+    return res.status(409).json({
+      erro: "Já existe outro cliente com esse telefone"
+    })
+  }
+
+  return res.status(200).json({
+    mensagem: "Cliente atualizado com sucesso",
+    cliente: resultado.cliente
+  })
+}
+
+export const removerCliente = (
+  req: Request,
+  res: Response
+) => {
+  const idCliente = Number(req.params.id)
+
+  if (idEhInvalido(idCliente)) {
+    return res.status(400).json({
+      erro: "ID inválido"
+    })
+  }
+
+  const clienteRemovido = removerClienteService(idCliente)
+
+  if (!clienteRemovido) {
+    return res.status(404).json({
+      erro: "Cliente não encontrado"
+    })
+  }
+
+  return res.status(200).json({
+    mensagem: "Cliente removido com sucesso",
+    cliente: clienteRemovido
+  })
 }

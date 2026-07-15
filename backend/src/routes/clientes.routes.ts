@@ -2,7 +2,10 @@ import { Router } from "express"
 import {
   listarClientes,
   buscarCliente,
-  criarCliente
+  criarCliente,
+  atualizarCliente,
+  removerCliente
+
 } from "../controllers/clientes.controllers.js"
 
 const router = Router()
@@ -12,7 +15,7 @@ router.get("/:id", buscarCliente)
 
 // Comente enquanto os controllers ainda não existem
 router.post("/", criarCliente)
-// router.put("/:id", atualizarCliente)
-// router.delete("/:id", removerCliente)
+router.put("/:id", atualizarCliente)
+router.delete("/:id", removerCliente)
 
 export default router

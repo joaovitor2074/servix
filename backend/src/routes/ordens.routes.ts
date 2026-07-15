@@ -1,15 +1,20 @@
-export type OrdenServicos = {
-    numeroAutomatico:number
-    cliente:string
-    equipamento?:string
-    descricaoDoProblema?:string
-    diagnostico?:string
-    servicoRealizado:boolean
-    pecasUltilizadas?:string
-    tecnicoResponsavel:string
-    previsaoDeEntrega?:Date
-    valortotal:string
-    formaDePagamento?:string
-    observacoesinternas?:string
-    fotos?:string    
-}
+import { Router } from "express"
+import {
+  alterarStatusOrdem,
+  atualizarOrdem,
+  buscarOrdem,
+  criarOrdem,
+  listarOrdens,
+  removerOrdem
+} from "../controllers/ordens.controllers.js"
+
+const router = Router()
+
+router.get("/", listarOrdens)
+router.get("/:id", buscarOrdem)
+router.post("/", criarOrdem)
+router.put("/:id", atualizarOrdem)
+router.patch("/:id/status", alterarStatusOrdem)
+router.delete("/:id", removerOrdem)
+
+export default router
