@@ -1,21 +1,19 @@
 import { Router } from "express"
-import {
-  listarClientes,
-  buscarCliente,
-  criarCliente,
-  atualizarCliente,
-  removerCliente
 
+import {
+  atualizarClienteController,
+  buscarClienteController,
+  criarClienteController,
+  listarClientesController,
+  removerClienteController
 } from "../controllers/clientes.controllers.js"
 
 const router = Router()
 
-router.get("/", listarClientes)
-router.get("/:id", buscarCliente)
-
-// Comente enquanto os controllers ainda não existem
-router.post("/", criarCliente)
-router.put("/:id", atualizarCliente)
-router.delete("/:id", removerCliente)
+router.get("/", listarClientesController)
+router.get("/:id", buscarClienteController)
+router.post("/", criarClienteController)
+router.put("/:id", atualizarClienteController)
+router.delete("/:id", removerClienteController)
 
 export default router

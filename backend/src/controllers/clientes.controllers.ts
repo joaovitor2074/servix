@@ -1,4 +1,9 @@
-import type { Request, Response } from "express"
+import type {
+  NextFunction,
+  Request,
+  Response
+} from "express"
+
 import {
   atualizarClienteService,
   buscarClienteService,
@@ -6,165 +11,179 @@ import {
   listarClientesService,
   removerClienteService
 } from "../services/clientes.services.js"
-import type { DadosCliente } from "../services/clientes.services.js"
 
-function idEhInvalido(id: number): boolean {
-  return !Number.isInteger(id) || id <= 0
-}
+const EMPRESA_ID_TESTE = 1
 
-export const listarClientes = (
+export async function listarClientesController(
   _req: Request,
-  res: Response
-) => {
-  const clientes = listarClientesService()
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const clientes = await listarClientesService(EMPRESA_ID_TESTE)
 
-  return res.status(200).json(clientes)
+    return res.status(200).json(clientes)
+  } catch (error) {
+    return next(error)
+  }
 }
 
-export const buscarCliente = (
+export async function buscarClienteController(
   req: Request,
-  res: Response
-) => {
-  const idCliente = Number(req.params.id)
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
 
-  if (idEhInvalido(idCliente)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
-  }
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        erro: "ID inválido"
+      })
+    }
 
-  const clienteEncontrado = buscarClienteService(idCliente)
+    // Faltava o await aqui
+    const cliente = await buscarClienteService(
+      id,
+      EMPRESA_ID_TESTE
+    )
 
-  if (!clienteEncontrado) {
-    return res.status(404).json({
-      erro: "Cliente não encontrado"
-    })
-  }
-
-  return res.status(200).json(clienteEncontrado)
-}
-
-export const criarCliente = (
-  req: Request,
-  res: Response
-) => {
-  const {
-    nome,
-    telefone,
-    email,
-    cpfCnpj,
-    endereco,
-    observacoes,
-    historicoDePecas
-  } = req.body
-
-  if (!nome || !telefone) {
-    return res.status(400).json({
-      erro: "Nome e telefone são obrigatórios"
-    })
-  }
-
-  const dadosCliente: DadosCliente = {
-    nome,
-    telefone,
-    email,
-    cpfCnpj,
-    endereco,
-    observacoes,
-    historicoDePecas
-  }
-
-  const resultado = criarClienteService(dadosCliente)
-
-  if (!resultado.sucesso) {
-    return res.status(409).json({
-      erro: "Já existe um cliente com esse telefone"
-    })
-  }
-
-  return res.status(201).json(resultado.cliente)
-}
-
-export const atualizarCliente = (
-  req: Request,
-  res: Response
-) => {
-  const idCliente = Number(req.params.id)
-
-  if (idEhInvalido(idCliente)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
-  }
-
-  const {
-    nome,
-    telefone,
-    email,
-    cpfCnpj,
-    endereco,
-    observacoes,
-    historicoDePecas
-  } = req.body
-
-  if (!nome || !telefone) {
-    return res.status(400).json({
-      erro: "Nome e telefone são obrigatórios"
-    })
-  }
-
-  const dadosCliente: DadosCliente = {
-    nome,
-    telefone,
-    email,
-    cpfCnpj,
-    endereco,
-    observacoes,
-    historicoDePecas
-  }
-
-  const resultado = atualizarClienteService(idCliente, dadosCliente)
-
-  if (!resultado.sucesso) {
-    if (resultado.motivo === "cliente_nao_encontrado") {
+    if (!cliente) {
       return res.status(404).json({
         erro: "Cliente não encontrado"
       })
     }
 
-    return res.status(409).json({
-      erro: "Já existe outro cliente com esse telefone"
-    })
+    return res.status(200).json(cliente)
+  } catch (error) {
+    return next(error)
   }
-
-  return res.status(200).json({
-    mensagem: "Cliente atualizado com sucesso",
-    cliente: resultado.cliente
-  })
 }
 
-export const removerCliente = (
+export async function criarClienteController(
   req: Request,
-  res: Response
-) => {
-  const idCliente = Number(req.params.id)
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const {
+      nome,
+      telefone,
+      email,
+      cpfCnpj,
+      endereco,
+      observacoes
+    } = req.body
 
-  if (idEhInvalido(idCliente)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
+    if (
+      typeof nome !== "string" ||
+      typeof telefone !== "string" ||
+      !nome.trim() ||
+      !telefone.trim()
+    ) {
+      return res.status(400).json({
+        erro: "Nome e telefone são obrigatórios"
+      })
+    }
+
+    const resultado = await criarClienteService(
+      {
+        nome: nome.trim(),
+        telefone: telefone.trim(),
+        email,
+        cpfCnpj,
+        endereco,
+        observacoes
+      },
+      EMPRESA_ID_TESTE,
+    )
+
+    if (!resultado.sucesso) {
+      return res.status(409).json({
+        erro: "Este telefone já está cadastrado"
+      })
+    }
+
+    return res.status(201).json(resultado.cliente)
+  } catch (error) {
+    return next(error)
   }
+}
 
-  const clienteRemovido = removerClienteService(idCliente)
+export async function atualizarClienteController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
 
-  if (!clienteRemovido) {
-    return res.status(404).json({
-      erro: "Cliente não encontrado"
-    })
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        erro: "ID inválido"
+      })
+    }
+
+    const resultado = await atualizarClienteService(
+      id,
+      req.body,
+      EMPRESA_ID_TESTE,
+    )
+
+    if (!resultado.sucesso) {
+      if (resultado.motivo === "telefone_duplicado") {
+        return res.status(409).json({
+          erro: "Este telefone já está cadastrado"
+        })
+      }
+
+      return res.status(404).json({
+        erro: "Cliente não encontrado"
+      })
+    }
+
+    return res.status(200).json(resultado.cliente)
+  } catch (error) {
+    return next(error)
   }
+}
 
-  return res.status(200).json({
-    mensagem: "Cliente removido com sucesso",
-    cliente: clienteRemovido
-  })
+export async function removerClienteController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        erro: "ID inválido"
+      })
+    }
+
+    const resultado = await removerClienteService(
+      id,
+      EMPRESA_ID_TESTE
+    )
+
+    if (!resultado.sucesso) {
+      if (resultado.motivo === "cliente_possui_ordens") {
+        return res.status(409).json({
+          erro: "O cliente possui ordens de serviço e não pode ser removido"
+        })
+      }
+
+      return res.status(404).json({
+        erro: "Cliente não encontrado"
+      })
+    }
+
+    return res.status(200).json({
+      mensagem: "Cliente removido com sucesso",
+      cliente: resultado.cliente
+    })
+  } catch (error) {
+    return next(error)
+  }
 }

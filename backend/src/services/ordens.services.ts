@@ -163,6 +163,7 @@ export function removerOrdemService(idOrdem: number): ResultadoRemocao {
 
   const [ordemRemovida] = ordens.splice(indiceOrdem, 1)
 
+
   return {
     sucesso: true,
     ordem: ordemRemovida!

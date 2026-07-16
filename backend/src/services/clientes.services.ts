@@ -1,4 +1,5 @@
 import type { Cliente } from "../types/Cliente.js"
+import {prisma} from "../lib/prisma.js"
 
 export type DadosCliente = Omit<Cliente, "id" | "criadoEm">
 
@@ -22,98 +23,143 @@ const clientes: Cliente[] = [
   }
 ]
 
-export function listarClientesService(): Cliente[] {
-  return clientes
+export async function listarClientesService(empresaId:number) {
+  return prisma.cliente.findMany({
+    where: {
+      empresaId
+    },
+    orderBy:{
+      criadoEm:"desc"
+    }
+  })
 }
 
-export function buscarClienteService(idCliente: number): Cliente | undefined {
-  return clientes.find(cliente => cliente.id === idCliente)
+export function buscarClienteService(id: number,empresaId:number){
+  return prisma.cliente.findFirst({
+    where:{
+      id,
+      empresaId
+    }
+  })  
 }
 
-export function criarClienteService(dados: DadosCliente): ResultadoCriacao {
-  const telefoneJaCadastrado = clientes.some(
-    cliente => cliente.telefone === dados.telefone
-  )
+export async function criarClienteService(dados: DadosCliente,empresaId:number){
+  const telefoneExistente = await prisma.cliente.findFirst({
+    where:{
+      empresaId,
+      telefone:dados.telefone
+    }
+  })
 
-  if (telefoneJaCadastrado) {
+  if(telefoneExistente){
     return {
-      sucesso: false,
-      motivo: "telefone_duplicado"
+      sucesso:false as const,
+      mnotivo:"telefone_duplicado"
     }
   }
 
-  const maiorId =
-    clientes.length > 0
-      ? Math.max(...clientes.map(cliente => cliente.id))
-      : 0
+  const cliente = await prisma.cliente.create({
+    data:{
+      empresaId,
+      nome: dados.nome,
+      telefone: dados.telefone,
+      email: dados.email??null,
+      cpfCnpj: dados.cpfCnpj??null,
+      endereco: dados.endereco??null,
+      observacoes: dados.observacoes ?? null
+    }
+  })
 
-  const novoCliente: Cliente = {
-    id: maiorId + 1,
-    ...dados,
-    criadoEm: new Date()
+  return{
+    sucesso: true as const,
+    cliente
+  }
+}
+
+export async function atualizarClienteService(
+  id: number,
+  dados: Partial<DadosCliente>,
+  empresaId:number
+){
+  const clienteExistente = await buscarClienteService(id,empresaId)
+
+  if(!clienteExistente){
+    return{
+      sucesso:false,
+      motivo:"cliente nao encontrado" as const
+    }
   }
 
-  clientes.push(novoCliente)
+  if(dados.telefone){
+    const telefoneExistente= await prisma.cliente.findFirst({
+      where:{
+        empresaId,
+        telefone:dados.telefone,
+        NOT: {
+          id
+        }
+      }
+    })
+
+    
+    if (telefoneExistente) {
+        return {
+          sucesso: false as const,
+          motivo: "telefone_duplicado" as const
+        }
+      }
+  }
+
+  const cliente = await prisma.cliente.update({
+    where:{
+      id
+    },
+    data:dados
+  })
 
   return {
-    sucesso: true,
-    cliente: novoCliente
+    sucesso:true as const,
+    cliente
   }
+
+
 }
 
-export function atualizarClienteService(
-  idCliente: number,
-  dados: DadosCliente
-): ResultadoAtualizacao {
-  const indiceCliente = clientes.findIndex(
-    cliente => cliente.id === idCliente
-  )
+export async function removerClienteService(
+  id: number,
+  empresaId: number
+) {
+  const clienteExistente = await buscarClienteService(id, empresaId)
 
-  if (indiceCliente === -1) {
+  if (!clienteExistente) {
     return {
-      sucesso: false,
-      motivo: "cliente_nao_encontrado"
+      sucesso: false as const,
+      motivo: "cliente_nao_encontrado" as const
     }
   }
 
-  const telefoneJaUtilizado = clientes.some(
-    cliente =>
-      cliente.telefone === dados.telefone &&
-      cliente.id !== idCliente
-  )
+  const quantidadeOrdens = await prisma.ordemServico.count({
+    where: {
+      clienteId: id,
+      empresaId
+    }
+  })
 
-  if (telefoneJaUtilizado) {
+  if (quantidadeOrdens > 0) {
     return {
-      sucesso: false,
-      motivo: "telefone_duplicado"
+      sucesso: false as const,
+      motivo: "cliente_possui_ordens" as const
     }
   }
 
-  const clienteAnterior = clientes[indiceCliente]!
-
-  const clienteAtualizado: Cliente = {
-    ...clienteAnterior,
-    ...dados
-  }
-
-  clientes[indiceCliente] = clienteAtualizado
+  const cliente = await prisma.cliente.delete({
+    where: {
+      id
+    }
+  })
 
   return {
-    sucesso: true,
-    cliente: clienteAtualizado
+    sucesso: true as const,
+    cliente
   }
-}
-
-export function removerClienteService(idCliente: number): Cliente | undefined {
-  const indiceCliente = clientes.findIndex(
-    cliente => cliente.id === idCliente
-  )
-
-  if (indiceCliente === -1) {
-    return undefined
-  }
-
-  const [clienteRemovido] = clientes.splice(indiceCliente, 1)
-
-  return clienteRemovido
 }

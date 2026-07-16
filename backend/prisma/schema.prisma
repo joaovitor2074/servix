@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StatusOrdem {
+  ABERTA
+  EM_ANALISE
+  AGUARDANDO_APROVACAO
+  APROVADA
+  EM_ANDAMENTO
+  AGUARDANDO_PECA
+  CONCLUIDA
+  ENTREGUE
+  CANCELADA
+}
+
+enum FormaPagamento {
+  PIX
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  BOLETO
+  NAO_INFORMADA
+  OUTRO
+}
+
+model Empresa {
+  id           Int      @id @default(autoincrement())
+  nome         String
+  slug         String   @unique
+  telefone     String?
+  email        String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  clientes Cliente[]
+  ordens   OrdemServico[]
+}
+
+model Cliente {
+  id           Int      @id @default(autoincrement())
+  empresaId    Int
+  nome         String
+  telefone     String
+  email        String?
+  cpfCnpj      String?
+  endereco     String?
+  observacoes  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresa Empresa        @relation(fields: [empresaId], references: [id])
+  ordens  OrdemServico[]
+
+  @@unique([empresaId, telefone])
+  @@index([empresaId])
+  @@index([nome])
+  @@index([cpfCnpj])
+}
+
+model OrdemServico {
+  id                 Int            @id @default(autoincrement())
+  empresaId          Int
+  clienteId          Int
+  equipamento        String
+  problemaRelatado   String
+  diagnostico        String?
+  servicoRealizado   String?
+  pecasUtilizadas    String?
+  tecnicoResponsavel String?
+  previsaoDeEntrega  DateTime?
+  valor              Decimal        @default(0) @db.Decimal(10, 2)
+  formaDePagamento   FormaPagamento @default(NAO_INFORMADA)
+  status             StatusOrdem    @default(ABERTA)
+  criadoEm           DateTime       @default(now())
+  atualizadoEm       DateTime       @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  @@index([empresaId])
+  @@index([clienteId])
+  @@index([status])
+  @@index([criadoEm])
+}
