@@ -1,52 +1,75 @@
-import express from "express"
 import cors from "cors"
+import express from "express"
+import rateLimit from "express-rate-limit"
+import helmet from "helmet"
+
+import { env } from "./config/env.js"
+import { prisma } from "./lib/prisma.js"
+import { autenticar } from "./middlewares/auth.middleware.js"
+import { errorMiddleware } from "./middlewares/error.middleware.js"
+import authRoutes from "./routes/auth.routes.js"
 import clientesRoutes from "./routes/clientes.routes.js"
 import ordensRoutes from "./routes/ordens.routes.js"
-import { errorMiddleware } from "./middlewares/error.middleware.js"
-
-
 
 const app = express()
 
-app.use(cors())
-app.use(express.json())
+if (env.trustProxy) {
+  app.set("trust proxy", 1)
+}
 
-app.get("/", (req, res) => {
+app.disable("x-powered-by")
+app.use(helmet())
+app.use(
+  cors({
+    origin(origin, callback) {
+      const permitido = !origin || env.corsOrigins.includes(origin)
+      callback(null, permitido)
+    },
+    credentials: true
+  })
+)
+app.use(express.json({ limit: "100kb" }))
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { erro: "Muitas requisições. Tente novamente mais tarde." }
+})
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { erro: "Muitas tentativas de login. Tente novamente mais tarde." }
+})
+
+app.get("/", (_req, res) => {
   res.json({
-    mensagem: "API do Servix funcionando"
+    nome: "Servix API",
+    status: "online"
   })
 })
 
-//testye 
-import type { Request, Response } from "express"
-import { prisma } from "./lib/prisma.js"
-
-app.get("/teste-banco", async (_req: Request, res: Response) => {
+app.get("/health", async (_req, res) => {
   try {
-    const empresas = await prisma.empresa.findMany()
-
-    return res.json({
-      sucesso: true,
-      mensagem: "Banco conectado corretamente",
-      empresas
-    })
-  } catch (error) {
-    console.error(error)
-
-    return res.status(500).json({
-      sucesso: false,
-      mensagem: "Erro ao acessar o banco"
-    })
+    await prisma.$queryRaw`SELECT 1`
+    return res.status(200).json({ status: "ok", banco: "ok" })
+  } catch {
+    return res.status(503).json({ status: "indisponivel", banco: "erro" })
   }
 })
 
-app.use("/clientes", clientesRoutes)
-app.use("/ordens", ordensRoutes)
+app.use(apiLimiter)
+app.use("/auth/login", loginLimiter)
+app.use("/auth", authRoutes)
+app.use("/clientes", autenticar, clientesRoutes)
+app.use("/ordens", autenticar, ordensRoutes)
 
-app.use((req, res) => {
-  res.status(404).json({
-    erro: "Rota não encontrada"
-  })
+app.use((_req, res) => {
+  res.status(404).json({ erro: "Rota não encontrada" })
 })
 
 app.use(errorMiddleware)

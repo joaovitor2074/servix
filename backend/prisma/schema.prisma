@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -34,6 +29,12 @@ enum FormaPagamento {
   OUTRO
 }
 
+enum PapelUsuario {
+  ADMIN
+  ATENDENTE
+  TECNICO
+}
+
 model Empresa {
   id           Int      @id @default(autoincrement())
   nome         String
@@ -42,9 +43,27 @@ model Empresa {
   email        String?
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-
+  
   clientes Cliente[]
-  ordens   OrdemServico[]
+  usuarios Usuario[]
+}
+
+model Usuario {
+  id           Int          @id @default(autoincrement())
+  empresaId    Int
+  nome         String
+  email        String
+  senhaHash    String
+  papel        PapelUsuario @default(ATENDENTE)
+  ativo        Boolean      @default(true)
+  criadoEm     DateTime     @default(now())
+  atualizadoEm DateTime     @updatedAt
+
+  empresa            Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  alteracoesDeStatus HistoricoStatusOrdem[] @relation("StatusAlteradoPor")
+
+  @@unique([empresaId, email])
+  @@index([empresaId])
 }
 
 model Cliente {
@@ -59,13 +78,14 @@ model Cliente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresa Empresa        @relation(fields: [empresaId], references: [id])
+  empresa Empresa        @relation(fields: [empresaId], references: [id], onDelete: Restrict)
   ordens  OrdemServico[]
 
   @@unique([empresaId, telefone])
+  @@unique([id, empresaId])
   @@index([empresaId])
-  @@index([nome])
-  @@index([cpfCnpj])
+  @@index([empresaId, nome])
+  @@index([empresaId, cpfCnpj])
 }
 
 model OrdemServico {
@@ -85,11 +105,27 @@ model OrdemServico {
   criadoEm           DateTime       @default(now())
   atualizadoEm       DateTime       @updatedAt
 
-  empresa Empresa @relation(fields: [empresaId], references: [id])
-  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  cliente   Cliente                @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  historico HistoricoStatusOrdem[]
 
+  @@unique([id, empresaId])
   @@index([empresaId])
-  @@index([clienteId])
-  @@index([status])
-  @@index([criadoEm])
+  @@index([empresaId, clienteId])
+  @@index([empresaId, status, criadoEm])
+  @@index([empresaId, criadoEm])
+}
+
+model HistoricoStatusOrdem {
+  id            Int         @id @default(autoincrement())
+  ordemId       Int
+  empresaId     Int
+  status        StatusOrdem
+  alteradoPorId Int?
+  criadoEm      DateTime    @default(now())
+
+  ordem       OrdemServico @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Cascade)
+  alteradoPor Usuario?     @relation("StatusAlteradoPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId, ordemId, criadoEm])
+  @@index([alteradoPorId])
 }

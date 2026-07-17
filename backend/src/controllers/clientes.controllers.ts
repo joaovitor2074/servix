@@ -1,8 +1,4 @@
-import type {
-  NextFunction,
-  Request,
-  Response
-} from "express"
+import type { NextFunction, Request, Response } from "express"
 
 import {
   atualizarClienteService,
@@ -10,19 +6,35 @@ import {
   criarClienteService,
   listarClientesService,
   removerClienteService
-} from "../services/clientes.services.js"
-
-const EMPRESA_ID_TESTE = 1
+} from "../services/clientes.service.js"
+import {
+  idEhInvalido,
+  validarAtualizacaoCliente,
+  validarCriacaoCliente,
+  validarQueryClientes
+} from "../validators/clientes.validators.js"
 
 export async function listarClientesController(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const clientes = await listarClientesService(EMPRESA_ID_TESTE)
+    const validacao = validarQueryClientes(req.query)
 
-    return res.status(200).json(clientes)
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
+      })
+    }
+
+    const resultado = await listarClientesService(
+      req.auth.empresaId,
+      validacao.dados
+    )
+
+    return res.status(200).json(resultado)
   } catch (error) {
     return next(error)
   }
@@ -36,22 +48,14 @@ export async function buscarClienteController(
   try {
     const id = Number(req.params.id)
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        erro: "ID inválido"
-      })
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
     }
 
-    // Faltava o await aqui
-    const cliente = await buscarClienteService(
-      id,
-      EMPRESA_ID_TESTE
-    )
+    const cliente = await buscarClienteService(id, req.auth.empresaId)
 
     if (!cliente) {
-      return res.status(404).json({
-        erro: "Cliente não encontrado"
-      })
+      return res.status(404).json({ erro: "Cliente não encontrado" })
     }
 
     return res.status(200).json(cliente)
@@ -66,36 +70,18 @@ export async function criarClienteController(
   next: NextFunction
 ) {
   try {
-    const {
-      nome,
-      telefone,
-      email,
-      cpfCnpj,
-      endereco,
-      observacoes
-    } = req.body
+    const validacao = validarCriacaoCliente(req.body)
 
-    if (
-      typeof nome !== "string" ||
-      typeof telefone !== "string" ||
-      !nome.trim() ||
-      !telefone.trim()
-    ) {
+    if (!validacao.valido) {
       return res.status(400).json({
-        erro: "Nome e telefone são obrigatórios"
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
       })
     }
 
     const resultado = await criarClienteService(
-      {
-        nome: nome.trim(),
-        telefone: telefone.trim(),
-        email,
-        cpfCnpj,
-        endereco,
-        observacoes
-      },
-      EMPRESA_ID_TESTE,
+      validacao.dados,
+      req.auth.empresaId
     )
 
     if (!resultado.sucesso) {
@@ -118,16 +104,23 @@ export async function atualizarClienteController(
   try {
     const id = Number(req.params.id)
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
+
+    const validacao = validarAtualizacaoCliente(req.body)
+
+    if (!validacao.valido) {
       return res.status(400).json({
-        erro: "ID inválido"
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
       })
     }
 
     const resultado = await atualizarClienteService(
       id,
-      req.body,
-      EMPRESA_ID_TESTE,
+      validacao.dados,
+      req.auth.empresaId
     )
 
     if (!resultado.sucesso) {
@@ -137,9 +130,7 @@ export async function atualizarClienteController(
         })
       }
 
-      return res.status(404).json({
-        erro: "Cliente não encontrado"
-      })
+      return res.status(404).json({ erro: "Cliente não encontrado" })
     }
 
     return res.status(200).json(resultado.cliente)
@@ -156,15 +147,13 @@ export async function removerClienteController(
   try {
     const id = Number(req.params.id)
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        erro: "ID inválido"
-      })
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
     }
 
     const resultado = await removerClienteService(
       id,
-      EMPRESA_ID_TESTE
+      req.auth.empresaId
     )
 
     if (!resultado.sucesso) {
@@ -174,9 +163,7 @@ export async function removerClienteController(
         })
       }
 
-      return res.status(404).json({
-        erro: "Cliente não encontrado"
-      })
+      return res.status(404).json({ erro: "Cliente não encontrado" })
     }
 
     return res.status(200).json({
