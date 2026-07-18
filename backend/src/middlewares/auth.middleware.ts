@@ -58,3 +58,20 @@ export function autenticar(
     return res.status(401).json({ erro: "Token de acesso inválido ou expirado" })
   }
 }
+
+export function autorizar(...papeisPermitidos:PapelUsuarioType[]){
+  return(
+    req:Request,
+    res:Response,
+    next:NextFunction
+   ) =>{
+    if(!papeisPermitidos.includes(req.auth.papel)){
+      return res.status(403).json({
+        erro:"Usuário não possui permissão para esta operação"
+      })
+    }
+
+    return next()
+  }
+
+}

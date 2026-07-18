@@ -12,4 +12,5 @@ const router = Router()
 router.post("/login", loginController)
 router.get("/me", autenticar, usuarioAtualController)
 
+
 export default router
