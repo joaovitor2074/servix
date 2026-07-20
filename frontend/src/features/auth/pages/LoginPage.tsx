@@ -1,9 +1,14 @@
 import { LoginForm } from "../components/LoginForm"
+import type { UsuarioAutenticado } from "../types/auth.types"
+
+interface LoginPropsForm{
+   onLogin:(usuario:UsuarioAutenticado) => void
+}
 
 
-const LoginPage = () => {
+const LoginPage = ({onLogin}:LoginPropsForm) => {
     return (
-        <LoginForm />
+        <LoginForm onLogin={onLogin} />
     )
 }
 

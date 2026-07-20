@@ -1,9 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { loginSchema } from '../schemas/login.schema'
 import { login as realizarLogin } from '../services/auth.service'
+import { salvarToken } from '../../../shared/utils/token-storage'
+import type { UsuarioAutenticado } from '../types/auth.types'
+
+interface LoginFormProps{
+    onLogin: (usuario:UsuarioAutenticado) => void
+}
 
 
-export function LoginForm() {
+export function LoginForm({onLogin}:LoginFormProps) {
     const [erros, setErros] = useState<
         Record<string, string[] | undefined>
     >({})
@@ -34,8 +40,8 @@ export function LoginForm() {
 
         try {
             const resposta = await realizarLogin(resultado.data)
-
-            console.log('Usuário autenticado:', resposta.usuario)
+            salvarToken(resposta.token)
+            onLogin(resposta.usuario)
         } catch (erro) {
             if (erro instanceof Error) {
                 setErroLogin(erro.message)

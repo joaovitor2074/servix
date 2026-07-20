@@ -1,18 +1,17 @@
 import type {
     LoginInput,
     LoginResponse,
+    UsuarioAutenticado
 } from "../types/auth.types"
+import { apiFetch } from "../../../shared/services/api"
 
-const API_URL = "http://localhost:3005"
+
 
 export async function login(
     dados: LoginInput
 ): Promise<LoginResponse> {
-    const resposta = await fetch(`${API_URL}/auth/login`, {
+    const resposta = await apiFetch(`/auth/login`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
         body: JSON.stringify(dados),
     })
 
@@ -23,4 +22,15 @@ export async function login(
     }
 
     return corpo as LoginResponse
+}
+
+export async function buscarUsuarioAtual(): Promise<UsuarioAutenticado>{
+    const resposta = await apiFetch('/auth/me')
+    const corpo = await resposta.json()
+
+    if(!resposta.ok){
+        throw new Error(corpo.erro??'Sessao invalida')
+    }
+
+    return corpo as UsuarioAutenticado
 }
