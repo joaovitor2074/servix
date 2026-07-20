@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { validarComSchema } from "./validation.js";
 
+// Valida em conjunto a empresa e o administrador inicial. Slug e e-mails são
+// normalizados para minúsculas antes de chegarem ao service.
 export const criarEmpresaSchema = z
     .object({
         nome: z.string().trim().min(2).max(80),
@@ -42,6 +44,7 @@ email: z
 
 export type CriarEmpresaInput = z.infer<typeof criarEmpresaSchema>
 
+// Mantém o mesmo formato de sucesso/erro utilizado pelos demais controllers.
 export function validarCriacaoEmpresa(dados: unknown) {
     return validarComSchema(criarEmpresaSchema, dados)
 }

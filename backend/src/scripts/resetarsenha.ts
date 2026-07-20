@@ -4,6 +4,9 @@ import { hash } from "bcryptjs"
 
 import { prisma } from "../lib/prisma.js"
 
+// Script local de manutenção para redefinir a senha de uma conta específica.
+// Antes de uso real, substitua os valores fixos por variáveis de ambiente para
+// não manter credenciais conhecidas no código-fonte.
 async function main() {
   const novaSenha = "12345678"
   const senhaHash = await hash(novaSenha, 10)
@@ -39,5 +42,6 @@ main()
     process.exitCode = 1
   })
   .finally(async () => {
+    // Libera o pool de conexões mesmo quando a atualização falha.
     await prisma.$disconnect()
   })

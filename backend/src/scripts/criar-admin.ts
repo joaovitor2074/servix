@@ -5,6 +5,7 @@ import { hash } from "bcryptjs"
 import { PapelUsuario } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 
+// Lê uma variável necessária ao script e encerra com mensagem clara se faltar.
 function variavelObrigatoria(nome: string): string {
   const valor = process.env[nome]?.trim()
 
@@ -15,6 +16,8 @@ function variavelObrigatoria(nome: string): string {
   return valor
 }
 
+// Script administrativo idempotente: cria a empresa quando necessário e usa
+// upsert para criar ou atualizar o administrador sem duplicá-lo.
 async function executar() {
   const empresaSlug = variavelObrigatoria("ADMIN_EMPRESA_SLUG").toLowerCase()
   const nome = variavelObrigatoria("ADMIN_NOME")
@@ -39,6 +42,7 @@ async function executar() {
     })
   }
 
+  // Somente o hash da senha é enviado ao banco.
   const senhaHash = await hash(senha, 12)
   const usuario = await prisma.usuario.upsert({
     where: {
@@ -77,5 +81,6 @@ executar()
     process.exitCode = 1
   })
   .finally(async () => {
+    // Scripts precisam fechar o Prisma porque não possuem o ciclo do servidor.
     await prisma.$disconnect()
   })

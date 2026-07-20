@@ -6,6 +6,8 @@ import {
   validarQueryClientes
 } from "./clientes.validators.js"
 
+// Testes de unidade garantem que normalização, proteção contra campos internos e
+// limites da paginação continuem iguais após futuras alterações nos schemas.
 describe("validação de clientes", () => {
   it("normaliza telefone, CPF e e-mail", () => {
     const resultado = validarCriacaoCliente({

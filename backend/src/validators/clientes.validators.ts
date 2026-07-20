@@ -2,12 +2,15 @@ import { z } from "zod"
 
 import { validarComSchema } from "./validation.js"
 
+// Campos opcionais enviados como string vazia são normalizados para null. Isso
+// facilita limpar um campo que já possuía valor no banco.
 const textoOpcional = (limite: number) =>
   z.preprocess(
     valor => valor === "" ? null : valor,
     z.string().trim().max(limite).nullable().optional()
   )
 
+// Remove máscara, espaços e pontuação antes de validar e salvar o telefone.
 const telefoneSchema = z
   .string()
   .transform(valor => valor.replace(/\D/g, ""))
@@ -15,6 +18,8 @@ const telefoneSchema = z
     message: "Telefone deve possuir entre 8 e 15 dígitos"
   })
 
+// CPF/CNPJ também é persistido somente com dígitos; a regra atual verifica o
+// tamanho, não o cálculo dos dígitos verificadores.
 const cpfCnpjSchema = z.preprocess(
   valor => {
     if (valor === "" || valor === null || valor === undefined) {
@@ -34,6 +39,7 @@ const cpfCnpjSchema = z.preprocess(
     .optional()
 )
 
+// `.strict()` rejeita propriedades que não fazem parte do contrato da API.
 export const criarClienteSchema = z
   .object({
     nome: z.string().trim().min(2).max(120),
@@ -48,12 +54,15 @@ export const criarClienteSchema = z
   })
   .strict()
 
+// A atualização reutiliza o schema de criação, torna tudo opcional e exige ao
+// menos uma propriedade para evitar requisições vazias.
 export const atualizarClienteSchema = criarClienteSchema
   .partial()
   .refine(dados => Object.keys(dados).length > 0, {
     message: "Informe ao menos um campo para atualização"
   })
 
+// `coerce` converte valores da URL, que chegam como texto, para números.
 export const listarClientesQuerySchema = z
   .object({
     pagina: z.coerce.number().int().positive().default(1),
@@ -78,6 +87,7 @@ export function validarQueryClientes(dados: unknown) {
   return validarComSchema(listarClientesQuerySchema, dados)
 }
 
+// IDs usados nas URLs precisam ser inteiros positivos.
 export function idEhInvalido(id: number): boolean {
   return !Number.isInteger(id) || id <= 0
 }

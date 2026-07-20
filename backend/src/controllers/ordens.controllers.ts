@@ -17,6 +17,10 @@ import {
   validarQueryOrdens
 } from "../validators/ordens.validators.js"
 
+// Cada controller desta camada sempre repassa `empresaId`; isso evita que um ID
+// válido de outra empresa seja usado para acessar uma ordem indevidamente.
+
+// Lista ordens com paginação e filtros vindos da query string.
 export async function listarOrdens(
   req: Request,
   res: Response,
@@ -43,6 +47,7 @@ export async function listarOrdens(
   }
 }
 
+// Busca uma única ordem pelo ID composto por ordem e empresa.
 export async function buscarOrdem(
   req: Request,
   res: Response,
@@ -69,6 +74,7 @@ export async function buscarOrdem(
   }
 }
 
+// Cria a ordem e o primeiro item do histórico de status dentro de uma transação.
 export async function criarOrdem(
   req: Request,
   res: Response,
@@ -100,6 +106,8 @@ export async function criarOrdem(
   }
 }
 
+// Atualiza os campos enviados e trata separadamente ordem ausente, cliente
+// ausente e tentativa de transição de status não permitida.
 export async function atualizarOrdem(
   req: Request,
   res: Response,
@@ -135,6 +143,17 @@ export async function atualizarOrdem(
         })
       }
 
+      if (resultado.motivo === "transicao_status_invalida") {
+        return res.status(409).json({
+          erro: "Transição de status não permitida",
+          detalhes: {
+            statusAtual: resultado.statusAtual,
+            statusSolicitado: resultado.statusSolicitado,
+            statusPermitidos: resultado.statusPermitidos
+          }
+        })
+      }
+
       return res.status(404).json({ erro: "Cliente não encontrado" })
     }
 
@@ -144,6 +163,7 @@ export async function atualizarOrdem(
   }
 }
 
+// Endpoint específico para mudar somente o status da ordem.
 export async function alterarStatusOrdem(
   req: Request,
   res: Response,
@@ -173,8 +193,19 @@ export async function alterarStatusOrdem(
     )
 
     if (!resultado.sucesso) {
-      return res.status(404).json({
-        erro: "Ordem de serviço não encontrada"
+      if (resultado.motivo === "ordem_nao_encontrada") {
+        return res.status(404).json({
+          erro: "Ordem de serviço não encontrada"
+        })
+      }
+
+      return res.status(409).json({
+        erro: "Transição de status não permitida",
+        detalhes: {
+          statusAtual: resultado.statusAtual,
+          statusSolicitado: resultado.statusSolicitado,
+          statusPermitidos: resultado.statusPermitidos
+        }
       })
     }
 
@@ -184,6 +215,7 @@ export async function alterarStatusOrdem(
   }
 }
 
+// Recupera a linha do tempo de status e quem realizou cada alteração.
 export async function listarHistoricoOrdem(
   req: Request,
   res: Response,
@@ -213,6 +245,8 @@ export async function listarHistoricoOrdem(
   }
 }
 
+// O DELETE representa cancelamento lógico: a ordem continua disponível para
+// histórico e auditoria em vez de ser apagada do banco.
 export async function removerOrdem(
   req: Request,
   res: Response,
@@ -225,12 +259,16 @@ export async function removerOrdem(
       return res.status(400).json({ erro: "ID inválido" })
     }
 
-    const resultado = await removerOrdemService(id, req.auth.empresaId)
+    const resultado = await removerOrdemService(
+      id,
+      req.auth.empresaId,
+      req.auth.usuarioId
+    )
 
     if (!resultado.sucesso) {
       if (resultado.motivo === "ordem_entregue") {
         return res.status(409).json({
-          erro: "Uma ordem entregue não pode ser removida"
+          erro: "Uma ordem entregue não pode ser cancelada"
         })
       }
 
@@ -240,7 +278,7 @@ export async function removerOrdem(
     }
 
     return res.status(200).json({
-      mensagem: "Ordem de serviço removida com sucesso",
+      mensagem: "Ordem de serviço cancelada com sucesso",
       ordem: resultado.ordem
     })
   } catch (error) {

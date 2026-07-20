@@ -6,6 +6,11 @@ import {
 } from "../services/auth.service.js"
 import { validarLogin } from "../validators/auth.validators.js"
 
+// Controllers traduzem HTTP para a camada de negócio: leem a requisição,
+// validam a entrada, chamam um service e escolhem o status da resposta.
+
+// Valida as credenciais e devolve 400 para formato inválido, 401 para
+// credenciais incorretas ou 200 com token e dados básicos do usuário.
 export async function loginController(
   req: Request,
   res: Response,
@@ -35,6 +40,8 @@ export async function loginController(
   }
 }
 
+// Retorna os dados atuais do usuário identificado pelo middleware `autenticar`.
+// A busca inclui empresaId para manter o isolamento entre empresas.
 export async function usuarioAtualController(
   req: Request,
   res: Response,

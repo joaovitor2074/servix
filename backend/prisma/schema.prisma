@@ -1,3 +1,4 @@
+// Gera o cliente tipado dentro de src/generated para ser importado pela API.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -7,6 +8,7 @@ datasource db {
   provider = "postgresql"
 }
 
+// Etapas possíveis do ciclo de atendimento de uma ordem.
 enum StatusOrdem {
   ABERTA
   EM_ANALISE
@@ -35,6 +37,7 @@ enum PapelUsuario {
   TECNICO
 }
 
+// Empresa é a raiz do isolamento multiempresa do sistema.
 model Empresa {
   id           Int      @id @default(autoincrement())
   nome         String
@@ -48,6 +51,7 @@ model Empresa {
   usuarios Usuario[]
 }
 
+// Usuários pertencem a uma empresa. O e-mail é único somente dentro dela.
 model Usuario {
   id           Int          @id @default(autoincrement())
   empresaId    Int
@@ -62,10 +66,12 @@ model Usuario {
   empresa            Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict)
   alteracoesDeStatus HistoricoStatusOrdem[] @relation("StatusAlteradoPor")
 
+  // Índices e chaves compostas reforçam isolamento e aceleram consultas.
   @@unique([empresaId, email])
   @@index([empresaId])
 }
 
+// Cliente também pertence a uma empresa e pode possuir várias ordens.
 model Cliente {
   id           Int      @id @default(autoincrement())
   empresaId    Int
@@ -88,6 +94,7 @@ model Cliente {
   @@index([empresaId, cpfCnpj])
 }
 
+// Registro principal do atendimento técnico realizado para um cliente.
 model OrdemServico {
   id                 Int            @id @default(autoincrement())
   empresaId          Int
@@ -115,6 +122,7 @@ model OrdemServico {
   @@index([empresaId, criadoEm])
 }
 
+// Auditoria de todas as mudanças de status, incluindo o usuário responsável.
 model HistoricoStatusOrdem {
   id            Int         @id @default(autoincrement())
   ordemId       Int

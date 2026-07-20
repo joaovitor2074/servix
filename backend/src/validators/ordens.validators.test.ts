@@ -6,6 +6,7 @@ import {
   validarCriacaoOrdem
 } from "./ordens.validators.js"
 
+// Cobre os contratos principais de criação e atualização sem acessar o banco.
 describe("validação de ordens", () => {
   it("aplica os padrões e converte a data", () => {
     const resultado = validarCriacaoOrdem({
@@ -32,6 +33,17 @@ describe("validação de ordens", () => {
 
   it("recusa status do contrato antigo em minúsculas", () => {
     const resultado = validarAtualizacaoOrdem({ status: "entregue" })
+    expect(resultado.valido).toBe(false)
+  })
+
+  it("exige que uma ordem nova comece aberta", () => {
+    const resultado = validarCriacaoOrdem({
+      clienteId: 1,
+      equipamento: "Notebook",
+      problemaRelatado: "Não liga",
+      status: StatusOrdem.ENTREGUE
+    })
+
     expect(resultado.valido).toBe(false)
   })
 

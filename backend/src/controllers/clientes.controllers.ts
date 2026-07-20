@@ -14,6 +14,8 @@ import {
   validarQueryClientes
 } from "../validators/clientes.validators.js"
 
+// Lista clientes da empresa autenticada usando filtros e paginação já
+// normalizados pelo validator.
 export async function listarClientesController(
   req: Request,
   res: Response,
@@ -40,6 +42,7 @@ export async function listarClientesController(
   }
 }
 
+// Converte o parâmetro textual da URL para número antes de consultar o service.
 export async function buscarClienteController(
   req: Request,
   res: Response,
@@ -64,6 +67,7 @@ export async function buscarClienteController(
   }
 }
 
+// Cria um cliente e converte a regra de telefone duplicado em HTTP 409.
 export async function criarClienteController(
   req: Request,
   res: Response,
@@ -96,6 +100,8 @@ export async function criarClienteController(
   }
 }
 
+// Atualiza apenas os campos enviados. O service diferencia registro ausente de
+// conflito de telefone para o controller responder com o status correto.
 export async function atualizarClienteController(
   req: Request,
   res: Response,
@@ -139,6 +145,7 @@ export async function atualizarClienteController(
   }
 }
 
+// A remoção só ocorre quando o cliente existe e não possui ordens relacionadas.
 export async function removerClienteController(
   req: Request,
   res: Response,

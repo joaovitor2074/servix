@@ -1,13 +1,18 @@
 import type { Prisma } from "../generated/prisma/client.js"
 import { StatusOrdem } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
-import { erroPrismaPossuiCodigo } from "../lib/prisma-errors.js"
+import {
+  listarStatusPermitidos,
+  transicaoStatusEhPermitida
+} from "../rules/status-ordem.js"
 import type {
   AtualizarOrdemInput,
   CriarOrdemInput,
   ListarOrdensQuery
 } from "../validators/ordens.validators.js"
 
+// Seleção reutilizada nas consultas para devolver somente o resumo necessário
+// do cliente junto de cada ordem.
 const clienteResumo = {
   select: {
     id: true,
@@ -16,6 +21,7 @@ const clienteResumo = {
   }
 } as const
 
+// Combina isolamento por empresa, filtros opcionais, pesquisa e paginação.
 export async function listarOrdensService(
   empresaId: number,
   filtros: ListarOrdensQuery
@@ -52,6 +58,7 @@ export async function listarOrdensService(
       : {})
   }
 
+  // Dados e total são consultados juntos para montar as informações da página.
   const skip = (filtros.pagina - 1) * filtros.limite
   const [dados, total] = await prisma.$transaction([
     prisma.ordemServico.findMany({
@@ -75,6 +82,7 @@ export async function listarOrdensService(
   }
 }
 
+// `id_empresaId` é uma chave composta definida no schema do Prisma.
 export function buscarOrdemService(id: number, empresaId: number) {
   return prisma.ordemServico.findUnique({
     where: {
@@ -87,6 +95,7 @@ export function buscarOrdemService(id: number, empresaId: number) {
   })
 }
 
+// Antes de criar uma ordem, confirma que o cliente pertence à mesma empresa.
 export async function criarOrdemService(
   empresaId: number,
   usuarioId: number,
@@ -109,6 +118,8 @@ export async function criarOrdemService(
     }
   }
 
+  // Ordem e histórico inicial são gravados na mesma transação. Se uma escrita
+  // falhar, a outra é desfeita e o banco não fica em estado parcial.
   const ordem = await prisma.$transaction(async tx => {
     const criada = await tx.ordemServico.create({
       data: {
@@ -156,6 +167,8 @@ export async function criarOrdemService(
   }
 }
 
+// Atualiza somente os campos recebidos e registra uma mudança de status quando
+// ela realmente ocorreu.
 export async function atualizarOrdemService(
   id: number,
   empresaId: number,
@@ -171,7 +184,22 @@ export async function atualizarOrdemService(
     }
   }
 
+  if (
+    dados.status !== undefined &&
+    !transicaoStatusEhPermitida(ordemExistente.status, dados.status)
+  ) {
+    // O resultado estruturado permite ao controller informar os status aceitos.
+    return {
+      sucesso: false as const,
+      motivo: "transicao_status_invalida" as const,
+      statusAtual: ordemExistente.status,
+      statusSolicitado: dados.status,
+      statusPermitidos: listarStatusPermitidos(ordemExistente.status)
+    }
+  }
+
   if (dados.clienteId !== undefined) {
+    // Uma troca de cliente também precisa respeitar o limite da empresa.
     const cliente = await prisma.cliente.findUnique({
       where: {
         id_empresaId: {
@@ -190,6 +218,7 @@ export async function atualizarOrdemService(
     }
   }
 
+  // Spreads condicionais diferenciam "campo não enviado" de um valor enviado.
   const data: Prisma.OrdemServicoUncheckedUpdateInput = {
     ...(dados.clienteId !== undefined && { clienteId: dados.clienteId }),
     ...(dados.equipamento !== undefined && {
@@ -232,6 +261,7 @@ export async function atualizarOrdemService(
       include: { cliente: clienteResumo }
     })
 
+    // O histórico só ganha uma linha quando o status realmente muda.
     if (
       dados.status !== undefined &&
       dados.status !== ordemExistente.status
@@ -255,6 +285,7 @@ export async function atualizarOrdemService(
   }
 }
 
+// Versão especializada para telas ou ações que alteram apenas o status.
 export async function alterarStatusOrdemService(
   id: number,
   empresaId: number,
@@ -271,12 +302,24 @@ export async function alterarStatusOrdemService(
   }
 
   if (ordemExistente.status === status) {
+    // Repetir o status atual é idempotente: não cria histórico duplicado.
     return {
       sucesso: true as const,
       ordem: ordemExistente
     }
   }
 
+  if (!transicaoStatusEhPermitida(ordemExistente.status, status)) {
+    return {
+      sucesso: false as const,
+      motivo: "transicao_status_invalida" as const,
+      statusAtual: ordemExistente.status,
+      statusSolicitado: status,
+      statusPermitidos: listarStatusPermitidos(ordemExistente.status)
+    }
+  }
+
+  // Atualização e auditoria permanecem atômicas por meio da transação.
   const ordem = await prisma.$transaction(async tx => {
     const atualizada = await tx.ordemServico.update({
       where: {
@@ -307,6 +350,8 @@ export async function alterarStatusOrdemService(
   }
 }
 
+// Primeiro confirma a existência da ordem dentro da empresa; depois lista seu
+// histórico em ordem cronológica com um resumo de quem fez cada mudança.
 export async function listarHistoricoOrdemService(
   id: number,
   empresaId: number
@@ -343,33 +388,66 @@ export async function listarHistoricoOrdemService(
   })
 }
 
+// O nome histórico é "remover", mas a operação cancela a ordem em vez de
+// apagá-la. Isso mantém rastreabilidade para a empresa.
 export async function removerOrdemService(
   id: number,
-  empresaId: number
+  empresaId: number,
+  usuarioId: number
 ) {
-  const ordemEncontrada = await buscarOrdemService(id, empresaId)
-
-  if (!ordemEncontrada) {
-    return {
-      sucesso: false as const,
-      motivo: "ordem_nao_encontrada" as const
-    }
-  }
-
-  if (ordemEncontrada.status === StatusOrdem.ENTREGUE) {
-    return {
-      sucesso: false as const,
-      motivo: "ordem_entregue" as const
-    }
-  }
-
-  try {
-    const ordem = await prisma.ordemServico.delete({
+  return prisma.$transaction(async tx => {
+    const ordemEncontrada = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
           id,
           empresaId
         }
+      },
+      include: { cliente: clienteResumo }
+    })
+
+    if (!ordemEncontrada) {
+      return {
+        sucesso: false as const,
+        motivo: "ordem_nao_encontrada" as const
+      }
+    }
+
+    if (ordemEncontrada.status === StatusOrdem.ENTREGUE) {
+      // Uma ordem entregue representa um processo encerrado e não pode cancelar.
+      return {
+        sucesso: false as const,
+        motivo: "ordem_entregue" as const
+      }
+    }
+
+    if (ordemEncontrada.status === StatusOrdem.CANCELADA) {
+      // Cancelar novamente retorna sucesso sem criar outro evento no histórico.
+      return {
+        sucesso: true as const,
+        ordem: ordemEncontrada
+      }
+    }
+
+    const ordem = await tx.ordemServico.update({
+      where: {
+        id_empresaId: {
+          id,
+          empresaId
+        }
+      },
+      data: {
+        status: StatusOrdem.CANCELADA
+      },
+      include: { cliente: clienteResumo }
+    })
+
+    await tx.historicoStatusOrdem.create({
+      data: {
+        ordemId: id,
+        empresaId,
+        status: StatusOrdem.CANCELADA,
+        alteradoPorId: usuarioId
       }
     })
 
@@ -377,14 +455,5 @@ export async function removerOrdemService(
       sucesso: true as const,
       ordem
     }
-  } catch (error) {
-    if (erroPrismaPossuiCodigo(error, "P2025")) {
-      return {
-        sucesso: false as const,
-        motivo: "ordem_nao_encontrada" as const
-      }
-    }
-
-    throw error
-  }
+  })
 }

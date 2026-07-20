@@ -1,5 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js"
 
+// Faz o narrowing de `unknown` e compara um código conhecido do Prisma, como
+// P2002 (valor único duplicado) ou P2025 (registro não encontrado).
 export function erroPrismaPossuiCodigo(
   error: unknown,
   codigo: string
@@ -10,6 +12,8 @@ export function erroPrismaPossuiCodigo(
   )
 }
 
+// Alguns erros de chave estrangeira chegam diretamente pelo Prisma; outros
+// podem estar encapsulados pelo adaptador PostgreSQL em `cause`.
 export function erroDeChaveEstrangeira(error: unknown): boolean {
   if (erroPrismaPossuiCodigo(error, "P2003")) {
     return true

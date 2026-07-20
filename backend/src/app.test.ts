@@ -2,6 +2,8 @@ import type { Express } from "express"
 import request from "supertest"
 import { beforeAll, describe, expect, it } from "vitest"
 
+// Estes são testes de integração HTTP: o Supertest chama o Express em memória,
+// sem abrir uma porta real. A importação ocorre depois da configuração do JWT.
 let app: Express
 
 beforeAll(async () => {

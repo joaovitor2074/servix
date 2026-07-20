@@ -3,6 +3,8 @@ import type { NextFunction, Request, Response } from "express"
 import { criarEmpresaService } from "../services/empresa.service.js"
 import { validarCriacaoEmpresa } from "../validators/empresa.validators.js"
 
+// Cadastra empresa e administrador inicial. O service executa a criação
+// relacionada, enquanto o controller cuida da validação e da resposta HTTP.
 export async function criarEmpresaController(
   req: Request,
   res: Response,

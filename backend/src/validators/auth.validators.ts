@@ -2,6 +2,8 @@ import { z } from "zod"
 
 import { validarComSchema } from "./validation.js"
 
+// O schema valida e também normaliza slug e e-mail. `.strict()` rejeita campos
+// extras, reduzindo a superfície de dados inesperados na autenticação.
 export const loginSchema = z
   .object({
     empresaSlug: z
@@ -18,6 +20,7 @@ export const loginSchema = z
 
 export type LoginInput = z.infer<typeof loginSchema>
 
+// Controllers usam esta função para receber o ResultadoValidacao padronizado.
 export function validarLogin(dados: unknown) {
   return validarComSchema(loginSchema, dados)
 }

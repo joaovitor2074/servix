@@ -6,6 +6,8 @@ import {
 } from "../generated/prisma/enums.js"
 import { validarComSchema } from "./validation.js"
 
+// Os enums vêm do Prisma para que banco, regra de negócio e validação aceitem
+// exatamente o mesmo conjunto de valores.
 const statusSchema = z.enum([
   StatusOrdem.ABERTA,
   StatusOrdem.EM_ANALISE,
@@ -28,6 +30,7 @@ const formaPagamentoSchema = z.enum([
   FormaPagamento.OUTRO
 ])
 
+// Schemas menores são reutilizados entre criação e atualização.
 const textoObrigatorio = z.string().trim().min(1).max(500)
 
 const textoOpcional = (limite: number) =>
@@ -36,6 +39,7 @@ const textoOpcional = (limite: number) =>
     z.string().trim().max(limite).nullable().optional()
   )
 
+// Datas chegam como texto ISO com fuso e são transformadas em Date para o Prisma.
 const dataOpcional = z.preprocess(
   valor => valor === "" ? null : valor,
   z
@@ -46,6 +50,7 @@ const dataOpcional = z.preprocess(
     .optional()
 )
 
+// Fonte única das regras dos campos editáveis de uma ordem.
 const camposEditaveis = {
   equipamento: textoObrigatorio,
   problemaRelatado: z.string().trim().min(1).max(2000),
@@ -59,6 +64,7 @@ const camposEditaveis = {
   status: statusSchema
 }
 
+// Uma nova ordem sempre começa ABERTA; valor e pagamento possuem padrões.
 export const criarOrdemSchema = z
   .object({
     clienteId: z.number().int().positive(),
@@ -67,10 +73,11 @@ export const criarOrdemSchema = z
     formaDePagamento: formaPagamentoSchema.default(
       FormaPagamento.NAO_INFORMADA
     ),
-    status: statusSchema.default(StatusOrdem.ABERTA)
+    status: z.literal(StatusOrdem.ABERTA).default(StatusOrdem.ABERTA)
   })
   .strict()
 
+// Na atualização, todos os campos são opcionais, mas o corpo não pode ser vazio.
 export const atualizarOrdemSchema = z
   .object({
     clienteId: z.number().int().positive().optional(),
@@ -90,12 +97,14 @@ export const atualizarOrdemSchema = z
     message: "Informe ao menos um campo para atualização"
   })
 
+// Contrato reduzido para a rota dedicada exclusivamente ao status.
 export const alterarStatusSchema = z
   .object({
     status: statusSchema
   })
   .strict()
 
+// Filtros de URL são convertidos e recebem limites seguros de paginação.
 export const listarOrdensQuerySchema = z
   .object({
     pagina: z.coerce.number().int().positive().default(1),
@@ -126,6 +135,7 @@ export function validarQueryOrdens(dados: unknown) {
   return validarComSchema(listarOrdensQuerySchema, dados)
 }
 
+// Mantém IDs inválidos longe da camada de banco.
 export function idEhInvalido(id: number): boolean {
   return !Number.isInteger(id) || id <= 0
 }
