@@ -1,7 +1,8 @@
-import { Navigate, Route, Routes } from 'react-router';
-import DashboardPage from '../features/dashboard/pages/DashboardPage';
-import LoginPage from '../features/auth/pages/LoginPage';
-import type { UsuarioAutenticado } from '../features/auth/types/auth.types';
+import { Navigate, Route, Routes } from 'react-router'
+import DashboardPage from '../features/dashboard/pages/DashboardPage'
+import LoginPage from '../features/auth/pages/LoginPage'
+import type { UsuarioAutenticado } from '../features/auth/types/auth.types'
+import AppLayout from '../shared/layouts/AppLayout'
 
 interface AppRouterProps {
   usuario: UsuarioAutenticado | null
@@ -14,6 +15,10 @@ export default function AppRouter({
   onLogin,
   onLogout,
 }: AppRouterProps) {
+  const dashboard = usuario ? (
+    <DashboardPage usuario={usuario} />
+  ) : null
+
   return (
     <Routes>
       <Route
@@ -26,22 +31,31 @@ export default function AppRouter({
           )
         }
       />
+
       <Route
-        path="/dashboard"
         element={
           usuario ? (
-            <DashboardPage usuario={usuario} onLogout={onLogout} />
+            <AppLayout
+              usuario={usuario}
+              onLogout={onLogout}
+            />
           ) : (
             <Navigate to="/login" replace />
           )
         }
-      />
+      >
+        <Route path="dashboard" element={dashboard} />
+      </Route>
+
       <Route
         path="*"
         element={
-          <Navigate to={usuario ? '/dashboard' : '/login'} replace />
+          <Navigate
+            to={usuario ? '/dashboard' : '/login'}
+            replace
+          />
         }
       />
     </Routes>
-  );
+  )
 }
