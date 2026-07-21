@@ -90,6 +90,14 @@ export default function AppLayout({
           </NavLink>
 
           <NavLink
+            to="/clientes"
+            onClick={() => setMenuAberto(false)}
+          >
+            <ClientsIcon />
+            <span>Clientes</span>
+          </NavLink>
+
+          <NavLink
             to="/ordens"
             onClick={() => setMenuAberto(false)}
           >
@@ -219,6 +227,16 @@ function OrdersIcon() {
     <Icon>
       <path d="M7 4h10M7 8h10M7 12h6" />
       <path d="M5 20h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z" />
+    </Icon>
+  )
+}
+
+function ClientsIcon() {
+  return (
+    <Icon>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M3 20v-1.5A5.5 5.5 0 0 1 8.5 13h1A5.5 5.5 0 0 1 15 18.5V20" />
+      <path d="M16 6.5a3 3 0 0 1 0 5.5M17 14a4.5 4.5 0 0 1 4 4.5V20" />
     </Icon>
   )
 }
