@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import type { UsuarioAutenticado } from '../../auth/types/auth.types'
-import { buscarResumoDashboard } from '../services/dashboard.service'
 import {
   STATUS_ORDEM,
-  type ResumoDashboard,
+  STATUS_ORDEM_LABELS,
   type StatusOrdem,
-} from '../types/dashboard.types'
+} from '../../../shared/types/ordem.types'
+import { buscarResumoDashboard } from '../services/dashboard.service'
+import type { ResumoDashboard } from '../types/dashboard.types'
 import './DashboardPage.css'
 
 interface DashboardPageProps {
@@ -155,6 +157,9 @@ export default function DashboardPage({
               <h2>Ordens recentes</h2>
               <p>Os últimos atendimentos cadastrados.</p>
             </div>
+            <Link className="dashboard-card__link" to="/ordens">
+              Ver todas
+            </Link>
           </div>
 
           {resumo.ordens.recentes.length === 0 ? (
@@ -230,7 +235,7 @@ function MetricCard({ label, value, tone, icon }: MetricCardProps) {
 function StatusBadge({ status }: { status: StatusOrdem }) {
   return (
     <span className={`status-badge status-badge--${status.toLowerCase()}`}>
-      {STATUS_LABELS[status]}
+      {STATUS_ORDEM_LABELS[status]}
     </span>
   )
 }
@@ -247,13 +252,13 @@ function StatusRow({ status, value, total }: StatusRowProps) {
   return (
     <div className="dashboard-status__item">
       <div className="dashboard-status__text">
-        <span>{STATUS_LABELS[status]}</span>
+        <span>{STATUS_ORDEM_LABELS[status]}</span>
         <strong>{value}</strong>
       </div>
       <div
         className="dashboard-status__track"
         role="progressbar"
-        aria-label={STATUS_LABELS[status]}
+        aria-label={STATUS_ORDEM_LABELS[status]}
         aria-valuemin={0}
         aria-valuemax={Math.max(total, 1)}
         aria-valuenow={value}
@@ -286,18 +291,6 @@ function DashboardSkeleton() {
       </div>
     </div>
   )
-}
-
-const STATUS_LABELS: Record<StatusOrdem, string> = {
-  ABERTA: 'Aberta',
-  EM_ANALISE: 'Em análise',
-  AGUARDANDO_APROVACAO: 'Aguardando aprovação',
-  APROVADA: 'Aprovada',
-  EM_ANDAMENTO: 'Em andamento',
-  AGUARDANDO_PECA: 'Aguardando peça',
-  CONCLUIDA: 'Concluída',
-  ENTREGUE: 'Entregue',
-  CANCELADA: 'Cancelada',
 }
 
 function obterPrimeiroNome(nome: string) {

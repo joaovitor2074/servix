@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import LoginPage from '../features/auth/pages/LoginPage'
+import OrdersPage from '../features/orders/pages/OrdersPage'
 import type { UsuarioAutenticado } from '../features/auth/types/auth.types'
 import AppLayout from '../shared/layouts/AppLayout'
 
@@ -45,6 +46,7 @@ export default function AppRouter({
         }
       >
         <Route path="dashboard" element={dashboard} />
+        <Route path="ordens" element={<OrdersPage />} />
       </Route>
 
       <Route

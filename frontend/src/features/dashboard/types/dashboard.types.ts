@@ -1,17 +1,4 @@
-// Mantém no frontend os mesmos valores do enum StatusOrdem definido no Prisma.
-export const STATUS_ORDEM = [
-  'ABERTA',
-  'EM_ANALISE',
-  'AGUARDANDO_APROVACAO',
-  'APROVADA',
-  'EM_ANDAMENTO',
-  'AGUARDANDO_PECA',
-  'CONCLUIDA',
-  'ENTREGUE',
-  'CANCELADA',
-] as const
-
-export type StatusOrdem = (typeof STATUS_ORDEM)[number]
+import type { StatusOrdem } from '../../../shared/types/ordem.types'
 
 export interface OrdemRecente {
   id: number

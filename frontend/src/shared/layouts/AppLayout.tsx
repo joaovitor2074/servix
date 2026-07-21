@@ -88,6 +88,14 @@ export default function AppLayout({
             <DashboardIcon />
             <span>Dashboard</span>
           </NavLink>
+
+          <NavLink
+            to="/ordens"
+            onClick={() => setMenuAberto(false)}
+          >
+            <OrdersIcon />
+            <span>Ordens</span>
+          </NavLink>
         </nav>
 
         <button
@@ -202,6 +210,15 @@ function DashboardIcon() {
       <rect x="14" y="4" width="6" height="6" rx="1" />
       <rect x="4" y="14" width="6" height="6" rx="1" />
       <rect x="14" y="14" width="6" height="6" rx="1" />
+    </Icon>
+  )
+}
+
+function OrdersIcon() {
+  return (
+    <Icon>
+      <path d="M7 4h10M7 8h10M7 12h6" />
+      <path d="M5 20h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z" />
     </Icon>
   )
 }
