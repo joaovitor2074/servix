@@ -6,6 +6,7 @@ import type { UsuarioAutenticado } from './features/auth/types/auth.types'
 import AppRouter from './app/router'
 
 
+
 function App() {
   const [usuario,setUsuario] = useState<UsuarioAutenticado | null>(null)
   const [carregando,setCarregando] = useState(true)
