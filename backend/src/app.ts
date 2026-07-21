@@ -9,6 +9,7 @@ import { autenticar } from "./middlewares/auth.middleware.js"
 import { errorMiddleware } from "./middlewares/error.middleware.js"
 import authRoutes from "./routes/auth.routes.js"
 import clientesRoutes from "./routes/clientes.routes.js"
+import dashboardRoutes from "./routes/dashboard.routes.js"
 import ordensRoutes from "./routes/ordens.routes.js"
 import empresaRouter from "./routes/empresa.routes.js"
 import usuariosRouter from "./routes/usuarios.routes.js"
@@ -81,6 +82,7 @@ app.use(apiLimiter)
 app.use("/auth/login", loginLimiter)
 app.use("/auth", authRoutes)
 app.use("/clientes", autenticar, clientesRoutes)
+app.use("/dashboard", autenticar, dashboardRoutes)
 app.use("/ordens", autenticar, ordensRoutes)
 app.use("/empresa",empresaRouter)
 app.use("/usuarios",autenticar,usuariosRouter)

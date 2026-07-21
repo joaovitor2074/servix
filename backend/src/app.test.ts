@@ -30,6 +30,13 @@ describe("API HTTP", () => {
     expect(resposta.body.erro).toContain("Token")
   })
 
+  it("protege o resumo da dashboard", async () => {
+    const resposta = await request(app).get("/dashboard/resumo")
+
+    expect(resposta.status).toBe(401)
+    expect(resposta.body.erro).toContain("Token")
+  })
+
   it("recusa campos desconhecidos no login antes de consultar o banco", async () => {
     const resposta = await request(app)
       .post("/auth/login")
