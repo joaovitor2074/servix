@@ -28,14 +28,29 @@ export const STATUS_ORDEM_LABELS: Record<StatusOrdem, string> = {
   CANCELADA: 'Cancelada',
 }
 
-export type FormaPagamento =
-  | 'PIX'
-  | 'DINHEIRO'
-  | 'CARTAO_CREDITO'
-  | 'CARTAO_DEBITO'
-  | 'BOLETO'
-  | 'NAO_INFORMADA'
-  | 'OUTRO'
+// O array serve tanto para gerar o select do formulário quanto para manter o
+// tipo sincronizado com o enum FormaPagamento definido no Prisma.
+export const FORMAS_PAGAMENTO = [
+  'NAO_INFORMADA',
+  'PIX',
+  'DINHEIRO',
+  'CARTAO_CREDITO',
+  'CARTAO_DEBITO',
+  'BOLETO',
+  'OUTRO',
+] as const
+
+export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number]
+
+export const FORMA_PAGAMENTO_LABELS: Record<FormaPagamento, string> = {
+  NAO_INFORMADA: 'Não informada',
+  PIX: 'Pix',
+  DINHEIRO: 'Dinheiro',
+  CARTAO_CREDITO: 'Cartão de crédito',
+  CARTAO_DEBITO: 'Cartão de débito',
+  BOLETO: 'Boleto',
+  OUTRO: 'Outro',
+}
 
 export interface ClienteResumoOrdem {
   id: number
@@ -62,4 +77,16 @@ export interface OrdemServico {
   criadoEm: string
   atualizadoEm: string
   cliente: ClienteResumoOrdem
+}
+
+// Corpo aceito pelo POST /ordens. Campos de diagnóstico e execução não
+// aparecem aqui porque pertencem às etapas posteriores do atendimento.
+export interface CriarOrdemInput {
+  clienteId: number
+  equipamento: string
+  problemaRelatado: string
+  tecnicoResponsavel: string | null
+  previsaoDeEntrega: string | null
+  valor: number
+  formaDePagamento: FormaPagamento
 }

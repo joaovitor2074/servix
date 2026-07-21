@@ -5,6 +5,13 @@
   margin-inline: auto;
 }
 
+.orders-page__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .orders-page__eyebrow {
   display: block;
   margin-bottom: 5px;
@@ -26,6 +33,65 @@
   margin-top: 7px;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+
+.orders-page__create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 9px 14px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 10px;
+  background-color: var(--color-primary);
+  box-shadow: 0 7px 16px rgba(6, 72, 216, 0.2);
+}
+
+.orders-page__create svg,
+.orders-success svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orders-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  color: #087341;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #bce9d0;
+  border-radius: 10px;
+  background-color: #eaf9f1;
+}
+
+.orders-success span {
+  flex: 1;
+}
+
+.orders-success button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  border: 0;
+  border-radius: 7px;
+  background-color: transparent;
 }
 
 .orders-filters {
@@ -78,7 +144,8 @@
 
 .orders-filters__search button,
 .orders-feedback button,
-.orders-empty button {
+.orders-empty button,
+.orders-empty__create {
   align-self: stretch;
   padding: 0 15px;
   color: #ffffff;
@@ -87,6 +154,20 @@
   border: 0;
   border-radius: 0 9px 9px 0;
   background-color: var(--color-primary);
+}
+
+.orders-empty__create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: auto;
+  min-height: 40px;
+  padding: 9px 15px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 9px;
 }
 
 .orders-filters__status {
@@ -420,6 +501,17 @@
   .orders-pagination {
     grid-template-columns: auto minmax(130px, 1fr) auto;
     align-items: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .orders-page__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orders-page__create {
+    width: 100%;
   }
 }
 

@@ -1,5 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router'
 import { clienteSchema } from '../schemas/client.schema'
 import {
   atualizarCliente,
@@ -12,9 +18,18 @@ import './ClientFormPage.css'
 export default function ClientFormPage() {
   const { id: idParam } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const editando = idParam !== undefined
   const clienteId = Number(idParam)
   const idValido = Number.isInteger(clienteId) && clienteId > 0
+  const retornoAposCadastro = editando
+    ? null
+    : lerRetornoSeguro(searchParams.get('retorno'))
+  const destinoVoltar = retornoAposCadastro ?? '/clientes'
+  const rascunhoOrdem = retornoAposCadastro
+    ? lerRascunhoDaNavegacao(location.state)
+    : undefined
 
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [carregando, setCarregando] = useState(editando)
@@ -82,18 +97,34 @@ export default function ClientFormPage() {
     try {
       if (editando) {
         await atualizarCliente(clienteId, validacao.data)
-      } else {
-        await criarCliente(validacao.data)
+
+        navigate('/clientes', {
+          replace: true,
+          state: { mensagem: 'Cliente atualizado com sucesso.' },
+        })
+        return
       }
 
-      // A mensagem via state aparece uma vez na listagem sem poluir a URL.
+      const clienteCriado = await criarCliente(validacao.data)
+
+      if (retornoAposCadastro) {
+        // No fluxo de atendimento, voltamos com o novo ID na URL. A tela de
+        // ordem busca o cadastro e já o apresenta selecionado ao funcionário.
+        navigate(`${retornoAposCadastro}?clienteId=${clienteCriado.id}`, {
+          replace: true,
+          state: {
+            mensagem: `${clienteCriado.nome} foi cadastrado e selecionado.`,
+            rascunhoOrdem,
+          },
+        })
+        return
+      }
+
+      // Fora do atendimento, o comportamento original continua levando para a
+      // listagem com uma confirmação que não polui a URL.
       navigate('/clientes', {
         replace: true,
-        state: {
-          mensagem: editando
-            ? 'Cliente atualizado com sucesso.'
-            : 'Cliente cadastrado com sucesso.',
-        },
+        state: { mensagem: 'Cliente cadastrado com sucesso.' },
       })
     } catch (error) {
       setErroApi(
@@ -136,7 +167,16 @@ export default function ClientFormPage() {
   return (
     <div className="client-form-page">
       <header className="client-form-page__header">
-        <Link to="/clientes" aria-label="Voltar para clientes">
+        <Link
+          to={destinoVoltar}
+          replace={Boolean(retornoAposCadastro)}
+          state={retornoAposCadastro ? { rascunhoOrdem } : undefined}
+          aria-label={
+            retornoAposCadastro
+              ? 'Voltar para nova ordem'
+              : 'Voltar para clientes'
+          }
+        >
           <ArrowLeftIcon />
         </Link>
         <div>
@@ -316,7 +356,13 @@ export default function ClientFormPage() {
         )}
 
         <div className="client-form__actions">
-          <Link to="/clientes">Cancelar</Link>
+          <Link
+            to={destinoVoltar}
+            replace={Boolean(retornoAposCadastro)}
+            state={retornoAposCadastro ? { rascunhoOrdem } : undefined}
+          >
+            Cancelar
+          </Link>
           <button type="submit" disabled={salvando} aria-busy={salvando}>
             {salvando
               ? 'Salvando...'
@@ -408,6 +454,26 @@ function campoDescribedBy(
 ) {
   if (error) return `${id}-error`
   return hasHint ? `${id}-hint` : undefined
+}
+
+// A query de retorno nunca é usada diretamente. A lista explícita evita que
+// uma URL externa ou uma rota inesperada seja usada como redirecionamento.
+function lerRetornoSeguro(valor: string | null) {
+  return valor === '/ordens/nova' ? valor : null
+}
+
+// O cadastro não interpreta o conteúdo do rascunho; apenas o transporta de
+// volta. A tela de ordem é quem valida e aplica os campos que conhece.
+function lerRascunhoDaNavegacao(state: unknown) {
+  if (
+    typeof state === 'object' &&
+    state !== null &&
+    'rascunhoOrdem' in state
+  ) {
+    return state.rascunhoOrdem
+  }
+
+  return undefined
 }
 
 interface IconProps {

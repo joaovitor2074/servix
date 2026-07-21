@@ -1,0 +1,396 @@
+.client-selector {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-surface);
+  box-shadow: 0 7px 22px rgba(25, 49, 86, 0.05);
+}
+
+.client-selector__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.client-selector__step {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.client-selector__header h2 {
+  color: var(--color-text);
+  font-size: 17px;
+}
+
+.client-selector__header p {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.client-selector__create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 8px 12px;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid rgba(6, 72, 216, 0.18);
+  border-radius: 9px;
+  background-color: #ffffff;
+}
+
+.client-selector__header > .client-selector__create svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.client-selector__search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 44px;
+  margin: 16px;
+  padding-left: 12px;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: #ffffff;
+}
+
+.client-selector__search:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(6, 72, 216, 0.1);
+}
+
+.client-selector__search svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.client-selector__search input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  color: var(--color-text);
+  font-size: 13px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.client-selector__search button {
+  align-self: stretch;
+  padding: 0 15px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  border: 0;
+  border-radius: 0 9px 9px 0;
+  background-color: var(--color-primary);
+}
+
+.client-selector__results-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px 9px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.client-selector__results-title strong {
+  color: var(--color-text);
+  font-size: 11px;
+}
+
+.client-selector__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 0 16px 16px;
+}
+
+.client-selector__client {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  color: var(--color-text);
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: #ffffff;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.client-selector__client:hover,
+.client-selector__client:focus-visible {
+  border-color: rgba(6, 72, 216, 0.45);
+  background-color: #f7faff;
+}
+
+.client-selector__avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 10px;
+  background-color: #edf3ff;
+}
+
+.client-selector__client-data {
+  min-width: 0;
+}
+
+.client-selector__client-data strong,
+.client-selector__client-data small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-selector__client-data strong {
+  font-size: 12px;
+}
+
+.client-selector__client-data small {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.client-selector__client > svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: #9aa6b7;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.client-selector__loading {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 0 16px 16px;
+}
+
+.client-selector__loading > div {
+  height: 60px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #e9edf3 25%, #f7f8fa 50%, #e9edf3 75%);
+  background-size: 200% 100%;
+  animation: client-selector-shimmer 1.4s infinite;
+}
+
+.client-selector__feedback,
+.client-selector__empty {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 16px 16px;
+  padding: 13px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: #f9fafc;
+}
+
+.client-selector__feedback > svg,
+.client-selector__empty > svg {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.client-selector__feedback > svg {
+  color: var(--color-error);
+}
+
+.client-selector__empty > svg {
+  color: var(--color-primary);
+}
+
+.client-selector__feedback div,
+.client-selector__empty div {
+  flex: 1;
+  min-width: 0;
+}
+
+.client-selector__feedback strong,
+.client-selector__empty strong {
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.client-selector__feedback p,
+.client-selector__empty p {
+  margin-top: 2px;
+}
+
+.client-selector__feedback button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(6, 72, 216, 0.18);
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.client-selector--selected {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+  border-color: #bce9d0;
+  background-color: #f7fcf9;
+}
+
+.client-selector__selected-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: #087341;
+  border-radius: 11px;
+  background-color: #e2f6eb;
+}
+
+.client-selector__selected-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.client-selector__selected-data {
+  min-width: 0;
+}
+
+.client-selector__selected-data > span {
+  display: block;
+  margin-bottom: 2px;
+  color: #087341;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.client-selector__selected-data strong {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-selector__selected-data p {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-selector--selected > button {
+  min-height: 36px;
+  padding: 8px 11px;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid rgba(6, 72, 216, 0.18);
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+@keyframes client-selector-shimmer {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+@media (max-width: 620px) {
+  .client-selector__header,
+  .client-selector__feedback,
+  .client-selector__empty,
+  .client-selector--selected {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .client-selector__header {
+    display: flex;
+  }
+
+  .client-selector__create,
+  .client-selector__feedback button {
+    width: 100%;
+  }
+
+  .client-selector__list,
+  .client-selector__loading {
+    grid-template-columns: 1fr;
+  }
+
+  .client-selector--selected {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .client-selector--selected > button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .client-selector__client {
+    transition: none;
+  }
+
+  .client-selector__loading > div {
+    animation: none;
+  }
+}

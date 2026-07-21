@@ -5,7 +5,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useLocation, useSearchParams } from 'react-router'
 import type { RespostaPaginada } from '../../../shared/types/api.types'
 import {
   STATUS_ORDEM,
@@ -33,10 +33,14 @@ interface FalhaCarregamento {
 }
 
 export default function OrdersPage() {
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [resultado, setResultado] = useState<ResultadoCarregado | null>(null)
   const [falha, setFalha] = useState<FalhaCarregamento | null>(null)
   const [tentativa, setTentativa] = useState(0)
+  const [mensagemSucesso, setMensagemSucesso] = useState(() =>
+    lerMensagemDaNavegacao(location.state),
+  )
 
   // Transformar a query em texto cria uma chave estável para a requisição. Ela
   // também permite diferenciar a resposta anterior da página sendo carregada.
@@ -138,7 +142,25 @@ export default function OrdersPage() {
           <h1>Ordens de serviço</h1>
           <p>Consulte e acompanhe todos os serviços da empresa.</p>
         </div>
+        <Link className="orders-page__create" to="/ordens/nova">
+          <PlusIcon />
+          Nova ordem
+        </Link>
       </header>
+
+      {mensagemSucesso && (
+        <div className="orders-success" role="status">
+          <CheckIcon />
+          <span>{mensagemSucesso}</span>
+          <button
+            type="button"
+            aria-label="Fechar mensagem"
+            onClick={() => setMensagemSucesso('')}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <section className="orders-filters" aria-label="Filtros das ordens">
         <form className="orders-filters__search" onSubmit={handleBusca}>
@@ -246,6 +268,11 @@ function OrdersContent({
           <button type="button" onClick={onClearFilters}>
             Limpar filtros
           </button>
+        )}
+        {!possuiFiltros && (
+          <Link className="orders-empty__create" to="/ordens/nova">
+            Criar primeira ordem
+          </Link>
         )}
       </section>
     )
@@ -398,6 +425,19 @@ function definirParametro(
   parametros.set(nome, String(valor))
 }
 
+function lerMensagemDaNavegacao(state: unknown) {
+  if (
+    typeof state === 'object' &&
+    state !== null &&
+    'mensagem' in state &&
+    typeof state.mensagem === 'string'
+  ) {
+    return state.mensagem
+  }
+
+  return ''
+}
+
 const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
@@ -435,6 +475,22 @@ function SearchIcon() {
     <Icon>
       <circle cx="11" cy="11" r="6.5" />
       <path d="m16 16 4 4" />
+    </Icon>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <Icon>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <Icon>
+      <path d="m5 12 4 4L19 6" />
     </Icon>
   )
 }

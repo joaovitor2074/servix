@@ -47,6 +47,17 @@ describe("validação de ordens", () => {
     expect(resultado.valido).toBe(false)
   })
 
+  it("recusa valor com mais de duas casas decimais", () => {
+    const resultado = validarCriacaoOrdem({
+      clienteId: 1,
+      equipamento: "Notebook",
+      problemaRelatado: "Não liga",
+      valor: 10.999
+    })
+
+    expect(resultado.valido).toBe(false)
+  })
+
   it("aceita atualização parcial", () => {
     const resultado = validarAtualizacaoOrdem({
       status: StatusOrdem.EM_ANALISE

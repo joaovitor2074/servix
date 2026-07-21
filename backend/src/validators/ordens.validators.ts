@@ -59,7 +59,9 @@ const camposEditaveis = {
   pecasUtilizadas: textoOpcional(4000),
   tecnicoResponsavel: textoOpcional(120),
   previsaoDeEntrega: dataOpcional,
-  valor: z.number().finite().min(0).max(99999999.99),
+  // O banco usa Decimal(10,2). Rejeitar frações menores que um centavo evita
+  // que o PostgreSQL arredonde silenciosamente o valor enviado pelo cliente.
+  valor: z.number().finite().min(0).max(99999999.99).multipleOf(0.01),
   formaDePagamento: formaPagamentoSchema,
   status: statusSchema
 }
