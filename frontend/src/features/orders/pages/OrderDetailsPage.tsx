@@ -4,8 +4,8 @@ import {
   type ReactNode,
 } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import PaymentPanel from '../../payments/components/PaymentPanel'
 import {
-  FORMA_PAGAMENTO_LABELS,
   STATUS_ORDEM_LABELS,
   type HistoricoStatusOrdem,
   type OrdemServico,
@@ -288,6 +288,18 @@ export default function OrderDetailsPage() {
           </DetailsCard>
 
           <DetailsCard
+            icon={<WalletIcon />}
+            title="Pagamentos"
+            description="Registros financeiros auditáveis desta ordem."
+            variant="green"
+          >
+            <PaymentPanel
+              ordem={ordemAtual}
+              onChanged={() => setTentativaOrdem(valor => valor + 1)}
+            />
+          </DetailsCard>
+
+          <DetailsCard
             icon={<HistoryIcon />}
             title="Histórico do atendimento"
             description="Linha do tempo das mudanças de status desta ordem."
@@ -328,21 +340,27 @@ export default function OrderDetailsPage() {
 
           <DetailsCard
             icon={<WalletIcon />}
-            title="Orçamento e pagamento"
-            description="Valores registrados no atendimento."
+            title="Orçamento aprovado"
+            description="Origem comercial desta ordem de serviço."
             variant="green"
             compact
           >
             <dl className="order-details-side-fields">
               <DetailItem
-                label="Valor"
+                label="Total aprovado"
                 value={formatarValor(ordemAtual.valor)}
               />
               <DetailItem
-                label="Forma de pagamento"
-                value={FORMA_PAGAMENTO_LABELS[ordemAtual.formaDePagamento]}
+                label="Orçamento"
+                value={`#${ordemAtual.orcamento.numero}`}
               />
             </dl>
+            <Link
+              className="order-details-budget-link"
+              to={`/orcamentos/${ordemAtual.orcamento.id}`}
+            >
+              Ver orçamento e itens aprovados
+            </Link>
           </DetailsCard>
 
           <div className="order-details-help">
@@ -637,7 +655,7 @@ function formatarDataHora(valor: string) {
 function formatarValor(valor: string) {
   const numero = Number(valor)
 
-  if (!Number.isFinite(numero) || numero === 0) return 'A definir'
+  if (!Number.isFinite(numero)) return '—'
   return formatadorMoeda.format(numero)
 }
 

@@ -1,15 +1,13 @@
 // Estes valores precisam permanecer iguais ao enum StatusOrdem do Prisma.
 // O `as const` transforma cada texto em um tipo literal conhecido pelo TS.
 export const STATUS_ORDEM = [
-  'ABERTA',
+  'RECEBIDO',
   'EM_ANALISE',
-  'AGUARDANDO_APROVACAO',
-  'APROVADA',
-  'EM_ANDAMENTO',
+  'EM_EXECUCAO',
   'AGUARDANDO_PECA',
-  'CONCLUIDA',
+  'PRONTO',
   'ENTREGUE',
-  'CANCELADA',
+  'CANCELADO',
 ] as const
 
 export type StatusOrdem = (typeof STATUS_ORDEM)[number]
@@ -17,15 +15,13 @@ export type StatusOrdem = (typeof STATUS_ORDEM)[number]
 // Os textos de apresentação ficam centralizados para todas as telas usarem a
 // mesma tradução dos status técnicos retornados pela API.
 export const STATUS_ORDEM_LABELS: Record<StatusOrdem, string> = {
-  ABERTA: 'Aberta',
+  RECEBIDO: 'Recebido',
   EM_ANALISE: 'Em análise',
-  AGUARDANDO_APROVACAO: 'Aguardando aprovação',
-  APROVADA: 'Aprovada',
-  EM_ANDAMENTO: 'Em andamento',
+  EM_EXECUCAO: 'Em execução',
   AGUARDANDO_PECA: 'Aguardando peça',
-  CONCLUIDA: 'Concluída',
+  PRONTO: 'Pronto',
   ENTREGUE: 'Entregue',
-  CANCELADA: 'Cancelada',
+  CANCELADO: 'Cancelado',
 }
 
 // Espelha a máquina de estados do backend. O formulário de atualização usa
@@ -34,15 +30,13 @@ export const TRANSICOES_STATUS_ORDEM: Record<
   StatusOrdem,
   readonly StatusOrdem[]
 > = {
-  ABERTA: ['EM_ANALISE', 'CANCELADA'],
-  EM_ANALISE: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CANCELADA'],
-  AGUARDANDO_APROVACAO: ['APROVADA', 'EM_ANALISE', 'CANCELADA'],
-  APROVADA: ['EM_ANDAMENTO', 'CANCELADA'],
-  EM_ANDAMENTO: ['AGUARDANDO_PECA', 'CONCLUIDA', 'CANCELADA'],
-  AGUARDANDO_PECA: ['EM_ANDAMENTO', 'CANCELADA'],
-  CONCLUIDA: ['ENTREGUE', 'EM_ANDAMENTO', 'CANCELADA'],
+  RECEBIDO: ['EM_ANALISE', 'CANCELADO'],
+  EM_ANALISE: ['EM_EXECUCAO', 'CANCELADO'],
+  EM_EXECUCAO: ['AGUARDANDO_PECA', 'PRONTO', 'CANCELADO'],
+  AGUARDANDO_PECA: ['EM_EXECUCAO', 'CANCELADO'],
+  PRONTO: ['ENTREGUE', 'EM_EXECUCAO', 'CANCELADO'],
   ENTREGUE: [],
-  CANCELADA: [],
+  CANCELADO: [],
 }
 
 // Cada item representa uma mudança de status devolvida pelo endpoint
@@ -51,6 +45,7 @@ export interface HistoricoStatusOrdem {
   id: number
   ordemId: number
   empresaId: number
+  statusAnterior: StatusOrdem | null
   status: StatusOrdem
   alteradoPorId: number | null
   criadoEm: string
@@ -91,12 +86,38 @@ export interface ClienteResumoOrdem {
   telefone: string
 }
 
+export interface ItemOrcamentoDaOrdem {
+  id: number
+  descricao: string
+  quantidade: number
+  valorUnitario: string
+  valorTotal: string
+  tipo: 'SERVICO' | 'PECA' | 'MATERIAL'
+}
+
+export interface OrcamentoDaOrdem {
+  id: number
+  numero: number
+  status: 'RASCUNHO' | 'ENVIADO' | 'APROVADO' | 'REJEITADO' | 'EXPIRADO' | 'CONVERTIDO' | 'CANCELADO'
+  total: string
+  itens?: ItemOrcamentoDaOrdem[]
+}
+
+export interface ResumoPagamentoOrdem {
+  status: 'PENDENTE' | 'PARCIAL' | 'PAGO' | 'ESTORNADO'
+  valorTotal: string
+  totalPago: string
+  totalEstornado: string
+  saldo: string
+}
+
 // Representa exatamente uma ordem devolvida por GET /ordens. Datas chegam em
 // JSON como strings ISO e o Decimal do Prisma chega como texto.
 export interface OrdemServico {
   id: number
   empresaId: number
   clienteId: number
+  orcamentoId: number
   equipamento: string
   problemaRelatado: string
   diagnostico: string | null
@@ -107,34 +128,25 @@ export interface OrdemServico {
   valor: string
   formaDePagamento: FormaPagamento
   status: StatusOrdem
+  versao: number
   criadoEm: string
   atualizadoEm: string
   cliente: ClienteResumoOrdem
+  orcamento: OrcamentoDaOrdem
+  pagamentoResumo?: ResumoPagamentoOrdem
 }
 
 // Corpo aceito pelo POST /ordens. Campos de diagnóstico e execução não
 // aparecem aqui porque pertencem às etapas posteriores do atendimento.
-export interface CriarOrdemInput {
-  clienteId: number
-  equipamento: string
-  problemaRelatado: string
-  tecnicoResponsavel: string | null
-  previsaoDeEntrega: string | null
-  valor: number
-  formaDePagamento: FormaPagamento
-}
-
 // Dados enviados pelo formulário operacional para PATCH /ordens/:id. Campos
 // opcionais vazios são normalizados como null para limpar o valor no backend.
 export interface AtualizarOrdemInput {
-  equipamento?: string
-  problemaRelatado?: string
+  statusEsperado: StatusOrdem
+  versaoEsperada: number
   diagnostico?: string | null
   servicoRealizado?: string | null
   pecasUtilizadas?: string | null
   tecnicoResponsavel?: string | null
   previsaoDeEntrega?: string | null
-  valor?: number
-  formaDePagamento?: FormaPagamento
   status?: StatusOrdem
 }

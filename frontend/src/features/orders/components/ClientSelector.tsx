@@ -14,7 +14,8 @@ interface ClientSelectorProps {
   clienteSelecionado: Cliente | null
   onSelecionar: (cliente: Cliente) => void
   onTrocar: () => void
-  onCadastrarCliente: () => void
+  onCadastrarCliente?: () => void
+  stepLabel?: string
 }
 
 interface ResultadoClientes {
@@ -32,6 +33,7 @@ export default function ClientSelector({
   onSelecionar,
   onTrocar,
   onCadastrarCliente,
+  stepLabel = 'Etapa 1 de 2',
 }: ClientSelectorProps) {
   const [buscaAplicada, setBuscaAplicada] = useState('')
   const [resultado, setResultado] = useState<ResultadoClientes | null>(null)
@@ -129,18 +131,20 @@ export default function ClientSelector({
     <section className="client-selector" aria-labelledby="client-selector-title">
       <div className="client-selector__header">
         <div>
-          <span className="client-selector__step">Etapa 1 de 2</span>
+          <span className="client-selector__step">{stepLabel}</span>
           <h2 id="client-selector-title">Selecione o cliente</h2>
           <p>Busque pelo nome, telefone ou CPF/CNPJ.</p>
         </div>
-        <button
-          className="client-selector__create"
-          type="button"
-          onClick={onCadastrarCliente}
-        >
-          <PlusIcon />
-          Cadastrar cliente
-        </button>
+        {onCadastrarCliente && (
+          <button
+            className="client-selector__create"
+            type="button"
+            onClick={onCadastrarCliente}
+          >
+            <PlusIcon />
+            Cadastrar cliente
+          </button>
+        )}
       </div>
 
       <form className="client-selector__search" onSubmit={handleBusca}>
@@ -217,13 +221,15 @@ export default function ClientSelector({
             <strong>Nenhum cliente encontrado</strong>
             <p>Confira a busca ou cadastre o cliente para seguir.</p>
           </div>
-          <button
-            className="client-selector__create"
-            type="button"
-            onClick={onCadastrarCliente}
-          >
-            Cadastrar novo cliente
-          </button>
+          {onCadastrarCliente && (
+            <button
+              className="client-selector__create"
+              type="button"
+              onClick={onCadastrarCliente}
+            >
+              Cadastrar novo cliente
+            </button>
+          )}
         </div>
       )}
     </section>

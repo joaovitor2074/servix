@@ -12,7 +12,7 @@ describe("transições de status da ordem", () => {
   it("permite o fluxo normal e os retornos operacionais", () => {
     expect(
       transicaoStatusEhPermitida(
-        StatusOrdem.ABERTA,
+        StatusOrdem.RECEBIDO,
         StatusOrdem.EM_ANALISE
       )
     ).toBe(true)
@@ -20,14 +20,14 @@ describe("transições de status da ordem", () => {
     expect(
       transicaoStatusEhPermitida(
         StatusOrdem.AGUARDANDO_PECA,
-        StatusOrdem.EM_ANDAMENTO
+        StatusOrdem.EM_EXECUCAO
       )
     ).toBe(true)
 
     expect(
       transicaoStatusEhPermitida(
-        StatusOrdem.CONCLUIDA,
-        StatusOrdem.EM_ANDAMENTO
+        StatusOrdem.PRONTO,
+        StatusOrdem.EM_EXECUCAO
       )
     ).toBe(true)
   })
@@ -35,8 +35,8 @@ describe("transições de status da ordem", () => {
   it("considera repetir o status uma operação válida", () => {
     expect(
       transicaoStatusEhPermitida(
-        StatusOrdem.EM_ANDAMENTO,
-        StatusOrdem.EM_ANDAMENTO
+        StatusOrdem.EM_EXECUCAO,
+        StatusOrdem.EM_EXECUCAO
       )
     ).toBe(true)
   })
@@ -45,25 +45,25 @@ describe("transições de status da ordem", () => {
     expect(
       transicaoStatusEhPermitida(
         StatusOrdem.ENTREGUE,
-        StatusOrdem.ABERTA
+        StatusOrdem.RECEBIDO
       )
     ).toBe(false)
 
     expect(
       transicaoStatusEhPermitida(
-        StatusOrdem.CANCELADA,
+        StatusOrdem.CANCELADO,
         StatusOrdem.EM_ANALISE
       )
     ).toBe(false)
 
     expect(listarStatusPermitidos(StatusOrdem.ENTREGUE)).toEqual([])
-    expect(listarStatusPermitidos(StatusOrdem.CANCELADA)).toEqual([])
+    expect(listarStatusPermitidos(StatusOrdem.CANCELADO)).toEqual([])
   })
 
   it("impede pular etapas do fluxo", () => {
     expect(
       transicaoStatusEhPermitida(
-        StatusOrdem.ABERTA,
+        StatusOrdem.RECEBIDO,
         StatusOrdem.ENTREGUE
       )
     ).toBe(false)

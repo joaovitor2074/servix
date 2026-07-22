@@ -11,6 +11,8 @@ import authRoutes from "./routes/auth.routes.js"
 import clientesRoutes from "./routes/clientes.routes.js"
 import dashboardRoutes from "./routes/dashboard.routes.js"
 import ordensRoutes from "./routes/ordens.routes.js"
+import orcamentosPublicosRoutes from "./routes/orcamentos-publicos.routes.js"
+import orcamentosRoutes from "./routes/orcamentos.routes.js"
 import empresaRouter from "./routes/empresa.routes.js"
 import usuariosRouter from "./routes/usuarios.routes.js"
 
@@ -81,8 +83,10 @@ app.get("/health", async (_req, res) => {
 app.use(apiLimiter)
 app.use("/auth/login", loginLimiter)
 app.use("/auth", authRoutes)
+app.use("/publico/orcamentos", orcamentosPublicosRoutes)
 app.use("/clientes", autenticar, clientesRoutes)
 app.use("/dashboard", autenticar, dashboardRoutes)
+app.use("/orcamentos", autenticar, orcamentosRoutes)
 app.use("/ordens", autenticar, ordensRoutes)
 app.use("/empresa",empresaRouter)
 app.use("/usuarios",autenticar,usuariosRouter)

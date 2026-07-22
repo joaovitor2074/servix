@@ -2,7 +2,6 @@ import { apiFetch } from '../../../shared/services/api'
 import type { RespostaPaginada } from '../../../shared/types/api.types'
 import type {
   AtualizarOrdemInput,
-  CriarOrdemInput,
   HistoricoStatusOrdem,
   OrdemServico,
   StatusOrdem,
@@ -117,22 +116,6 @@ export async function listarOrdens(
   return lerResposta<RespostaPaginada<OrdemServico>>(
     resposta,
     'Não foi possível carregar as ordens de serviço',
-  )
-}
-
-// Envia somente os campos aceitos pelo schema estrito do backend. O status não
-// é incluído: a API é a responsável por iniciar toda ordem como ABERTA.
-export async function criarOrdem(
-  dados: CriarOrdemInput,
-): Promise<OrdemServico> {
-  const resposta = await apiFetch('/ordens', {
-    method: 'POST',
-    body: JSON.stringify(dados),
-  })
-
-  return lerResposta<OrdemServico>(
-    resposta,
-    'Não foi possível criar a ordem de serviço',
   )
 }
 

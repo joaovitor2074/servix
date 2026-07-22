@@ -8,8 +8,6 @@ import {
 } from 'react'
 import { Link, useBeforeUnload, useNavigate, useParams } from 'react-router'
 import {
-  FORMAS_PAGAMENTO,
-  FORMA_PAGAMENTO_LABELS,
   STATUS_ORDEM_LABELS,
   TRANSICOES_STATUS_ORDEM,
   type AtualizarOrdemInput,
@@ -202,15 +200,11 @@ export default function EditOrderPage() {
     const formData = new FormData(formulario)
 
     const validacao = editarOrdemSchema.safeParse({
-      equipamento: formData.get('equipamento'),
-      problemaRelatado: formData.get('problemaRelatado'),
       diagnostico: formData.get('diagnostico'),
       servicoRealizado: formData.get('servicoRealizado'),
       pecasUtilizadas: formData.get('pecasUtilizadas'),
       tecnicoResponsavel: formData.get('tecnicoResponsavel'),
       previsaoDeEntrega: formData.get('previsaoDeEntrega'),
-      valor: formData.get('valor'),
-      formaDePagamento: formData.get('formaDePagamento'),
       status: formData.get('status'),
     })
 
@@ -233,7 +227,11 @@ export default function EditOrderPage() {
     // o fluxo caso o HTML seja alterado manualmente no navegador.
     const statusPermitidos = new Set<StatusOrdem>([
       ordemAtual.status,
-      ...TRANSICOES_STATUS_ORDEM[ordemAtual.status],
+      ...TRANSICOES_STATUS_ORDEM[ordemAtual.status].filter(
+        status =>
+          status !== 'ENTREGUE' ||
+          ordemAtual.pagamentoResumo?.status === 'PAGO',
+      ),
     ])
 
     if (!statusPermitidos.has(validacao.data.status)) {
@@ -251,7 +249,7 @@ export default function EditOrderPage() {
       camposAlterados.current,
     )
 
-    if (Object.keys(alteracoes).length === 0) {
+    if (!alteracoes) {
       setFormularioAlterado(false)
       camposAlterados.current.clear()
       setErroApi('Nenhuma alteração foi feita na ordem.')
@@ -296,7 +294,7 @@ export default function EditOrderPage() {
       setExigeRecarregamento(conflitoOuAusencia)
       setErroApi(
         error instanceof OrdemApiError && error.status === 409
-          ? 'O status desta ordem mudou ou a transição não é mais permitida. Recarregue os dados antes de continuar.'
+          ? `${error.message} Recarregue os dados antes de continuar.`
           : error instanceof Error
             ? error.message
             : 'Ocorreu um erro inesperado ao atualizar a ordem.',
@@ -339,9 +337,14 @@ export default function EditOrderPage() {
 
   if (!ordemAtual) return null
 
+  const entregaBloqueada =
+    ordemAtual.status === 'PRONTO' &&
+    ordemAtual.pagamentoResumo?.status !== 'PAGO'
   const statusDisponiveis = [
     ordemAtual.status,
-    ...TRANSICOES_STATUS_ORDEM[ordemAtual.status],
+    ...TRANSICOES_STATUS_ORDEM[ordemAtual.status].filter(
+      status => status !== 'ENTREGUE' || !entregaBloqueada,
+    ),
   ]
   const statusFinal = statusDisponiveis.length === 1
 
@@ -401,7 +404,9 @@ export default function EditOrderPage() {
               label="Status"
               required
               hint={
-                statusFinal
+                entregaBloqueada
+                  ? 'Quite o saldo nos detalhes da ordem para liberar a entrega.'
+                  : statusFinal
                   ? 'Esta ordem está em um status final.'
                   : 'São exibidas somente as próximas etapas permitidas.'
               }
@@ -434,9 +439,11 @@ export default function EditOrderPage() {
               <span>Fluxo disponível</span>
               <strong>{STATUS_ORDEM_LABELS[ordemAtual.status]}</strong>
               <p>
-                {statusFinal
+                {entregaBloqueada
+                  ? 'A entrega está bloqueada enquanto houver saldo pendente.'
+                  : statusFinal
                   ? 'O status não pode mais avançar, mas os demais dados ainda podem ser corrigidos.'
-                  : `${TRANSICOES_STATUS_ORDEM[ordemAtual.status].length} próximo(s) status disponível(is).`}
+                  : `${statusDisponiveis.length - 1} próximo(s) status disponível(is).`}
               </p>
             </div>
 
@@ -570,134 +577,13 @@ export default function EditOrderPage() {
           </div>
         </section>
 
-        <section className="edit-order-section">
-          <SectionHeader
-            icon={<DeviceIcon />}
-            title="Dados de entrada"
-            description="Corrija o equipamento ou o relato inicial quando necessário."
-          />
-
-          <div className="edit-order-section__body edit-order-grid">
-            <FormField
-              id="equipamento"
-              label="Equipamento"
-              required
-              error={errosCampos.equipamento?.[0]}
-              wide
-            >
-              <input
-                id="equipamento"
-                name="equipamento"
-                type="text"
-                defaultValue={ordemAtual.equipamento}
-                maxLength={500}
-                required
-                onChange={() => limparErroCampo('equipamento')}
-                aria-invalid={Boolean(errosCampos.equipamento?.[0])}
-                aria-describedby={campoDescribedBy(
-                  'equipamento',
-                  errosCampos.equipamento?.[0],
-                )}
-              />
-            </FormField>
-
-            <FormField
-              id="problemaRelatado"
-              label="Problema relatado"
-              required
-              hint="Mantenha o relato original do cliente sempre que possível."
-              error={errosCampos.problemaRelatado?.[0]}
-              wide
-            >
-              <textarea
-                id="problemaRelatado"
-                name="problemaRelatado"
-                defaultValue={ordemAtual.problemaRelatado}
-                maxLength={2000}
-                rows={4}
-                required
-                onChange={() => limparErroCampo('problemaRelatado')}
-                aria-invalid={Boolean(errosCampos.problemaRelatado?.[0])}
-                aria-describedby={campoDescribedBy(
-                  'problemaRelatado',
-                  errosCampos.problemaRelatado?.[0],
-                  true,
-                )}
-              />
-            </FormField>
-          </div>
-        </section>
-
-        <section className="edit-order-section">
-          <SectionHeader
-            icon={<WalletIcon />}
-            title="Orçamento e pagamento"
-            description="Atualize o valor aprovado e a forma combinada com o cliente."
-            variant="green"
-          />
-
-          <div className="edit-order-section__body edit-order-grid">
-            <FormField
-              id="valor"
-              label="Valor"
-              hint="Use zero quando o orçamento ainda não estiver definido."
-              error={errosCampos.valor?.[0]}
-            >
-              <div className="edit-order-money">
-                <span aria-hidden="true">R$</span>
-                <input
-                  id="valor"
-                  name="valor"
-                  type="number"
-                  defaultValue={ordemAtual.valor}
-                  inputMode="decimal"
-                  min="0"
-                  max="99999999.99"
-                  step="0.01"
-                  onChange={() => limparErroCampo('valor')}
-                  aria-invalid={Boolean(errosCampos.valor?.[0])}
-                  aria-describedby={campoDescribedBy(
-                    'valor',
-                    errosCampos.valor?.[0],
-                    true,
-                  )}
-                />
-              </div>
-            </FormField>
-
-            <FormField
-              id="formaDePagamento"
-              label="Forma de pagamento"
-              error={errosCampos.formaDePagamento?.[0]}
-            >
-              <select
-                id="formaDePagamento"
-                name="formaDePagamento"
-                defaultValue={ordemAtual.formaDePagamento}
-                onChange={() => limparErroCampo('formaDePagamento')}
-                aria-invalid={Boolean(errosCampos.formaDePagamento?.[0])}
-                aria-describedby={campoDescribedBy(
-                  'formaDePagamento',
-                  errosCampos.formaDePagamento?.[0],
-                )}
-              >
-                {FORMAS_PAGAMENTO.map(forma => (
-                  <option key={forma} value={forma}>
-                    {FORMA_PAGAMENTO_LABELS[forma]}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </div>
-        </section>
-
         <aside className="edit-order-note">
           <InfoIcon />
           <div>
-            <strong>O cliente desta ordem não será alterado</strong>
+            <strong>O orçamento aprovado fica preservado</strong>
             <p>
-              A troca de cliente fica fora deste formulário para evitar mudanças
-              acidentais em um atendimento já iniciado.
+              Cliente, equipamento, problema e valor não mudam nesta tela.
+              Pagamentos são registrados nos detalhes da ordem.
             </p>
           </div>
         </aside>
@@ -734,24 +620,15 @@ function montarAlteracoes(
   ordem: OrdemServico,
   dados: EditarOrdemFormData,
   camposAlterados: ReadonlySet<string>,
-): AtualizarOrdemInput {
-  const alteracoes: AtualizarOrdemInput = {}
+): AtualizarOrdemInput | null {
+  const alteracoes: Omit<
+    AtualizarOrdemInput,
+    'statusEsperado' | 'versaoEsperada'
+  > = {}
   const previsaoIso = dados.previsaoDeEntrega
     ? new Date(dados.previsaoDeEntrega).toISOString()
     : null
 
-  if (
-    camposAlterados.has('equipamento') &&
-    dados.equipamento !== ordem.equipamento
-  ) {
-    alteracoes.equipamento = dados.equipamento
-  }
-  if (
-    camposAlterados.has('problemaRelatado') &&
-    dados.problemaRelatado !== ordem.problemaRelatado
-  ) {
-    alteracoes.problemaRelatado = dados.problemaRelatado
-  }
   if (
     camposAlterados.has('diagnostico') &&
     dados.diagnostico !== ordem.diagnostico
@@ -782,20 +659,17 @@ function montarAlteracoes(
   ) {
     alteracoes.previsaoDeEntrega = previsaoIso
   }
-  if (camposAlterados.has('valor') && dados.valor !== Number(ordem.valor)) {
-    alteracoes.valor = dados.valor
-  }
-  if (
-    camposAlterados.has('formaDePagamento') &&
-    dados.formaDePagamento !== ordem.formaDePagamento
-  ) {
-    alteracoes.formaDePagamento = dados.formaDePagamento
-  }
   if (camposAlterados.has('status') && dados.status !== ordem.status) {
     alteracoes.status = dados.status
   }
 
-  return alteracoes
+  if (Object.keys(alteracoes).length === 0) return null
+
+  return {
+    statusEsperado: ordem.status,
+    versaoEsperada: ordem.versao,
+    ...alteracoes,
+  }
 }
 
 function datasSaoIguais(primeira: string | null, segunda: string | null) {
@@ -963,14 +837,6 @@ function WorkflowIcon() {
 
 function CalendarIcon() {
   return <Icon><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></Icon>
-}
-
-function DeviceIcon() {
-  return <Icon><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></Icon>
-}
-
-function WalletIcon() {
-  return <Icon><path d="M3 6h15a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V6Z" /><path d="M3 6V5a2 2 0 0 1 2-2h12M15 12h6v4h-6a2 2 0 0 1 0-4Z" /></Icon>
 }
 
 function InfoIcon() {

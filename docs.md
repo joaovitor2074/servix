@@ -213,12 +213,84 @@ O endpoint `GET /auth/me` permite validar o token e recuperar o usuário atual.
 
 ### Ordens de serviço
 
-- criação, listagem paginada, busca e atualização;
+- criação exclusivamente pela conversão de orçamento aprovado;
+- listagem paginada, busca e atualização dos dados técnicos;
 - filtros por texto, cliente e status;
 - alteração controlada de status;
+- estados operacionais separados da aprovação do orçamento;
+- concorrência otimista por status e versão esperados;
+- resposta `409` quando outra pessoa altera a ordem primeiro;
 - histórico de cada alteração de status;
 - cancelamento lógico no lugar de exclusão física;
 - transações para manter ordem e histórico consistentes.
+
+O ciclo operacional da ordem é:
+
+```text
+RECEBIDO → EM_ANALISE → EM_EXECUCAO → PRONTO → ENTREGUE
+                              ↕
+                       AGUARDANDO_PECA
+```
+
+`CANCELADO` pode encerrar uma ordem ainda aberta. Aprovação e rejeição são
+estados do orçamento e, por isso, não aparecem mais em `StatusOrdem`.
+
+### Orçamentos
+
+- criação e edição de rascunhos com itens de serviço, peça ou material;
+- subtotal, desconto e total calculados no backend;
+- envio, expiração, cancelamento e reabertura controlados pela empresa;
+- aprovação e rejeição exclusivas do cliente pelo link público;
+- link público imprevisível para o cliente consultar e responder;
+- concorrência otimista por status e versão;
+- transformação transacional e idempotente de orçamento aprovado em OS;
+- histórico de cada mudança de status.
+
+### Pagamentos
+
+- múltiplos pagamentos parciais por ordem;
+- formas PIX, dinheiro, cartão, boleto ou outra;
+- resumo financeiro calculado a partir dos registros confirmados;
+- estorno com motivo, autor e data preservados;
+- concorrência otimista vinculada à versão da OS;
+- bloqueio da entrega enquanto houver saldo pendente;
+- bloqueio do cancelamento enquanto houver pagamento confirmado.
+
+O fluxo completo agora é:
+
+```text
+Cliente cadastrado
+       ↓
+Orçamento criado e enviado
+       ↓
+Cliente aprova
+       ↓
+Ordem de serviço criada a partir do orçamento
+       ↓
+Serviço executado e acompanhado pelo cliente
+       ↓
+Pagamento integral registrado
+       ↓
+Serviço entregue
+```
+
+O frontend conduz esse caminho sem obrigar o funcionário a procurar a próxima
+tela: após cadastrar o cliente, oferece criar um orçamento com o cadastro já
+selecionado; após salvar o orçamento, orienta o envio do link para aprovação;
+quando o cliente aprova, destaca a criação da OS como próximo passo.
+
+A dashboard funciona como central operacional. Ela mostra serviços em aberto,
+ordens aguardando peça, pagamento ou entrega, a distribuição por etapa e os
+orçamentos enviados ou aprovados que ainda exigem ação. Cada indicador e cada
+pendência levam diretamente à lista filtrada ou à ordem correspondente.
+
+`POST /ordens` não cria mais ordens e responde `405` com o código
+`ORDEM_EXIGE_ORCAMENTO_APROVADO`.
+
+Toda atualização ou cancelamento recebe `statusEsperado` e `versaoEsperada`. O
+banco faz um único `UPDATE` condicionado a esses valores e incrementa `versao`.
+A linha do histórico só é criada na mesma transação depois que essa atualização
+vence, impedindo duas gravações simultâneas para a mesma versão.
 
 ## 8. Rotas atuais
 
@@ -234,13 +306,25 @@ O endpoint `GET /auth/me` permite validar o token e recuperar o usuário atual.
 | `GET` | `/clientes/:id` | Sim | Busca cliente |
 | `PUT` | `/clientes/:id` | Sim | Atualiza cliente |
 | `DELETE` | `/clientes/:id` | Sim | Remove cliente quando permitido |
+| `GET` | `/orcamentos` | Sim | Lista orçamentos |
+| `POST` | `/orcamentos` | Sim | Cria orçamento em rascunho |
+| `GET` | `/orcamentos/:id` | Sim | Busca orçamento |
+| `PATCH` | `/orcamentos/:id` | Sim | Edita orçamento em rascunho |
+| `PATCH` | `/orcamentos/:id/status` | Sim | Altera status com controle de versão |
+| `POST` | `/orcamentos/:id/transformar-em-ordem` | Sim | Converte orçamento aprovado em OS |
+| `GET` | `/publico/orcamentos/:token` | Não | Exibe orçamento pelo link público |
+| `POST` | `/publico/orcamentos/:token/aprovar` | Não | Aprova pelo link público |
+| `POST` | `/publico/orcamentos/:token/rejeitar` | Não | Rejeita pelo link público |
 | `GET` | `/ordens` | Sim | Lista ordens |
-| `POST` | `/ordens` | Sim | Cria ordem |
+| `POST` | `/ordens` | Sim | Responde `405`; use a conversão do orçamento |
 | `GET` | `/ordens/:id` | Sim | Busca ordem |
 | `PUT/PATCH` | `/ordens/:id` | Sim | Atualiza ordem |
 | `PATCH` | `/ordens/:id/status` | Sim | Altera o status |
 | `GET` | `/ordens/:id/historico` | Sim | Lista o histórico |
 | `DELETE` | `/ordens/:id` | Sim | Cancela a ordem |
+| `GET` | `/ordens/:id/pagamentos` | Sim | Lista pagamentos e resumo financeiro |
+| `POST` | `/ordens/:id/pagamentos` | Sim | Registra pagamento |
+| `POST` | `/ordens/:id/pagamentos/:pagamentoId/estorno` | Sim | Estorna pagamento |
 | `GET` | `/usuarios` | ADMIN | Lista usuários |
 | `POST` | `/usuarios` | ADMIN | Cria usuário |
 | `GET` | `/usuarios/:id` | ADMIN | Busca usuário |

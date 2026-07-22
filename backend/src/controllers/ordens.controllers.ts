@@ -4,7 +4,6 @@ import {
   alterarStatusOrdemService,
   atualizarOrdemService,
   buscarOrdemService,
-  criarOrdemService,
   listarHistoricoOrdemService,
   listarOrdensService,
   removerOrdemService
@@ -13,12 +12,53 @@ import {
   idEhInvalido,
   validarAlteracaoStatus,
   validarAtualizacaoOrdem,
-  validarCriacaoOrdem,
+  validarCancelamentoOrdem,
   validarQueryOrdens
 } from "../validators/ordens.validators.js"
 
 // Cada controller desta camada sempre repassa `empresaId`; isso evita que um ID
 // válido de outra empresa seja usado para acessar uma ordem indevidamente.
+
+function responderConflitoAtualizacao(
+  res: Response,
+  conflito: {
+    statusEsperado: string
+    statusAtual: string
+    versaoEsperada: number
+    versaoAtual: number
+  }
+) {
+  return res.status(409).json({
+    erro: "A ordem foi alterada por outro usuário. Recarregue os dados antes de continuar.",
+    codigo: "ORDEM_ATUALIZACAO_CONFLITANTE",
+    detalhes: conflito
+  })
+}
+
+function responderRestricaoFinanceira(
+  res: Response,
+  motivo: "pagamento_insuficiente" | "pagamento_confirmado",
+  resumo: {
+    valorTotal: string
+    totalPago: string
+    totalEstornado: string
+    saldo: string
+  }
+) {
+  if (motivo === "pagamento_insuficiente") {
+    return res.status(409).json({
+      erro: "O pagamento precisa estar quitado antes da entrega.",
+      codigo: "ORDEM_PAGAMENTO_INSUFICIENTE",
+      detalhes: resumo
+    })
+  }
+
+  return res.status(409).json({
+    erro: "Estorne os pagamentos confirmados antes de cancelar a ordem.",
+    codigo: "ORDEM_COM_PAGAMENTO_CONFIRMADO",
+    detalhes: resumo
+  })
+}
 
 // Lista ordens com paginação e filtros vindos da query string.
 export async function listarOrdens(
@@ -74,38 +114,6 @@ export async function buscarOrdem(
   }
 }
 
-// Cria a ordem e o primeiro item do histórico de status dentro de uma transação.
-export async function criarOrdem(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const validacao = validarCriacaoOrdem(req.body)
-
-    if (!validacao.valido) {
-      return res.status(400).json({
-        erro: validacao.erro,
-        detalhes: validacao.detalhes
-      })
-    }
-
-    const resultado = await criarOrdemService(
-      req.auth.empresaId,
-      req.auth.usuarioId,
-      validacao.dados
-    )
-
-    if (!resultado.sucesso) {
-      return res.status(404).json({ erro: "Cliente não encontrado" })
-    }
-
-    return res.status(201).json(resultado.ordem)
-  } catch (error) {
-    return next(error)
-  }
-}
-
 // Atualiza os campos enviados e trata separadamente ordem ausente, cliente
 // ausente e tentativa de transição de status não permitida.
 export async function atualizarOrdem(
@@ -146,12 +154,33 @@ export async function atualizarOrdem(
       if (resultado.motivo === "transicao_status_invalida") {
         return res.status(409).json({
           erro: "Transição de status não permitida",
+          codigo: "ORDEM_TRANSICAO_INVALIDA",
           detalhes: {
             statusAtual: resultado.statusAtual,
             statusSolicitado: resultado.statusSolicitado,
             statusPermitidos: resultado.statusPermitidos
           }
         })
+      }
+
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
       }
 
       return res.status(404).json({ erro: "Cliente não encontrado" })
@@ -189,7 +218,7 @@ export async function alterarStatusOrdem(
       id,
       req.auth.empresaId,
       req.auth.usuarioId,
-      validacao.dados.status
+      validacao.dados
     )
 
     if (!resultado.sucesso) {
@@ -199,8 +228,29 @@ export async function alterarStatusOrdem(
         })
       }
 
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
+      }
+
       return res.status(409).json({
         erro: "Transição de status não permitida",
+        codigo: "ORDEM_TRANSICAO_INVALIDA",
         detalhes: {
           statusAtual: resultado.statusAtual,
           statusSolicitado: resultado.statusSolicitado,
@@ -259,16 +309,62 @@ export async function removerOrdem(
       return res.status(400).json({ erro: "ID inválido" })
     }
 
+    const validacao = validarCancelamentoOrdem({
+      statusEsperado: req.body?.statusEsperado ?? req.query.statusEsperado,
+      versaoEsperada: req.body?.versaoEsperada ?? req.query.versaoEsperada
+    })
+
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
+      })
+    }
+
     const resultado = await removerOrdemService(
       id,
       req.auth.empresaId,
-      req.auth.usuarioId
+      req.auth.usuarioId,
+      validacao.dados
     )
 
     if (!resultado.sucesso) {
       if (resultado.motivo === "ordem_entregue") {
         return res.status(409).json({
-          erro: "Uma ordem entregue não pode ser cancelada"
+          erro: "Uma ordem entregue não pode ser cancelada",
+          codigo: "ORDEM_TRANSICAO_INVALIDA"
+        })
+      }
+
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
+      }
+
+      if (resultado.motivo === "transicao_status_invalida") {
+        return res.status(409).json({
+          erro: "Transição de status não permitida",
+          codigo: "ORDEM_TRANSICAO_INVALIDA",
+          detalhes: {
+            statusAtual: resultado.statusAtual,
+            statusSolicitado: resultado.statusSolicitado,
+            statusPermitidos: resultado.statusPermitidos
+          }
         })
       }
 

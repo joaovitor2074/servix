@@ -324,6 +324,125 @@
   height: 260px;
 }
 
+.client-created-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background-color: rgba(4, 19, 36, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.client-created-dialog {
+  width: min(100%, 480px);
+  padding: 26px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--border-radius-large);
+  outline: 0;
+  background-color: #ffffff;
+  box-shadow: 0 28px 70px rgba(3, 23, 43, 0.28);
+}
+
+.client-created-dialog__icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 14px;
+  color: var(--color-primary);
+  border-radius: 16px;
+  background-color: #edf3ff;
+}
+
+.client-created-dialog__icon svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.client-created-dialog__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.client-created-dialog h2 {
+  color: var(--color-text);
+  font-size: clamp(21px, 5vw, 25px);
+  letter-spacing: -0.025em;
+}
+
+.client-created-dialog > p {
+  margin-top: 9px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.client-created-dialog > p strong {
+  color: var(--color-text);
+}
+
+.client-created-dialog__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.client-created-dialog__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background-color: #ffffff;
+}
+
+.client-created-dialog__actions .client-created-dialog__primary {
+  color: #ffffff;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+.client-created-dialog__primary svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.client-created-dialog__actions button:focus-visible {
+  outline: 3px solid rgba(6, 72, 216, 0.22);
+  outline-offset: 2px;
+}
+
+.client-created-dialog > small {
+  display: block;
+  margin-top: 13px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
 @keyframes client-form-shimmer {
   to {
     background-position-x: -200%;
@@ -348,6 +467,10 @@
   .client-form__actions a,
   .client-form__actions button {
     min-width: 145px;
+  }
+
+  .client-created-dialog__actions {
+    grid-template-columns: 1fr 1.25fr;
   }
 }
 

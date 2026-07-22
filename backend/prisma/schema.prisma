@@ -10,15 +10,39 @@ datasource db {
 
 // Etapas possíveis do ciclo de atendimento de uma ordem.
 enum StatusOrdem {
-  ABERTA
+  RECEBIDO
   EM_ANALISE
-  AGUARDANDO_APROVACAO
-  APROVADA
-  EM_ANDAMENTO
+  EM_EXECUCAO
   AGUARDANDO_PECA
-  CONCLUIDA
+  PRONTO
   ENTREGUE
-  CANCELADA
+  CANCELADO
+}
+
+enum StatusOrcamento {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  REJEITADO
+  EXPIRADO
+  CONVERTIDO
+  CANCELADO
+}
+
+enum TipoItemOrcamento {
+  SERVICO
+  PECA
+  MATERIAL
+}
+
+enum StatusRegistroPagamento {
+  CONFIRMADO
+  ESTORNADO
+}
+
+enum OrigemPagamento {
+  MANUAL
+  MIGRACAO
 }
 
 enum FormaPagamento {
@@ -39,16 +63,19 @@ enum PapelUsuario {
 
 // Empresa é a raiz do isolamento multiempresa do sistema.
 model Empresa {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  slug         String   @unique
-  telefone     String?
-  email        String?
-  criadoEm     DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-  
-  clientes Cliente[]
-  usuarios Usuario[]
+  id                     Int      @id @default(autoincrement())
+  nome                   String
+  slug                   String   @unique
+  telefone               String?
+  email                  String?
+  proximoNumeroOrcamento Int      @default(1)
+  criadoEm               DateTime @default(now())
+  atualizadoEm           DateTime @updatedAt
+
+  clientes   Cliente[]
+  usuarios   Usuario[]
+  orcamentos Orcamento[]
+  pagamentos Pagamento[]
 }
 
 // Usuários pertencem a uma empresa. O e-mail é único somente dentro dela.
@@ -63,8 +90,11 @@ model Usuario {
   criadoEm     DateTime     @default(now())
   atualizadoEm DateTime     @updatedAt
 
-  empresa            Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  alteracoesDeStatus HistoricoStatusOrdem[] @relation("StatusAlteradoPor")
+  empresa               Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  alteracoesDeStatus    HistoricoStatusOrdem[]     @relation("StatusAlteradoPor")
+  alteracoesOrcamento   HistoricoStatusOrcamento[] @relation("StatusOrcamentoAlteradoPor")
+  pagamentosRegistrados Pagamento[]                @relation("PagamentoRegistradoPor")
+  pagamentosEstornados  Pagamento[]                @relation("PagamentoEstornadoPor")
 
   // Índices e chaves compostas reforçam isolamento e aceleram consultas.
   @@unique([empresaId, email])
@@ -84,8 +114,9 @@ model Cliente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresa Empresa        @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  ordens  OrdemServico[]
+  empresa    Empresa        @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordens     OrdemServico[]
+  orcamentos Orcamento[]
 
   @@unique([empresaId, telefone])
   @@unique([id, empresaId])
@@ -94,11 +125,79 @@ model Cliente {
   @@index([empresaId, cpfCnpj])
 }
 
+// O orçamento concentra a aprovação comercial antes de existir uma OS.
+model Orcamento {
+  id                Int             @id @default(autoincrement())
+  empresaId         Int
+  clienteId         Int
+  numero            Int
+  equipamento       String
+  descricaoProblema String
+  status            StatusOrcamento @default(RASCUNHO)
+  subtotal          Decimal         @db.Decimal(12, 2)
+  desconto          Decimal         @default(0) @db.Decimal(12, 2)
+  total             Decimal         @db.Decimal(12, 2)
+  validade          DateTime?
+  observacoes       String?
+  tokenPublico      String          @unique @default(uuid())
+  versao            Int             @default(1)
+  enviadoEm         DateTime?
+  aprovadoEm        DateTime?
+  convertidoEm      DateTime?
+  criadoEm          DateTime        @default(now())
+  atualizadoEm      DateTime        @updatedAt
+
+  empresa   Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  cliente   Cliente                    @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  itens     ItemOrcamento[]
+  historico HistoricoStatusOrcamento[]
+  ordem     OrdemServico?
+
+  @@unique([id, empresaId])
+  @@unique([empresaId, numero])
+  @@index([empresaId, status, criadoEm])
+  @@index([empresaId, clienteId])
+}
+
+model ItemOrcamento {
+  id            Int               @id @default(autoincrement())
+  orcamentoId   Int
+  descricao     String
+  quantidade    Int
+  valorUnitario Decimal           @db.Decimal(12, 2)
+  valorTotal    Decimal           @db.Decimal(12, 2)
+  tipo          TipoItemOrcamento
+
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@index([orcamentoId])
+}
+
+model HistoricoStatusOrcamento {
+  id               Int              @id @default(autoincrement())
+  orcamentoId      Int
+  empresaId        Int
+  statusAnterior   StatusOrcamento?
+  status           StatusOrcamento
+  versaoResultante Int
+  observacao       String?
+  alteradoPorId    Int?
+  criadoEm         DateTime         @default(now())
+
+  orcamento   Orcamento @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Cascade)
+  alteradoPor Usuario?  @relation("StatusOrcamentoAlteradoPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([orcamentoId, versaoResultante])
+  @@index([empresaId, orcamentoId, criadoEm])
+  @@index([alteradoPorId])
+}
+
 // Registro principal do atendimento técnico realizado para um cliente.
 model OrdemServico {
   id                 Int            @id @default(autoincrement())
   empresaId          Int
   clienteId          Int
+  orcamentoId        Int
   equipamento        String
   problemaRelatado   String
   diagnostico        String?
@@ -106,16 +205,20 @@ model OrdemServico {
   pecasUtilizadas    String?
   tecnicoResponsavel String?
   previsaoDeEntrega  DateTime?
-  valor              Decimal        @default(0) @db.Decimal(10, 2)
+  valor              Decimal        @default(0) @db.Decimal(12, 2)
   formaDePagamento   FormaPagamento @default(NAO_INFORMADA)
-  status             StatusOrdem    @default(ABERTA)
+  status             StatusOrdem    @default(RECEBIDO)
+  versao             Int            @default(1)
   criadoEm           DateTime       @default(now())
   atualizadoEm       DateTime       @updatedAt
 
-  cliente   Cliente                @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
-  historico HistoricoStatusOrdem[]
+  cliente    Cliente                @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  orcamento  Orcamento              @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  historico  HistoricoStatusOrdem[]
+  pagamentos Pagamento[]
 
   @@unique([id, empresaId])
+  @@unique([orcamentoId, empresaId])
   @@index([empresaId])
   @@index([empresaId, clienteId])
   @@index([empresaId, status, criadoEm])
@@ -124,16 +227,46 @@ model OrdemServico {
 
 // Auditoria de todas as mudanças de status, incluindo o usuário responsável.
 model HistoricoStatusOrdem {
-  id            Int         @id @default(autoincrement())
-  ordemId       Int
-  empresaId     Int
-  status        StatusOrdem
-  alteradoPorId Int?
-  criadoEm      DateTime    @default(now())
+  id             Int          @id @default(autoincrement())
+  ordemId        Int
+  empresaId      Int
+  statusAnterior StatusOrdem?
+  status         StatusOrdem
+  alteradoPorId  Int?
+  criadoEm       DateTime     @default(now())
 
   ordem       OrdemServico @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Cascade)
   alteradoPor Usuario?     @relation("StatusAlteradoPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
 
   @@index([empresaId, ordemId, criadoEm])
   @@index([alteradoPorId])
+}
+
+// Pagamentos formam um ledger: registros confirmados nunca são apagados;
+// estornos preservam autor, data e motivo para auditoria financeira.
+model Pagamento {
+  id              Int                     @id @default(autoincrement())
+  empresaId       Int
+  ordemId         Int
+  valor           Decimal                 @db.Decimal(12, 2)
+  formaPagamento  FormaPagamento
+  status          StatusRegistroPagamento @default(CONFIRMADO)
+  origem          OrigemPagamento         @default(MANUAL)
+  observacao      String?
+  pagoEm          DateTime                @default(now())
+  registradoPorId Int?
+  estornadoEm     DateTime?
+  estornadoPorId  Int?
+  motivoEstorno   String?
+  criadoEm        DateTime                @default(now())
+
+  empresa       Empresa      @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordem         OrdemServico @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  registradoPor Usuario?     @relation("PagamentoRegistradoPor", fields: [registradoPorId], references: [id], onDelete: SetNull)
+  estornadoPor  Usuario?     @relation("PagamentoEstornadoPor", fields: [estornadoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([id, empresaId])
+  @@index([empresaId, ordemId, pagoEm])
+  @@index([registradoPorId])
+  @@index([estornadoPorId])
 }

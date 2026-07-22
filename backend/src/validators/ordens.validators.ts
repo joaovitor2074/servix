@@ -1,37 +1,19 @@
 import { z } from "zod"
 
-import {
-  FormaPagamento,
-  StatusOrdem
-} from "../generated/prisma/enums.js"
+import { StatusOrdem } from "../generated/prisma/enums.js"
 import { validarComSchema } from "./validation.js"
 
 // Os enums vêm do Prisma para que banco, regra de negócio e validação aceitem
 // exatamente o mesmo conjunto de valores.
 const statusSchema = z.enum([
-  StatusOrdem.ABERTA,
+  StatusOrdem.RECEBIDO,
   StatusOrdem.EM_ANALISE,
-  StatusOrdem.AGUARDANDO_APROVACAO,
-  StatusOrdem.APROVADA,
-  StatusOrdem.EM_ANDAMENTO,
+  StatusOrdem.EM_EXECUCAO,
   StatusOrdem.AGUARDANDO_PECA,
-  StatusOrdem.CONCLUIDA,
+  StatusOrdem.PRONTO,
   StatusOrdem.ENTREGUE,
-  StatusOrdem.CANCELADA
+  StatusOrdem.CANCELADO
 ])
-
-const formaPagamentoSchema = z.enum([
-  FormaPagamento.PIX,
-  FormaPagamento.DINHEIRO,
-  FormaPagamento.CARTAO_CREDITO,
-  FormaPagamento.CARTAO_DEBITO,
-  FormaPagamento.BOLETO,
-  FormaPagamento.NAO_INFORMADA,
-  FormaPagamento.OUTRO
-])
-
-// Schemas menores são reutilizados entre criação e atualização.
-const textoObrigatorio = z.string().trim().min(1).max(500)
 
 const textoOpcional = (limite: number) =>
   z.preprocess(
@@ -52,57 +34,55 @@ const dataOpcional = z.preprocess(
 
 // Fonte única das regras dos campos editáveis de uma ordem.
 const camposEditaveis = {
-  equipamento: textoObrigatorio,
-  problemaRelatado: z.string().trim().min(1).max(2000),
   diagnostico: textoOpcional(4000),
   servicoRealizado: textoOpcional(4000),
   pecasUtilizadas: textoOpcional(4000),
   tecnicoResponsavel: textoOpcional(120),
   previsaoDeEntrega: dataOpcional,
-  // O banco usa Decimal(10,2). Rejeitar frações menores que um centavo evita
-  // que o PostgreSQL arredonde silenciosamente o valor enviado pelo cliente.
-  valor: z.number().finite().min(0).max(99999999.99).multipleOf(0.01),
-  formaDePagamento: formaPagamentoSchema,
   status: statusSchema
 }
 
-// Uma nova ordem sempre começa ABERTA; valor e pagamento possuem padrões.
-export const criarOrdemSchema = z
-  .object({
-    clienteId: z.number().int().positive(),
-    ...camposEditaveis,
-    valor: camposEditaveis.valor.default(0),
-    formaDePagamento: formaPagamentoSchema.default(
-      FormaPagamento.NAO_INFORMADA
-    ),
-    status: z.literal(StatusOrdem.ABERTA).default(StatusOrdem.ABERTA)
-  })
-  .strict()
+const controleConcorrencia = {
+  // O status protege a sequência do fluxo e a versão detecta qualquer edição
+  // paralela, inclusive quando os dois usuários mantêm o mesmo status.
+  statusEsperado: statusSchema,
+  versaoEsperada: z.number().int().positive()
+}
 
-// Na atualização, todos os campos são opcionais, mas o corpo não pode ser vazio.
+// Os campos editáveis são opcionais, mas o cliente precisa enviar a fotografia
+// da ordem que carregou e ao menos uma alteração real.
 export const atualizarOrdemSchema = z
   .object({
-    clienteId: z.number().int().positive().optional(),
-    equipamento: camposEditaveis.equipamento.optional(),
-    problemaRelatado: camposEditaveis.problemaRelatado.optional(),
+    ...controleConcorrencia,
     diagnostico: camposEditaveis.diagnostico,
     servicoRealizado: camposEditaveis.servicoRealizado,
     pecasUtilizadas: camposEditaveis.pecasUtilizadas,
     tecnicoResponsavel: camposEditaveis.tecnicoResponsavel,
     previsaoDeEntrega: camposEditaveis.previsaoDeEntrega,
-    valor: camposEditaveis.valor.optional(),
-    formaDePagamento: camposEditaveis.formaDePagamento.optional(),
     status: camposEditaveis.status.optional()
   })
   .strict()
-  .refine(dados => Object.keys(dados).length > 0, {
-    message: "Informe ao menos um campo para atualização"
-  })
+  .refine(
+    ({ statusEsperado: _statusEsperado, versaoEsperada: _versaoEsperada, ...campos }) =>
+      Object.keys(campos).length > 0,
+    { message: "Informe ao menos um campo para atualização" }
+  )
 
 // Contrato reduzido para a rota dedicada exclusivamente ao status.
 export const alterarStatusSchema = z
   .object({
+    ...controleConcorrencia,
     status: statusSchema
+  })
+  .strict()
+
+// O cancelamento também muda o status e participa do mesmo controle otimista.
+export const cancelarOrdemSchema = z
+  .object({
+    statusEsperado: statusSchema,
+    // O DELETE também aceita estes dados na query string, onde números chegam
+    // como texto. O corpo JSON continua aceitando um número normalmente.
+    versaoEsperada: z.coerce.number().int().positive()
   })
   .strict()
 
@@ -117,13 +97,10 @@ export const listarOrdensQuerySchema = z
   })
   .strict()
 
-export type CriarOrdemInput = z.infer<typeof criarOrdemSchema>
 export type AtualizarOrdemInput = z.infer<typeof atualizarOrdemSchema>
+export type AlterarStatusOrdemInput = z.infer<typeof alterarStatusSchema>
+export type CancelarOrdemInput = z.infer<typeof cancelarOrdemSchema>
 export type ListarOrdensQuery = z.infer<typeof listarOrdensQuerySchema>
-
-export function validarCriacaoOrdem(dados: unknown) {
-  return validarComSchema(criarOrdemSchema, dados)
-}
 
 export function validarAtualizacaoOrdem(dados: unknown) {
   return validarComSchema(atualizarOrdemSchema, dados)
@@ -131,6 +108,10 @@ export function validarAtualizacaoOrdem(dados: unknown) {
 
 export function validarAlteracaoStatus(dados: unknown) {
   return validarComSchema(alterarStatusSchema, dados)
+}
+
+export function validarCancelamentoOrdem(dados: unknown) {
+  return validarComSchema(cancelarOrdemSchema, dados)
 }
 
 export function validarQueryOrdens(dados: unknown) {

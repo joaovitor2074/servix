@@ -366,31 +366,29 @@
   background-color: #eef1f5;
 }
 
-.order-status--aberta,
+.order-status--recebido,
 .order-status--em_analise {
   color: #0757c7;
   background-color: #e7f0ff;
 }
 
-.order-status--aguardando_aprovacao,
 .order-status--aguardando_peca {
   color: #9a5700;
   background-color: #fff0d5;
 }
 
-.order-status--aprovada,
-.order-status--em_andamento {
+.order-status--em_execucao {
   color: #6842c2;
   background-color: #eee8ff;
 }
 
-.order-status--concluida,
+.order-status--pronto,
 .order-status--entregue {
   color: #06733e;
   background-color: #def6e9;
 }
 
-.order-status--cancelada {
+.order-status--cancelado {
   color: #a23b3b;
   background-color: #fde8e8;
 }

@@ -142,9 +142,9 @@ export default function OrdersPage() {
           <h1>Ordens de serviço</h1>
           <p>Consulte e acompanhe todos os serviços da empresa.</p>
         </div>
-        <Link className="orders-page__create" to="/ordens/nova">
+        <Link className="orders-page__create" to="/orcamentos/novo">
           <PlusIcon />
-          Nova ordem
+          Novo orçamento
         </Link>
       </header>
 
@@ -270,8 +270,8 @@ function OrdersContent({
           </button>
         )}
         {!possuiFiltros && (
-          <Link className="orders-empty__create" to="/ordens/nova">
-            Criar primeira ordem
+          <Link className="orders-empty__create" to="/orcamentos/novo">
+            Criar primeiro orçamento
           </Link>
         )}
       </section>

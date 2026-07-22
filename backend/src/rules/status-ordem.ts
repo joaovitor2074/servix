@@ -9,40 +9,30 @@ const transicoesPermitidas: Record<
   StatusOrdemType,
   readonly StatusOrdemType[]
 > = {
-  [StatusOrdem.ABERTA]: [
+  [StatusOrdem.RECEBIDO]: [
     StatusOrdem.EM_ANALISE,
-    StatusOrdem.CANCELADA
+    StatusOrdem.CANCELADO
   ],
   [StatusOrdem.EM_ANALISE]: [
-    StatusOrdem.AGUARDANDO_APROVACAO,
-    StatusOrdem.EM_ANDAMENTO,
-    StatusOrdem.CANCELADA
+    StatusOrdem.EM_EXECUCAO,
+    StatusOrdem.CANCELADO
   ],
-  [StatusOrdem.AGUARDANDO_APROVACAO]: [
-    StatusOrdem.APROVADA,
-    StatusOrdem.EM_ANALISE,
-    StatusOrdem.CANCELADA
-  ],
-  [StatusOrdem.APROVADA]: [
-    StatusOrdem.EM_ANDAMENTO,
-    StatusOrdem.CANCELADA
-  ],
-  [StatusOrdem.EM_ANDAMENTO]: [
+  [StatusOrdem.EM_EXECUCAO]: [
     StatusOrdem.AGUARDANDO_PECA,
-    StatusOrdem.CONCLUIDA,
-    StatusOrdem.CANCELADA
+    StatusOrdem.PRONTO,
+    StatusOrdem.CANCELADO
   ],
   [StatusOrdem.AGUARDANDO_PECA]: [
-    StatusOrdem.EM_ANDAMENTO,
-    StatusOrdem.CANCELADA
+    StatusOrdem.EM_EXECUCAO,
+    StatusOrdem.CANCELADO
   ],
-  [StatusOrdem.CONCLUIDA]: [
+  [StatusOrdem.PRONTO]: [
     StatusOrdem.ENTREGUE,
-    StatusOrdem.EM_ANDAMENTO,
-    StatusOrdem.CANCELADA
+    StatusOrdem.EM_EXECUCAO,
+    StatusOrdem.CANCELADO
   ],
   [StatusOrdem.ENTREGUE]: [],
-  [StatusOrdem.CANCELADA]: []
+  [StatusOrdem.CANCELADO]: []
 }
 
 // Retorna uma cópia para impedir que outro módulo modifique a tabela original.

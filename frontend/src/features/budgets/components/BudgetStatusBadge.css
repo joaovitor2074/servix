@@ -1,0 +1,49 @@
+.budget-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: fit-content;
+  min-height: 28px;
+  padding: 5px 10px;
+  color: #4d5a6f;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+  background-color: #eef1f5;
+}
+
+.budget-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.budget-status--rascunho {
+  color: #566176;
+  background-color: #edf0f5;
+}
+
+.budget-status--enviado {
+  color: #0757c7;
+  background-color: #e7f0ff;
+}
+
+.budget-status--aprovado,
+.budget-status--convertido {
+  color: #06733e;
+  background-color: #def6e9;
+}
+
+.budget-status--rejeitado,
+.budget-status--cancelado {
+  color: #a23b3b;
+  background-color: #fde8e8;
+}
+
+.budget-status--expirado {
+  color: #9a5700;
+  background-color: #fff0d5;
+}

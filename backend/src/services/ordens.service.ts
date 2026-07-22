@@ -1,13 +1,22 @@
-import type { Prisma } from "../generated/prisma/client.js"
-import { StatusOrdem } from "../generated/prisma/enums.js"
+import { Prisma } from "../generated/prisma/client.js"
+import {
+  StatusOrdem,
+  StatusRegistroPagamento
+} from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import {
   listarStatusPermitidos,
   transicaoStatusEhPermitida
 } from "../rules/status-ordem.js"
+import {
+  buscarResumoPagamentosTx,
+  calcularResumoPagamento,
+  pagamentoEstaQuitado
+} from "./pagamentos.service.js"
 import type {
+  AlterarStatusOrdemInput,
   AtualizarOrdemInput,
-  CriarOrdemInput,
+  CancelarOrdemInput,
   ListarOrdensQuery
 } from "../validators/ordens.validators.js"
 
@@ -20,6 +29,114 @@ const clienteResumo = {
     telefone: true
   }
 } as const
+
+const orcamentoResumo = {
+  select: {
+    id: true,
+    numero: true,
+    status: true,
+    total: true
+  }
+} as const
+
+async function validarRestricaoFinanceira(
+  tx: Prisma.TransactionClient,
+  ordem: {
+    id: number
+    empresaId: number
+    valor: Prisma.Decimal
+  },
+  proximoStatus: StatusOrdem
+) {
+  if (
+    proximoStatus !== StatusOrdem.ENTREGUE &&
+    proximoStatus !== StatusOrdem.CANCELADO
+  ) {
+    return null
+  }
+
+  const resumo = await buscarResumoPagamentosTx(
+    tx,
+    ordem.id,
+    ordem.empresaId,
+    ordem.valor
+  )
+
+  if (
+    proximoStatus === StatusOrdem.ENTREGUE &&
+    !pagamentoEstaQuitado(resumo)
+  ) {
+    return {
+      sucesso: false as const,
+      motivo: "pagamento_insuficiente" as const,
+      resumo
+    }
+  }
+
+  if (
+    proximoStatus === StatusOrdem.CANCELADO &&
+    new Prisma.Decimal(resumo.totalPago).greaterThan(0)
+  ) {
+    return {
+      sucesso: false as const,
+      motivo: "pagamento_confirmado" as const,
+      resumo
+    }
+  }
+
+  return null
+}
+
+// Depois que o UPDATE condicional falha, esta consulta diferencia uma ordem
+// inexistente de uma fotografia desatualizada sem expor dados de outra empresa.
+function criarResultadoDeConflito(
+  statusEsperado: StatusOrdem,
+  versaoEsperada: number,
+  ordemAtual: { status: StatusOrdem; versao: number }
+) {
+  return {
+    sucesso: false as const,
+    motivo: "conflito_atualizacao" as const,
+    statusEsperado,
+    statusAtual: ordemAtual.status,
+    versaoEsperada,
+    versaoAtual: ordemAtual.versao
+  }
+}
+
+async function buscarFalhaDeConcorrencia(
+  tx: Prisma.TransactionClient,
+  id: number,
+  empresaId: number,
+  statusEsperado: StatusOrdem,
+  versaoEsperada: number
+) {
+  const ordemAtual = await tx.ordemServico.findUnique({
+    where: {
+      id_empresaId: {
+        id,
+        empresaId
+      }
+    },
+    select: {
+      status: true,
+      versao: true
+    }
+  })
+
+  if (!ordemAtual) {
+    return {
+      sucesso: false as const,
+      motivo: "ordem_nao_encontrada" as const
+    }
+  }
+
+  return criarResultadoDeConflito(
+    statusEsperado,
+    versaoEsperada,
+    ordemAtual
+  )
+}
 
 // Combina isolamento por empresa, filtros opcionais, pesquisa e paginação.
 export async function listarOrdensService(
@@ -63,7 +180,10 @@ export async function listarOrdensService(
   const [dados, total] = await prisma.$transaction([
     prisma.ordemServico.findMany({
       where,
-      include: { cliente: clienteResumo },
+      include: {
+        cliente: clienteResumo,
+        orcamento: orcamentoResumo
+      },
       orderBy: { criadoEm: "desc" },
       skip,
       take: filtros.limite
@@ -83,206 +203,206 @@ export async function listarOrdensService(
 }
 
 // `id_empresaId` é uma chave composta definida no schema do Prisma.
-export function buscarOrdemService(id: number, empresaId: number) {
-  return prisma.ordemServico.findUnique({
+export async function buscarOrdemService(id: number, empresaId: number) {
+  const ordem = await prisma.ordemServico.findUnique({
     where: {
       id_empresaId: {
         id,
         empresaId
       }
     },
-    include: { cliente: clienteResumo }
-  })
-}
-
-// Antes de criar uma ordem, confirma que o cliente pertence à mesma empresa.
-export async function criarOrdemService(
-  empresaId: number,
-  usuarioId: number,
-  dados: CriarOrdemInput
-) {
-  const cliente = await prisma.cliente.findUnique({
-    where: {
-      id_empresaId: {
-        id: dados.clienteId,
-        empresaId
+    include: {
+      cliente: clienteResumo,
+      orcamento: {
+        include: {
+          itens: {
+            orderBy: { id: "asc" }
+          }
+        }
+      },
+      pagamentos: {
+        select: {
+          valor: true,
+          status: true
+        }
       }
-    },
-    select: { id: true }
+    }
   })
 
-  if (!cliente) {
-    return {
-      sucesso: false as const,
-      motivo: "cliente_nao_encontrado" as const
+  if (!ordem) return null
+
+  let totalPago = new Prisma.Decimal(0)
+  let totalEstornado = new Prisma.Decimal(0)
+
+  for (const pagamento of ordem.pagamentos) {
+    if (pagamento.status === StatusRegistroPagamento.CONFIRMADO) {
+      totalPago = totalPago.plus(pagamento.valor)
+    } else {
+      totalEstornado = totalEstornado.plus(pagamento.valor)
     }
   }
 
-  // Ordem e histórico inicial são gravados na mesma transação. Se uma escrita
-  // falhar, a outra é desfeita e o banco não fica em estado parcial.
-  const ordem = await prisma.$transaction(async tx => {
-    const criada = await tx.ordemServico.create({
-      data: {
-        empresaId,
-        clienteId: dados.clienteId,
-        equipamento: dados.equipamento,
-        problemaRelatado: dados.problemaRelatado,
-        ...(dados.diagnostico !== undefined && {
-          diagnostico: dados.diagnostico
-        }),
-        ...(dados.servicoRealizado !== undefined && {
-          servicoRealizado: dados.servicoRealizado
-        }),
-        ...(dados.pecasUtilizadas !== undefined && {
-          pecasUtilizadas: dados.pecasUtilizadas
-        }),
-        ...(dados.tecnicoResponsavel !== undefined && {
-          tecnicoResponsavel: dados.tecnicoResponsavel
-        }),
-        ...(dados.previsaoDeEntrega !== undefined && {
-          previsaoDeEntrega: dados.previsaoDeEntrega
-        }),
-        valor: dados.valor,
-        formaDePagamento: dados.formaDePagamento,
-        status: dados.status
-      },
-      include: { cliente: clienteResumo }
-    })
-
-    await tx.historicoStatusOrdem.create({
-      data: {
-        ordemId: criada.id,
-        empresaId,
-        status: criada.status,
-        alteradoPorId: usuarioId
-      }
-    })
-
-    return criada
-  })
+  const { pagamentos: _pagamentos, ...dadosOrdem } = ordem
 
   return {
-    sucesso: true as const,
-    ordem
+    ...dadosOrdem,
+    pagamentoResumo: calcularResumoPagamento(
+      ordem.valor,
+      totalPago,
+      totalEstornado
+    )
   }
 }
 
-// Atualiza somente os campos recebidos e registra uma mudança de status quando
-// ela realmente ocorreu.
+// Atualiza somente os campos recebidos. O predicado combina empresa, status e
+// versão para que nenhuma leitura antiga consiga sobrescrever uma edição nova.
 export async function atualizarOrdemService(
   id: number,
   empresaId: number,
   usuarioId: number,
   dados: AtualizarOrdemInput
 ) {
-  const ordemExistente = await buscarOrdemService(id, empresaId)
-
-  if (!ordemExistente) {
-    return {
-      sucesso: false as const,
-      motivo: "ordem_nao_encontrada" as const
-    }
-  }
-
-  if (
-    dados.status !== undefined &&
-    !transicaoStatusEhPermitida(ordemExistente.status, dados.status)
-  ) {
-    // O resultado estruturado permite ao controller informar os status aceitos.
-    return {
-      sucesso: false as const,
-      motivo: "transicao_status_invalida" as const,
-      statusAtual: ordemExistente.status,
-      statusSolicitado: dados.status,
-      statusPermitidos: listarStatusPermitidos(ordemExistente.status)
-    }
-  }
-
-  if (dados.clienteId !== undefined) {
-    // Uma troca de cliente também precisa respeitar o limite da empresa.
-    const cliente = await prisma.cliente.findUnique({
-      where: {
-        id_empresaId: {
-          id: dados.clienteId,
-          empresaId
-        }
-      },
-      select: { id: true }
-    })
-
-    if (!cliente) {
-      return {
-        sucesso: false as const,
-        motivo: "cliente_nao_encontrado" as const
-      }
-    }
-  }
-
-  // Spreads condicionais diferenciam "campo não enviado" de um valor enviado.
-  const data: Prisma.OrdemServicoUncheckedUpdateInput = {
-    ...(dados.clienteId !== undefined && { clienteId: dados.clienteId }),
-    ...(dados.equipamento !== undefined && {
-      equipamento: dados.equipamento
-    }),
-    ...(dados.problemaRelatado !== undefined && {
-      problemaRelatado: dados.problemaRelatado
-    }),
-    ...(dados.diagnostico !== undefined && {
-      diagnostico: dados.diagnostico
-    }),
-    ...(dados.servicoRealizado !== undefined && {
-      servicoRealizado: dados.servicoRealizado
-    }),
-    ...(dados.pecasUtilizadas !== undefined && {
-      pecasUtilizadas: dados.pecasUtilizadas
-    }),
-    ...(dados.tecnicoResponsavel !== undefined && {
-      tecnicoResponsavel: dados.tecnicoResponsavel
-    }),
-    ...(dados.previsaoDeEntrega !== undefined && {
-      previsaoDeEntrega: dados.previsaoDeEntrega
-    }),
-    ...(dados.valor !== undefined && { valor: dados.valor }),
-    ...(dados.formaDePagamento !== undefined && {
-      formaDePagamento: dados.formaDePagamento
-    }),
-    ...(dados.status !== undefined && { status: dados.status })
-  }
-
-  const ordem = await prisma.$transaction(async tx => {
-    const atualizada = await tx.ordemServico.update({
+  return prisma.$transaction(async tx => {
+    const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
           id,
           empresaId
         }
       },
-      data,
       include: { cliente: clienteResumo }
     })
 
-    // O histórico só ganha uma linha quando o status realmente muda.
+    if (!ordemAtual) {
+      return {
+        sucesso: false as const,
+        motivo: "ordem_nao_encontrada" as const
+      }
+    }
+
+    if (
+      ordemAtual.status !== dados.statusEsperado ||
+      ordemAtual.versao !== dados.versaoEsperada
+    ) {
+      return criarResultadoDeConflito(
+        dados.statusEsperado,
+        dados.versaoEsperada,
+        ordemAtual
+      )
+    }
+
     if (
       dados.status !== undefined &&
-      dados.status !== ordemExistente.status
+      !transicaoStatusEhPermitida(ordemAtual.status, dados.status)
+    ) {
+      return {
+        sucesso: false as const,
+        motivo: "transicao_status_invalida" as const,
+        statusAtual: ordemAtual.status,
+        statusSolicitado: dados.status,
+        statusPermitidos: listarStatusPermitidos(ordemAtual.status)
+      }
+    }
+
+    if (
+      dados.status !== undefined &&
+      dados.status !== ordemAtual.status
+    ) {
+      const restricaoFinanceira = await validarRestricaoFinanceira(
+        tx,
+        ordemAtual,
+        dados.status
+      )
+
+      if (restricaoFinanceira) return restricaoFinanceira
+    }
+
+    const possuiOutroCampo = Object.keys(dados).some(
+      campo =>
+        campo !== "statusEsperado" &&
+        campo !== "versaoEsperada" &&
+        campo !== "status"
+    )
+
+    if (dados.status === ordemAtual.status && !possuiOutroCampo) {
+      return {
+        sucesso: true as const,
+        ordem: ordemAtual
+      }
+    }
+
+    // Spreads condicionais diferenciam campo ausente de um valor enviado.
+    const data: Prisma.OrdemServicoUncheckedUpdateManyInput = {
+      ...(dados.diagnostico !== undefined && {
+        diagnostico: dados.diagnostico
+      }),
+      ...(dados.servicoRealizado !== undefined && {
+        servicoRealizado: dados.servicoRealizado
+      }),
+      ...(dados.pecasUtilizadas !== undefined && {
+        pecasUtilizadas: dados.pecasUtilizadas
+      }),
+      ...(dados.tecnicoResponsavel !== undefined && {
+        tecnicoResponsavel: dados.tecnicoResponsavel
+      }),
+      ...(dados.previsaoDeEntrega !== undefined && {
+        previsaoDeEntrega: dados.previsaoDeEntrega
+      }),
+      ...(dados.status !== undefined && { status: dados.status }),
+      versao: { increment: 1 }
+    }
+
+    const atualizacao = await tx.ordemServico.updateMany({
+      where: {
+        id,
+        empresaId,
+        status: dados.statusEsperado,
+        versao: dados.versaoEsperada
+      },
+      data
+    })
+
+    if (atualizacao.count === 0) {
+      return buscarFalhaDeConcorrencia(
+        tx,
+        id,
+        empresaId,
+        dados.statusEsperado,
+        dados.versaoEsperada
+      )
+    }
+
+    // O histórico só ganha uma linha depois que o compare-and-swap venceu.
+    if (
+      dados.status !== undefined &&
+      dados.status !== dados.statusEsperado
     ) {
       await tx.historicoStatusOrdem.create({
         data: {
           ordemId: id,
           empresaId,
+          statusAnterior: dados.statusEsperado,
           status: dados.status,
           alteradoPorId: usuarioId
         }
       })
     }
 
-    return atualizada
-  })
+    const ordem = await tx.ordemServico.findUnique({
+      where: {
+        id_empresaId: {
+          id,
+          empresaId
+        }
+      },
+      include: { cliente: clienteResumo }
+    })
 
-  return {
-    sucesso: true as const,
-    ordem
-  }
+    return {
+      sucesso: true as const,
+      ordem: ordem!
+    }
+  })
 }
 
 // Versão especializada para telas ou ações que alteram apenas o status.
@@ -290,64 +410,114 @@ export async function alterarStatusOrdemService(
   id: number,
   empresaId: number,
   usuarioId: number,
-  status: StatusOrdem
+  dados: AlterarStatusOrdemInput
 ) {
-  const ordemExistente = await buscarOrdemService(id, empresaId)
-
-  if (!ordemExistente) {
-    return {
-      sucesso: false as const,
-      motivo: "ordem_nao_encontrada" as const
-    }
-  }
-
-  if (ordemExistente.status === status) {
-    // Repetir o status atual é idempotente: não cria histórico duplicado.
-    return {
-      sucesso: true as const,
-      ordem: ordemExistente
-    }
-  }
-
-  if (!transicaoStatusEhPermitida(ordemExistente.status, status)) {
-    return {
-      sucesso: false as const,
-      motivo: "transicao_status_invalida" as const,
-      statusAtual: ordemExistente.status,
-      statusSolicitado: status,
-      statusPermitidos: listarStatusPermitidos(ordemExistente.status)
-    }
-  }
-
-  // Atualização e auditoria permanecem atômicas por meio da transação.
-  const ordem = await prisma.$transaction(async tx => {
-    const atualizada = await tx.ordemServico.update({
+  return prisma.$transaction(async tx => {
+    const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
           id,
           empresaId
         }
       },
-      data: { status },
       include: { cliente: clienteResumo }
     })
 
-    await tx.historicoStatusOrdem.create({
-      data: {
-        ordemId: id,
+    if (!ordemAtual) {
+      return {
+        sucesso: false as const,
+        motivo: "ordem_nao_encontrada" as const
+      }
+    }
+
+    if (
+      ordemAtual.status !== dados.statusEsperado ||
+      ordemAtual.versao !== dados.versaoEsperada
+    ) {
+      return criarResultadoDeConflito(
+        dados.statusEsperado,
+        dados.versaoEsperada,
+        ordemAtual
+      )
+    }
+
+    if (!transicaoStatusEhPermitida(ordemAtual.status, dados.status)) {
+      return {
+        sucesso: false as const,
+        motivo: "transicao_status_invalida" as const,
+        statusAtual: ordemAtual.status,
+        statusSolicitado: dados.status,
+        statusPermitidos: listarStatusPermitidos(ordemAtual.status)
+      }
+    }
+
+    // Repetir o estado com a fotografia atual é um no-op verdadeiramente
+    // idempotente: não incrementa versão nem duplica o histórico.
+    if (dados.status === ordemAtual.status) {
+      return {
+        sucesso: true as const,
+        ordem: ordemAtual
+      }
+    }
+
+    const restricaoFinanceira = await validarRestricaoFinanceira(
+      tx,
+      ordemAtual,
+      dados.status
+    )
+
+    if (restricaoFinanceira) return restricaoFinanceira
+
+    const atualizacao = await tx.ordemServico.updateMany({
+      where: {
+        id,
         empresaId,
-        status,
-        alteradoPorId: usuarioId
+        status: dados.statusEsperado,
+        versao: dados.versaoEsperada
+      },
+      data: {
+        status: dados.status,
+        versao: { increment: 1 }
       }
     })
 
-    return atualizada
-  })
+    if (atualizacao.count === 0) {
+      return buscarFalhaDeConcorrencia(
+        tx,
+        id,
+        empresaId,
+        dados.statusEsperado,
+        dados.versaoEsperada
+      )
+    }
 
-  return {
-    sucesso: true as const,
-    ordem
-  }
+    if (dados.status !== dados.statusEsperado) {
+      await tx.historicoStatusOrdem.create({
+        data: {
+          ordemId: id,
+          empresaId,
+          statusAnterior: dados.statusEsperado,
+          status: dados.status,
+          alteradoPorId: usuarioId
+        }
+      })
+    }
+
+    const ordem = await tx.ordemServico.findUnique({
+      where: {
+        id_empresaId: {
+          id,
+          empresaId
+        }
+      },
+      include: { cliente: clienteResumo }
+    })
+
+    return {
+      sucesso: true as const,
+      ordem: ordem!
+    }
+  })
 }
 
 // Primeiro confirma a existência da ordem dentro da empresa; depois lista seu
@@ -384,7 +554,10 @@ export async function listarHistoricoOrdemService(
         }
       }
     },
-    orderBy: { criadoEm: "asc" }
+    orderBy: [
+      { criadoEm: "asc" },
+      { id: "asc" }
+    ]
   })
 }
 
@@ -393,10 +566,11 @@ export async function listarHistoricoOrdemService(
 export async function removerOrdemService(
   id: number,
   empresaId: number,
-  usuarioId: number
+  usuarioId: number,
+  dados: CancelarOrdemInput
 ) {
   return prisma.$transaction(async tx => {
-    const ordemEncontrada = await tx.ordemServico.findUnique({
+    const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
           id,
@@ -406,54 +580,104 @@ export async function removerOrdemService(
       include: { cliente: clienteResumo }
     })
 
-    if (!ordemEncontrada) {
+    if (!ordemAtual) {
       return {
         sucesso: false as const,
         motivo: "ordem_nao_encontrada" as const
       }
     }
 
-    if (ordemEncontrada.status === StatusOrdem.ENTREGUE) {
-      // Uma ordem entregue representa um processo encerrado e não pode cancelar.
+    if (
+      ordemAtual.status !== dados.statusEsperado ||
+      ordemAtual.versao !== dados.versaoEsperada
+    ) {
+      return criarResultadoDeConflito(
+        dados.statusEsperado,
+        dados.versaoEsperada,
+        ordemAtual
+      )
+    }
+
+    if (
+      !transicaoStatusEhPermitida(
+        ordemAtual.status,
+        StatusOrdem.CANCELADO
+      )
+    ) {
       return {
         sucesso: false as const,
-        motivo: "ordem_entregue" as const
+        motivo: ordemAtual.status === StatusOrdem.ENTREGUE
+          ? "ordem_entregue" as const
+          : "transicao_status_invalida" as const,
+        statusAtual: ordemAtual.status,
+        statusSolicitado: StatusOrdem.CANCELADO,
+        statusPermitidos: listarStatusPermitidos(ordemAtual.status)
       }
     }
 
-    if (ordemEncontrada.status === StatusOrdem.CANCELADA) {
-      // Cancelar novamente retorna sucesso sem criar outro evento no histórico.
+    if (ordemAtual.status === StatusOrdem.CANCELADO) {
       return {
         sucesso: true as const,
-        ordem: ordemEncontrada
+        ordem: ordemAtual
       }
     }
 
-    const ordem = await tx.ordemServico.update({
+    const restricaoFinanceira = await validarRestricaoFinanceira(
+      tx,
+      ordemAtual,
+      StatusOrdem.CANCELADO
+    )
+
+    if (restricaoFinanceira) return restricaoFinanceira
+
+    const atualizacao = await tx.ordemServico.updateMany({
+      where: {
+        id,
+        empresaId,
+        status: dados.statusEsperado,
+        versao: dados.versaoEsperada
+      },
+      data: {
+        status: StatusOrdem.CANCELADO,
+        versao: { increment: 1 }
+      }
+    })
+
+    if (atualizacao.count === 0) {
+      return buscarFalhaDeConcorrencia(
+        tx,
+        id,
+        empresaId,
+        dados.statusEsperado,
+        dados.versaoEsperada
+      )
+    }
+
+    if (dados.statusEsperado !== StatusOrdem.CANCELADO) {
+      await tx.historicoStatusOrdem.create({
+        data: {
+          ordemId: id,
+          empresaId,
+          statusAnterior: dados.statusEsperado,
+          status: StatusOrdem.CANCELADO,
+          alteradoPorId: usuarioId
+        }
+      })
+    }
+
+    const ordem = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
           id,
           empresaId
         }
       },
-      data: {
-        status: StatusOrdem.CANCELADA
-      },
       include: { cliente: clienteResumo }
-    })
-
-    await tx.historicoStatusOrdem.create({
-      data: {
-        ordemId: id,
-        empresaId,
-        status: StatusOrdem.CANCELADA,
-        alteradoPorId: usuarioId
-      }
     })
 
     return {
       sucesso: true as const,
-      ordem
+      ordem: ordem!
     }
   })
 }

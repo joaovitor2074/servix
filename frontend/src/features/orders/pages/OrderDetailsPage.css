@@ -194,35 +194,33 @@
   box-shadow: 0 0 0 3px rgb(255 255 255 / 55%);
 }
 
-.order-details-status--aberta,
+.order-details-status--recebido,
 .order-details-status--em_analise {
   border-color: #b2ccff;
   background: #eff4ff;
   color: #175cd3;
 }
 
-.order-details-status--aguardando_aprovacao,
 .order-details-status--aguardando_peca {
   border-color: #fedf89;
   background: #fffaeb;
   color: #b54708;
 }
 
-.order-details-status--aprovada,
-.order-details-status--em_andamento {
+.order-details-status--em_execucao {
   border-color: #d9d2ff;
   background: #f2efff;
   color: #6842c2;
 }
 
-.order-details-status--concluida,
+.order-details-status--pronto,
 .order-details-status--entregue {
   border-color: #abefc6;
   background: #ecfdf3;
   color: #067647;
 }
 
-.order-details-status--cancelada {
+.order-details-status--cancelado {
   border-color: #fecdca;
   background: #fef3f2;
   color: #b42318;
@@ -839,6 +837,26 @@
 }
 
 /* No tablet o conteúdo lateral desce; no celular cada informação vira uma linha. */
+.order-details-budget-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border: 1px solid #b9e7cc;
+  border-radius: 9px;
+  color: #147652;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.order-details-budget-link:hover {
+  background: #f0fbf5;
+}
+
 @media (max-width: 1000px) {
   .order-details-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));

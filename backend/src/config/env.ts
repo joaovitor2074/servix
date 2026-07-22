@@ -33,6 +33,7 @@ function lerOrigens(valor: string | undefined): string[] {
 // cada arquivo da aplicação.
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
+  host: process.env.HOST?.trim() || "127.0.0.1",
   port: lerPorta(process.env.PORT),
   corsOrigins: lerOrigens(process.env.CORS_ORIGINS),
   trustProxy: process.env.TRUST_PROXY === "true"

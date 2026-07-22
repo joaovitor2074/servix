@@ -7,8 +7,8 @@ import { prisma } from "./lib/prisma.js"
 obterJwtSecret()
 
 // Este é o ponto de entrada usado por `npm run dev` e pelo build de produção.
-const server = app.listen(env.port, () => {
-  console.log(`Servidor rodando na porta ${env.port}`)
+const server = app.listen(env.port, env.host, () => {
+  console.log(`Servidor rodando em http://${env.host}:${env.port}`)
 })
 
 // Encerra o servidor de forma controlada e libera a conexão com o banco.

@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from 'react'
 import {
   Link,
   useLocation,
@@ -27,7 +34,7 @@ export default function ClientFormPage() {
     ? null
     : lerRetornoSeguro(searchParams.get('retorno'))
   const destinoVoltar = retornoAposCadastro ?? '/clientes'
-  const rascunhoOrdem = retornoAposCadastro
+  const rascunhoOrcamento = retornoAposCadastro
     ? lerRascunhoDaNavegacao(location.state)
     : undefined
 
@@ -37,6 +44,7 @@ export default function ClientFormPage() {
   const [tentativa, setTentativa] = useState(0)
   const [salvando, setSalvando] = useState(false)
   const [erroApi, setErroApi] = useState('')
+  const [clienteCriado, setClienteCriado] = useState<Cliente | null>(null)
   const [errosCampos, setErrosCampos] = useState<
     Record<string, string[] | undefined>
   >({})
@@ -108,24 +116,21 @@ export default function ClientFormPage() {
       const clienteCriado = await criarCliente(validacao.data)
 
       if (retornoAposCadastro) {
-        // No fluxo de atendimento, voltamos com o novo ID na URL. A tela de
-        // ordem busca o cadastro e já o apresenta selecionado ao funcionário.
+        // No fluxo comercial, voltamos com o novo ID na URL. A tela de
+        // orçamento busca o cadastro e já o apresenta selecionado.
         navigate(`${retornoAposCadastro}?clienteId=${clienteCriado.id}`, {
           replace: true,
           state: {
             mensagem: `${clienteCriado.nome} foi cadastrado e selecionado.`,
-            rascunhoOrdem,
+            rascunhoOrcamento,
           },
         })
         return
       }
 
-      // Fora do atendimento, o comportamento original continua levando para a
-      // listagem com uma confirmação que não polui a URL.
-      navigate('/clientes', {
-        replace: true,
-        state: { mensagem: 'Cliente cadastrado com sucesso.' },
-      })
+      // Fora do atendimento, mostramos o próximo passo antes de sair da tela.
+      // O cliente já foi salvo e poderá seguir para orçamento com um clique.
+      setClienteCriado(clienteCriado)
     } catch (error) {
       setErroApi(
         error instanceof Error
@@ -165,15 +170,19 @@ export default function ClientFormPage() {
   }
 
   return (
-    <div className="client-form-page">
+    <>
+      <div
+        className="client-form-page"
+        aria-hidden={clienteCriado ? true : undefined}
+      >
       <header className="client-form-page__header">
         <Link
           to={destinoVoltar}
           replace={Boolean(retornoAposCadastro)}
-          state={retornoAposCadastro ? { rascunhoOrdem } : undefined}
+          state={retornoAposCadastro ? { rascunhoOrcamento } : undefined}
           aria-label={
             retornoAposCadastro
-              ? 'Voltar para nova ordem'
+              ? 'Voltar para novo orçamento'
               : 'Voltar para clientes'
           }
         >
@@ -359,7 +368,7 @@ export default function ClientFormPage() {
           <Link
             to={destinoVoltar}
             replace={Boolean(retornoAposCadastro)}
-            state={retornoAposCadastro ? { rascunhoOrdem } : undefined}
+            state={retornoAposCadastro ? { rascunhoOrcamento } : undefined}
           >
             Cancelar
           </Link>
@@ -371,7 +380,131 @@ export default function ClientFormPage() {
                 : 'Cadastrar cliente'}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
+
+      {clienteCriado && (
+        <ClientCreatedDialog
+          cliente={clienteCriado}
+          onCreateBudget={() => {
+            navigate(`/orcamentos/novo?clienteId=${clienteCriado.id}`, {
+              replace: true,
+              state: {
+                mensagem: `${clienteCriado.nome} foi cadastrado e selecionado. Crie o orçamento para continuar.`,
+              },
+            })
+          }}
+          onFinish={() => {
+            navigate('/clientes', {
+              replace: true,
+              state: { mensagem: 'Cliente cadastrado com sucesso.' },
+            })
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+interface ClientCreatedDialogProps {
+  cliente: Cliente
+  onCreateBudget: () => void
+  onFinish: () => void
+}
+
+function ClientCreatedDialog({
+  cliente,
+  onCreateBudget,
+  onFinish,
+}: ClientCreatedDialogProps) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const primaryActionRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const overflowAnterior = document.body.style.overflow
+    const elementoFocadoAnteriormente = document.activeElement
+    document.body.style.overflow = 'hidden'
+    primaryActionRef.current?.focus()
+
+    return () => {
+      document.body.style.overflow = overflowAnterior
+
+      if (elementoFocadoAnteriormente instanceof HTMLElement) {
+        elementoFocadoAnteriormente.focus()
+      }
+    }
+  }, [])
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onFinish()
+      return
+    }
+
+    if (event.key !== 'Tab') return
+
+    const focusableElements = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    )
+
+    if (focusableElements.length === 0) {
+      event.preventDefault()
+      return
+    }
+
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault()
+      lastElement.focus()
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault()
+      firstElement.focus()
+    }
+  }
+
+  return (
+    <div className="client-created-dialog-backdrop">
+      <section
+        ref={dialogRef}
+        className="client-created-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="client-created-dialog-title"
+        aria-describedby="client-created-dialog-description"
+        onKeyDown={handleKeyDown}
+      >
+        <div className="client-created-dialog__icon">
+          <DocumentPlusIcon />
+        </div>
+        <span className="client-created-dialog__eyebrow">Cliente cadastrado</span>
+        <h2 id="client-created-dialog-title">Criar um orçamento agora?</h2>
+        <p id="client-created-dialog-description">
+          <strong>{cliente.nome}</strong> já ficará selecionado no novo
+          orçamento, para você continuar o atendimento sem procurar o cadastro
+          novamente.
+        </p>
+
+        <div className="client-created-dialog__actions">
+          <button type="button" onClick={onFinish}>
+            Agora não
+          </button>
+          <button
+            ref={primaryActionRef}
+            className="client-created-dialog__primary"
+            type="button"
+            onClick={onCreateBudget}
+          >
+            Criar orçamento
+            <ArrowRightIcon />
+          </button>
+        </div>
+        <small>Você também poderá criar o orçamento mais tarde.</small>
+      </section>
     </div>
   )
 }
@@ -459,18 +592,18 @@ function campoDescribedBy(
 // A query de retorno nunca é usada diretamente. A lista explícita evita que
 // uma URL externa ou uma rota inesperada seja usada como redirecionamento.
 function lerRetornoSeguro(valor: string | null) {
-  return valor === '/ordens/nova' ? valor : null
+  return valor === '/orcamentos/novo' ? valor : null
 }
 
 // O cadastro não interpreta o conteúdo do rascunho; apenas o transporta de
-// volta. A tela de ordem é quem valida e aplica os campos que conhece.
+// volta. A tela de orçamento é quem valida e aplica os campos que conhece.
 function lerRascunhoDaNavegacao(state: unknown) {
   if (
     typeof state === 'object' &&
     state !== null &&
-    'rascunhoOrdem' in state
+    'rascunhoOrcamento' in state
   ) {
-    return state.rascunhoOrdem
+    return state.rascunhoOrcamento
   }
 
   return undefined
@@ -490,6 +623,19 @@ function Icon({ children }: IconProps) {
 
 function ArrowLeftIcon() {
   return <Icon><path d="m15 18-6-6 6-6" /></Icon>
+}
+
+function ArrowRightIcon() {
+  return <Icon><path d="m9 18 6-6-6-6" /></Icon>
+}
+
+function DocumentPlusIcon() {
+  return (
+    <Icon>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6M12 12v6M9 15h6" />
+    </Icon>
+  )
 }
 
 function UserIcon() {

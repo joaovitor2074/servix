@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "API do Servix para gestão de clientes e ordens de serviço",
+  "description": "API do Servix para gestão de clientes, orçamentos, ordens de serviço e pagamentos",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

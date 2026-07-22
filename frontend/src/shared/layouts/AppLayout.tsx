@@ -98,6 +98,14 @@ export default function AppLayout({
           </NavLink>
 
           <NavLink
+            to="/orcamentos"
+            onClick={() => setMenuAberto(false)}
+          >
+            <BudgetsIcon />
+            <span>Orçamentos</span>
+          </NavLink>
+
+          <NavLink
             to="/ordens"
             onClick={() => setMenuAberto(false)}
           >
@@ -148,7 +156,7 @@ export default function AppLayout({
               <SearchIcon />
               <input
                 type="search"
-                placeholder="Buscar ordens, clientes, equipamentos..."
+                placeholder="Buscar orçamentos, ordens, clientes..."
               />
             </label>
           </div>
@@ -227,6 +235,15 @@ function OrdersIcon() {
     <Icon>
       <path d="M7 4h10M7 8h10M7 12h6" />
       <path d="M5 20h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2Z" />
+    </Icon>
+  )
+}
+
+function BudgetsIcon() {
+  return (
+    <Icon>
+      <path d="M6 3h12a2 2 0 0 1 2 2v16l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2Z" />
+      <path d="M8 8h8M8 12h6" />
     </Icon>
   )
 }
