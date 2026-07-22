@@ -1,6 +1,7 @@
 import { apiFetch } from '../../../shared/services/api'
 import type { RespostaPaginada } from '../../../shared/types/api.types'
 import type {
+  AtualizarOrdemInput,
   CriarOrdemInput,
   HistoricoStatusOrdem,
   OrdemServico,
@@ -46,6 +47,25 @@ export async function listarHistoricoOrdem(
   return lerResposta<HistoricoStatusOrdem[]>(
     resposta,
     'Não foi possível carregar o histórico da ordem',
+  )
+}
+
+// O PATCH recebe somente os campos que o funcionário realmente alterou. O
+// backend cria um novo histórico apenas quando o status também mudou.
+export async function atualizarOrdem(
+  id: number,
+  dados: AtualizarOrdemInput,
+  options: RequestOptions = {},
+): Promise<OrdemServico> {
+  const resposta = await apiFetch(`/ordens/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dados),
+    signal: options.signal,
+  })
+
+  return lerResposta<OrdemServico>(
+    resposta,
+    'Não foi possível atualizar a ordem de serviço',
   )
 }
 

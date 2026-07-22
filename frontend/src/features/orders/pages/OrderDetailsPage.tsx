@@ -3,7 +3,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useParams } from 'react-router'
 import {
   FORMA_PAGAMENTO_LABELS,
   STATUS_ORDEM_LABELS,
@@ -36,6 +36,7 @@ interface FalhaCarregamento {
 
 export default function OrderDetailsPage() {
   const { id } = useParams()
+  const location = useLocation()
   const ordemId = Number(id)
   const idValido = Number.isInteger(ordemId) && ordemId > 0
 
@@ -48,6 +49,9 @@ export default function OrderDetailsPage() {
     useState<FalhaCarregamento | null>(null)
   const [tentativaOrdem, setTentativaOrdem] = useState(0)
   const [tentativaHistorico, setTentativaHistorico] = useState(0)
+  const [mensagemSucesso, setMensagemSucesso] = useState(() =>
+    lerMensagemDaNavegacao(location.state),
+  )
 
   useEffect(() => {
     // A listagem pode estar rolada no celular quando o funcionário toca em
@@ -184,8 +188,31 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        <OrderStatusBadge status={ordemAtual.status} />
+        <div className="order-details-header__actions">
+          <OrderStatusBadge status={ordemAtual.status} />
+          <Link
+            className="order-details-header__edit"
+            to={`/ordens/${ordemAtual.id}/editar`}
+          >
+            <PencilIcon />
+            Atualizar ordem
+          </Link>
+        </div>
       </header>
+
+      {mensagemSucesso && (
+        <div className="order-details-success" role="status">
+          <CheckIcon />
+          <span>{mensagemSucesso}</span>
+          <button
+            type="button"
+            aria-label="Fechar mensagem"
+            onClick={() => setMensagemSucesso('')}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <section
         className="order-details-summary"
@@ -641,6 +668,19 @@ function formatarAutorHistorico(item: HistoricoStatusOrdem) {
   return `${item.alteradoPor.nome} · ${PAPEL_LABELS[item.alteradoPor.papel]}`
 }
 
+function lerMensagemDaNavegacao(state: unknown) {
+  if (
+    typeof state === 'object' &&
+    state !== null &&
+    'mensagem' in state &&
+    typeof state.mensagem === 'string'
+  ) {
+    return state.mensagem
+  }
+
+  return ''
+}
+
 interface IconProps {
   children: ReactNode
 }
@@ -655,6 +695,10 @@ function Icon({ children }: IconProps) {
 
 function ArrowLeftIcon() {
   return <Icon><path d="m15 18-6-6 6-6" /></Icon>
+}
+
+function PencilIcon() {
+  return <Icon><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></Icon>
 }
 
 function CalendarIcon() {

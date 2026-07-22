@@ -3,6 +3,7 @@ import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import LoginPage from '../features/auth/pages/LoginPage'
 import ClientFormPage from '../features/clients/pages/ClientFormPage'
 import ClientsPage from '../features/clients/pages/ClientsPage'
+import EditOrderPage from '../features/orders/pages/EditOrderPage'
 import NewOrderPage from '../features/orders/pages/NewOrderPage'
 import OrderDetailsPage from '../features/orders/pages/OrderDetailsPage'
 import OrdersPage from '../features/orders/pages/OrdersPage'
@@ -55,6 +56,7 @@ export default function AppRouter({
         <Route path="clientes/:id/editar" element={<ClientFormPage />} />
         <Route path="ordens" element={<OrdersPage />} />
         <Route path="ordens/nova" element={<NewOrderPage />} />
+        <Route path="ordens/:id/editar" element={<EditOrderPage />} />
         <Route path="ordens/:id" element={<OrderDetailsPage />} />
       </Route>
 

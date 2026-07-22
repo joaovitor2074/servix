@@ -28,6 +28,23 @@ export const STATUS_ORDEM_LABELS: Record<StatusOrdem, string> = {
   CANCELADA: 'Cancelada',
 }
 
+// Espelha a máquina de estados do backend. O formulário de atualização usa
+// esta tabela para mostrar somente os próximos passos permitidos para a ordem.
+export const TRANSICOES_STATUS_ORDEM: Record<
+  StatusOrdem,
+  readonly StatusOrdem[]
+> = {
+  ABERTA: ['EM_ANALISE', 'CANCELADA'],
+  EM_ANALISE: ['AGUARDANDO_APROVACAO', 'EM_ANDAMENTO', 'CANCELADA'],
+  AGUARDANDO_APROVACAO: ['APROVADA', 'EM_ANALISE', 'CANCELADA'],
+  APROVADA: ['EM_ANDAMENTO', 'CANCELADA'],
+  EM_ANDAMENTO: ['AGUARDANDO_PECA', 'CONCLUIDA', 'CANCELADA'],
+  AGUARDANDO_PECA: ['EM_ANDAMENTO', 'CANCELADA'],
+  CONCLUIDA: ['ENTREGUE', 'EM_ANDAMENTO', 'CANCELADA'],
+  ENTREGUE: [],
+  CANCELADA: [],
+}
+
 // Cada item representa uma mudança de status devolvida pelo endpoint
 // GET /ordens/:id/historico, incluindo o usuário que realizou a alteração.
 export interface HistoricoStatusOrdem {
@@ -105,4 +122,19 @@ export interface CriarOrdemInput {
   previsaoDeEntrega: string | null
   valor: number
   formaDePagamento: FormaPagamento
+}
+
+// Dados enviados pelo formulário operacional para PATCH /ordens/:id. Campos
+// opcionais vazios são normalizados como null para limpar o valor no backend.
+export interface AtualizarOrdemInput {
+  equipamento?: string
+  problemaRelatado?: string
+  diagnostico?: string | null
+  servicoRealizado?: string | null
+  pecasUtilizadas?: string | null
+  tecnicoResponsavel?: string | null
+  previsaoDeEntrega?: string | null
+  valor?: number
+  formaDePagamento?: FormaPagamento
+  status?: StatusOrdem
 }

@@ -96,6 +96,82 @@
   font-size: 0.92rem;
 }
 
+.order-details-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.order-details-header__edit {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 13px;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  background: var(--color-primary);
+  box-shadow: 0 5px 12px rgb(6 72 216 / 16%);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.order-details-header__edit:hover {
+  border-color: #004eeb;
+  background: #004eeb;
+  transform: translateY(-1px);
+}
+
+.order-details-header__edit:focus-visible {
+  outline: 3px solid rgb(6 72 216 / 16%);
+  outline-offset: 2px;
+}
+
+.order-details-success {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  color: #087341;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid #bce9d0;
+  border-radius: 10px;
+  background: #eaf9f1;
+}
+
+.order-details-success > span {
+  flex: 1;
+}
+
+.order-details-success button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.order-details-success button:hover {
+  background: rgb(8 115 65 / 8%);
+}
+
 .order-details-status {
   display: inline-flex;
   flex: 0 0 auto;
@@ -799,9 +875,19 @@
     gap: 12px;
   }
 
-  .order-details-status {
+  .order-details-header__actions {
     margin-left: 56px;
-    justify-self: start;
+    align-items: stretch;
+    justify-content: start;
+    flex-direction: column;
+  }
+
+  .order-details-status {
+    align-self: flex-start;
+  }
+
+  .order-details-header__edit {
+    min-height: 44px;
   }
 
   .order-details-summary,
@@ -841,7 +927,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .order-details-header__back {
+  .order-details-header__back,
+  .order-details-header__edit {
     transition: none;
   }
 
