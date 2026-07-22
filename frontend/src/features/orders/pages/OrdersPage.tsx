@@ -304,6 +304,9 @@ function OrdersContent({
               <th scope="col">Status</th>
               <th scope="col">Valor</th>
               <th scope="col">Atualização</th>
+              <th scope="col" className="orders-table__actions-heading">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -334,6 +337,18 @@ function OrdersContent({
                   <time dateTime={ordem.atualizadoEm}>
                     {formatarData(ordem.atualizadoEm)}
                   </time>
+                </td>
+                <td data-label="Ações" className="orders-table__actions">
+                  {/* A navegação leva o ID da linha para a página que consulta
+                      GET /ordens/:id e GET /ordens/:id/historico. */}
+                  <Link
+                    className="orders-table__view"
+                    to={`/ordens/${ordem.id}`}
+                    aria-label={`Ver detalhes da ordem ${ordem.id}`}
+                    title="Ver detalhes"
+                  >
+                    <EyeIcon />
+                  </Link>
                 </td>
               </tr>
             ))}
@@ -491,6 +506,15 @@ function CheckIcon() {
   return (
     <Icon>
       <path d="m5 12 4 4L19 6" />
+    </Icon>
+  )
+}
+
+function EyeIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
     </Icon>
   )
 }

@@ -287,6 +287,49 @@
   background-color: #edf3ff;
 }
 
+.orders-table__actions {
+  align-items: center;
+}
+
+.orders-table__view {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  color: var(--color-primary);
+  text-decoration: none;
+  border: 1px solid rgba(6, 72, 216, 0.16);
+  border-radius: 9px;
+  background-color: #f7faff;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.orders-table__view:hover,
+.orders-table__view:focus-visible {
+  color: #ffffff;
+  border-color: var(--color-primary);
+  outline: 0;
+  background-color: var(--color-primary);
+}
+
+.orders-table__view:focus-visible {
+  box-shadow: 0 0 0 3px rgba(6, 72, 216, 0.2);
+}
+
+.orders-table__view svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .orders-table__primary {
   min-width: 0;
   max-width: 220px;
@@ -515,6 +558,14 @@
   }
 }
 
+@media (max-width: 849px) {
+  /* Um alvo de 44 px facilita a ação de visualizar em telas de toque. */
+  .orders-table__view {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 @media (min-width: 850px) {
   .orders-table {
     display: table;
@@ -562,10 +613,29 @@
   .orders-table__primary {
     max-width: 230px;
   }
+
+  .orders-table__actions-heading,
+  .orders-table__actions {
+    width: 76px;
+    text-align: center;
+  }
+
+  .orders-table tbody tr {
+    transition: background-color 150ms ease;
+  }
+
+  .orders-table tbody tr:hover {
+    background-color: #fbfcfe;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .orders-skeleton {
     animation: none;
+  }
+
+  .orders-table__view,
+  .orders-table tbody tr {
+    transition: none;
   }
 }

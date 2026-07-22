@@ -2,6 +2,7 @@ import { apiFetch } from '../../../shared/services/api'
 import type { RespostaPaginada } from '../../../shared/types/api.types'
 import type {
   CriarOrdemInput,
+  HistoricoStatusOrdem,
   OrdemServico,
   StatusOrdem,
 } from '../../../shared/types/ordem.types'
@@ -14,8 +15,38 @@ export interface ListarOrdensFiltros {
   clienteId?: number
 }
 
-interface ListarOrdensOptions {
+interface RequestOptions {
   signal?: AbortSignal
+}
+
+// As duas consultas da tela de detalhes aceitam AbortSignal. Ao sair da página,
+// o componente cancela ambas e evita que uma resposta antiga atualize a tela.
+export async function buscarOrdem(
+  id: number,
+  options: RequestOptions = {},
+): Promise<OrdemServico> {
+  const resposta = await apiFetch(`/ordens/${id}`, {
+    signal: options.signal,
+  })
+
+  return lerResposta<OrdemServico>(
+    resposta,
+    'Não foi possível carregar a ordem de serviço',
+  )
+}
+
+export async function listarHistoricoOrdem(
+  id: number,
+  options: RequestOptions = {},
+): Promise<HistoricoStatusOrdem[]> {
+  const resposta = await apiFetch(`/ordens/${id}/historico`, {
+    signal: options.signal,
+  })
+
+  return lerResposta<HistoricoStatusOrdem[]>(
+    resposta,
+    'Não foi possível carregar o histórico da ordem',
+  )
 }
 
 // O status HTTP permite que o formulário trate de maneira específica um
@@ -34,7 +65,7 @@ export class OrdemApiError extends Error {
 // Campos vazios não são enviados, permitindo que o backend aplique os padrões.
 export async function listarOrdens(
   filtros: ListarOrdensFiltros = {},
-  options: ListarOrdensOptions = {},
+  options: RequestOptions = {},
 ): Promise<RespostaPaginada<OrdemServico>> {
   const parametros = new URLSearchParams()
 

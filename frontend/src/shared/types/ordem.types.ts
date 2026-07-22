@@ -28,6 +28,22 @@ export const STATUS_ORDEM_LABELS: Record<StatusOrdem, string> = {
   CANCELADA: 'Cancelada',
 }
 
+// Cada item representa uma mudança de status devolvida pelo endpoint
+// GET /ordens/:id/historico, incluindo o usuário que realizou a alteração.
+export interface HistoricoStatusOrdem {
+  id: number
+  ordemId: number
+  empresaId: number
+  status: StatusOrdem
+  alteradoPorId: number | null
+  criadoEm: string
+  alteradoPor: {
+    id: number
+    nome: string
+    papel: 'ADMIN' | 'ATENDENTE' | 'TECNICO'
+  } | null
+}
+
 // O array serve tanto para gerar o select do formulário quanto para manter o
 // tipo sincronizado com o enum FormaPagamento definido no Prisma.
 export const FORMAS_PAGAMENTO = [

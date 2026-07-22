@@ -3,8 +3,9 @@ import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import LoginPage from '../features/auth/pages/LoginPage'
 import ClientFormPage from '../features/clients/pages/ClientFormPage'
 import ClientsPage from '../features/clients/pages/ClientsPage'
-import OrdersPage from '../features/orders/pages/OrdersPage'
 import NewOrderPage from '../features/orders/pages/NewOrderPage'
+import OrderDetailsPage from '../features/orders/pages/OrderDetailsPage'
+import OrdersPage from '../features/orders/pages/OrdersPage'
 import type { UsuarioAutenticado } from '../features/auth/types/auth.types'
 import AppLayout from '../shared/layouts/AppLayout'
 
@@ -54,6 +55,7 @@ export default function AppRouter({
         <Route path="clientes/:id/editar" element={<ClientFormPage />} />
         <Route path="ordens" element={<OrdersPage />} />
         <Route path="ordens/nova" element={<NewOrderPage />} />
+        <Route path="ordens/:id" element={<OrderDetailsPage />} />
       </Route>
 
       <Route
