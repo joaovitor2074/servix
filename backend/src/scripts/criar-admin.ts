@@ -37,7 +37,10 @@ async function executar() {
     empresa = await prisma.empresa.create({
       data: {
         nome: empresaNome,
-        slug: empresaSlug
+        slug: empresaSlug,
+        configuracaoPagamento: {
+          create: {}
+        }
       }
     })
   }

@@ -50,6 +50,8 @@ export default function EditOrderPage() {
   const [formularioAlterado, setFormularioAlterado] = useState(false)
   const [erroApi, setErroApi] = useState('')
   const [exigeRecarregamento, setExigeRecarregamento] = useState(false)
+  const [statusSelecionado, setStatusSelecionado] =
+    useState<StatusOrdem | null>(null)
   const [errosCampos, setErrosCampos] = useState<
     Record<string, string[] | undefined>
   >({})
@@ -142,6 +144,7 @@ export default function EditOrderPage() {
         setErroApi('')
         setExigeRecarregamento(false)
         setErrosCampos({})
+        setStatusSelecionado(ordem.status)
         setOrdemCarregada({ ordemId, ordem })
         setFalha(null)
       })
@@ -174,6 +177,7 @@ export default function EditOrderPage() {
     setErroApi('')
     setExigeRecarregamento(false)
     setErrosCampos({})
+    setStatusSelecionado(null)
     setFormularioAlterado(false)
     camposAlterados.current.clear()
     setTentativa(valor => valor + 1)
@@ -206,6 +210,7 @@ export default function EditOrderPage() {
       tecnicoResponsavel: formData.get('tecnicoResponsavel'),
       previsaoDeEntrega: formData.get('previsaoDeEntrega'),
       status: formData.get('status'),
+      mensagemPublica: formData.get('mensagemPublica'),
     })
 
     if (!validacao.success) {
@@ -276,7 +281,7 @@ export default function EditOrderPage() {
       navigate(`/ordens/${ordemAtualizada.id}`, {
         replace: true,
         state: {
-          mensagem: `Ordem #${ordemAtualizada.id} atualizada com sucesso.`,
+          mensagem: `Ordem #${ordemAtualizada.numero} atualizada com sucesso.`,
         },
       })
     } catch (error) {
@@ -347,6 +352,8 @@ export default function EditOrderPage() {
     ),
   ]
   const statusFinal = statusDisponiveis.length === 1
+  const statusFoiAlterado =
+    statusSelecionado !== null && statusSelecionado !== ordemAtual.status
 
   return (
     <div className="edit-order-page">
@@ -360,7 +367,7 @@ export default function EditOrderPage() {
         </Link>
         <div className="edit-order-header__content">
           <span>Atualização do atendimento</span>
-          <h1>Atualizar ordem #{ordemAtual.id}</h1>
+          <h1>Atualizar ordem #{ordemAtual.numero}</h1>
           <p>
             {ordemAtual.cliente.nome} · {ordemAtual.equipamento}
           </p>
@@ -418,7 +425,10 @@ export default function EditOrderPage() {
                 defaultValue={ordemAtual.status}
                 required
                 aria-required="true"
-                onChange={() => limparErroCampo('status')}
+                onChange={event => {
+                  limparErroCampo('status')
+                  setStatusSelecionado(event.target.value as StatusOrdem)
+                }}
                 aria-invalid={Boolean(errosCampos.status?.[0])}
                 aria-describedby={campoDescribedBy(
                   'status',
@@ -446,6 +456,34 @@ export default function EditOrderPage() {
                   : `${statusDisponiveis.length - 1} próximo(s) status disponível(is).`}
               </p>
             </div>
+
+            <FormField
+              id="mensagemPublica"
+              label="Mensagem para o cliente (opcional)"
+              hint={
+                statusFoiAlterado
+                  ? 'Aparecerá no acompanhamento público. Não inclua diagnóstico interno, custos ou dados sensíveis.'
+                  : 'Escolha um novo status para adicionar uma mensagem ao acompanhamento do cliente.'
+              }
+              error={errosCampos.mensagemPublica?.[0]}
+              wide
+            >
+              <textarea
+                id="mensagemPublica"
+                name="mensagemPublica"
+                placeholder="Ex.: Seu equipamento está em análise pela nossa equipe."
+                maxLength={500}
+                rows={3}
+                disabled={!statusFoiAlterado}
+                onChange={() => limparErroCampo('mensagemPublica')}
+                aria-invalid={Boolean(errosCampos.mensagemPublica?.[0])}
+                aria-describedby={campoDescribedBy(
+                  'mensagemPublica',
+                  errosCampos.mensagemPublica?.[0],
+                  true,
+                )}
+              />
+            </FormField>
 
             <FormField
               id="diagnostico"
@@ -661,6 +699,9 @@ function montarAlteracoes(
   }
   if (camposAlterados.has('status') && dados.status !== ordem.status) {
     alteracoes.status = dados.status
+    if (dados.mensagemPublica) {
+      alteracoes.mensagemPublica = dados.mensagemPublica
+    }
   }
 
   if (Object.keys(alteracoes).length === 0) return null

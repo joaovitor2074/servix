@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  FormaPagamento,
+  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   TipoItemOrcamento
@@ -17,8 +19,14 @@ const prismaMocks = vi.hoisted(() => ({
   removerItens: vi.fn(),
   criarItens: vi.fn(),
   criarOrdem: vi.fn(),
+  listarCobrancasPagas: vi.fn(),
+  buscarCobrancaPaga: vi.fn(),
+  cancelarCobrancasPendentes: vi.fn(),
+  materializarCobranca: vi.fn(),
   buscarOrdem: vi.fn(),
-  buscarPublico: vi.fn()
+  buscarPublico: vi.fn(),
+  buscarConfiguracaoPagamento: vi.fn(),
+  configuracaoAceitaPix: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -31,6 +39,12 @@ vi.mock("../lib/prisma.js", () => ({
       findUnique: prismaMocks.buscarOrdem
     }
   }
+}))
+
+vi.mock("./cobrancas.service.js", () => ({
+  cancelarCobrancasPendentesTx: prismaMocks.cancelarCobrancasPendentes,
+  configuracaoPagamentoAceitaPix: prismaMocks.configuracaoAceitaPix,
+  materializarPagamentoDaCobrancaTx: prismaMocks.materializarCobranca
 }))
 
 import {
@@ -63,6 +77,13 @@ const txMock = {
   },
   ordemServico: {
     create: prismaMocks.criarOrdem
+  },
+  cobranca: {
+    findMany: prismaMocks.listarCobrancasPagas,
+    findFirst: prismaMocks.buscarCobrancaPaga
+  },
+  configuracaoPagamento: {
+    findUnique: prismaMocks.buscarConfiguracaoPagamento
   }
 }
 
@@ -92,6 +113,7 @@ const orcamentoAprovado = {
   versao: 4,
   validade: null,
   total: 50.5,
+  formaPagamentoEscolhida: FormaPagamento.CARTAO_DEBITO,
   itens,
   ordem: null
 }
@@ -102,6 +124,14 @@ beforeEach(() => {
     async (executar: (tx: typeof txMock) => Promise<unknown>) =>
       executar(txMock)
   )
+  prismaMocks.listarCobrancasPagas.mockResolvedValue([])
+  prismaMocks.buscarCobrancaPaga.mockResolvedValue(null)
+  prismaMocks.cancelarCobrancasPendentes.mockResolvedValue({ count: 0 })
+  prismaMocks.configuracaoAceitaPix.mockReturnValue(true)
+  prismaMocks.atualizarEmpresa.mockResolvedValue({
+    proximoNumeroOrcamento: 13,
+    proximoNumeroOrdem: 7
+  })
 })
 
 describe("calculo e criacao de orcamento", () => {
@@ -238,6 +268,38 @@ describe("concorrencia de status do orcamento", () => {
       })
     )
   })
+
+  it("desfaz o cancelamento quando existe cobranca paga antes da OS", async () => {
+    prismaMocks.buscarOrcamento.mockResolvedValue(orcamentoAprovado)
+    prismaMocks.cancelarCobrancasPendentes.mockResolvedValue({ count: 1 })
+    prismaMocks.buscarCobrancaPaga.mockResolvedValue({ id: 31 })
+
+    const resultado = await alterarStatusOrcamentoService(17, 8, 23, {
+      statusEsperado: StatusOrcamento.APROVADO,
+      versaoEsperada: 4,
+      status: StatusOrcamento.CANCELADO
+    })
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      motivo: "cobranca_paga"
+    })
+    expect(prismaMocks.cancelarCobrancasPendentes).toHaveBeenCalledWith(
+      txMock,
+      8,
+      { orcamentoId: 17 }
+    )
+    expect(prismaMocks.buscarCobrancaPaga).toHaveBeenCalledWith({
+      where: {
+        empresaId: 8,
+        orcamentoId: 17,
+        status: StatusCobranca.PAGA
+      },
+      select: { id: true }
+    })
+    expect(prismaMocks.atualizarOrcamento).not.toHaveBeenCalled()
+    expect(prismaMocks.criarHistoricoOrcamento).not.toHaveBeenCalled()
+  })
 })
 
 describe("transformacao em ordem", () => {
@@ -267,21 +329,31 @@ describe("transformacao em ordem", () => {
     })
     expect(prismaMocks.criarOrdem).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        numero: 6,
         empresaId: 8,
         clienteId: 4,
         orcamentoId: 17,
         equipamento: "Notebook",
         problemaRelatado: "Nao liga",
         valor: 50.5,
+        formaDePagamento: FormaPagamento.CARTAO_DEBITO,
         status: StatusOrdem.RECEBIDO,
         historico: {
           create: {
             status: StatusOrdem.RECEBIDO,
+            mensagemPublica: "Ordem de serviço recebida.",
             alteradoPorId: 23
           }
         }
       }),
       include: expect.any(Object)
+    })
+    expect(prismaMocks.atualizarEmpresa).toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: {
+        proximoNumeroOrdem: { increment: 1 }
+      },
+      select: { proximoNumeroOrdem: true }
     })
     expect(prismaMocks.criarHistoricoOrcamento).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -319,15 +391,72 @@ describe("transformacao em ordem", () => {
     expect(prismaMocks.atualizarOrcamento).not.toHaveBeenCalled()
     expect(prismaMocks.criarOrdem).not.toHaveBeenCalled()
   })
+
+  it("materializa no ledger a cobranca paga antes da criacao da OS", async () => {
+    prismaMocks.buscarOrcamento.mockResolvedValueOnce(orcamentoAprovado)
+    prismaMocks.atualizarOrcamento.mockResolvedValue({ count: 1 })
+    prismaMocks.criarOrdem.mockResolvedValue({
+      id: 91,
+      status: StatusOrdem.RECEBIDO
+    })
+    prismaMocks.listarCobrancasPagas.mockResolvedValue([{ id: 31 }])
+    prismaMocks.criarHistoricoOrcamento.mockResolvedValue({ id: 2 })
+
+    await transformarOrcamentoEmOrdemService(17, 8, 23, {
+      statusEsperado: StatusOrcamento.APROVADO,
+      versaoEsperada: 4
+    })
+
+    expect(prismaMocks.listarCobrancasPagas).toHaveBeenCalledWith({
+      where: {
+        empresaId: 8,
+        orcamentoId: 17,
+        status: "PAGA"
+      },
+      select: { id: true }
+    })
+    expect(prismaMocks.materializarCobranca).toHaveBeenCalledWith(
+      txMock,
+      31,
+      8,
+      false
+    )
+  })
 })
 
 describe("aprovacao publica", () => {
   it("exibe somente o resumo publico com cliente e empresa", async () => {
-    prismaMocks.buscarPublico.mockResolvedValue({ numero: 12 })
+    prismaMocks.configuracaoAceitaPix.mockReturnValue(false)
+    prismaMocks.buscarPublico.mockResolvedValue({
+      numero: 12,
+      formaPagamentoEscolhida: FormaPagamento.NAO_INFORMADA,
+      empresa: {
+        nome: "Assistencia",
+        telefone: null,
+        email: null,
+        configuracaoPagamento: null
+      },
+      cliente: { nome: "Cliente" },
+      itens: [],
+      ordem: null
+    })
 
-    await buscarOrcamentoPublicoService(
+    const resultado = await buscarOrcamentoPublicoService(
       "12345678-1234-1234-1234-123456789012"
     )
+
+    expect(resultado).toMatchObject({
+      formaPagamentoEscolhida: null,
+      pixDisponivel: false,
+      empresa: {
+        nome: "Assistencia",
+        telefone: null,
+        email: null
+      }
+    })
+    expect(resultado?.empresa).not.toHaveProperty("configuracaoPagamento")
+    expect(resultado).not.toHaveProperty("tokenAcompanhamento")
+    expect(resultado).not.toHaveProperty("ordem")
 
     expect(prismaMocks.buscarPublico).toHaveBeenCalledWith({
       where: {
@@ -337,15 +466,48 @@ describe("aprovacao publica", () => {
         cliente: {
           select: { nome: true }
         },
-        empresa: {
-          select: {
+        empresa: expect.objectContaining({
+          select: expect.objectContaining({
             nome: true,
             telefone: true,
             email: true
+          })
+        }),
+        ordem: {
+          select: {
+            tokenAcompanhamento: true
           }
         }
       })
     })
+  })
+
+  it("inclui somente o token de acompanhamento quando já existe OS", async () => {
+    prismaMocks.configuracaoAceitaPix.mockReturnValue(false)
+    prismaMocks.buscarPublico.mockResolvedValue({
+      numero: 12,
+      formaPagamentoEscolhida: FormaPagamento.CARTAO_DEBITO,
+      empresa: {
+        nome: "Assistencia",
+        telefone: null,
+        email: null,
+        configuracaoPagamento: null
+      },
+      cliente: { nome: "Cliente" },
+      itens: [],
+      ordem: {
+        tokenAcompanhamento: "token-acompanhamento-seguro-123"
+      }
+    })
+
+    const resultado = await buscarOrcamentoPublicoService(
+      "12345678-1234-1234-1234-123456789012"
+    )
+
+    expect(resultado).toMatchObject({
+      tokenAcompanhamento: "token-acompanhamento-seguro-123"
+    })
+    expect(resultado).not.toHaveProperty("ordem")
   })
 
   it("expira atomicamente um orcamento vencido", async () => {
@@ -361,7 +523,10 @@ describe("aprovacao publica", () => {
 
     const resultado = await aprovarOrcamentoPublicoService(
       "12345678-1234-1234-1234-123456789012",
-      { versaoEsperada: 3 }
+      {
+        versaoEsperada: 3,
+        formaPagamento: FormaPagamento.DINHEIRO
+      }
     )
 
     expect(resultado).toEqual({
@@ -379,5 +544,85 @@ describe("aprovacao publica", () => {
       })
     )
     expect(prismaMocks.criarHistoricoOrcamento).toHaveBeenCalledOnce()
+  })
+
+  it("persiste a forma escolhida no mesmo CAS da aprovacao", async () => {
+    const publicoAprovado = {
+      numero: 12,
+      formaPagamentoEscolhida: FormaPagamento.CARTAO_CREDITO,
+      empresa: {
+        nome: "Assistencia",
+        telefone: null,
+        email: null,
+        configuracaoPagamento: null
+      },
+      cliente: { nome: "Cliente" },
+      itens: []
+    }
+    prismaMocks.buscarOrcamento
+      .mockResolvedValueOnce({
+        id: 17,
+        empresaId: 8,
+        status: StatusOrcamento.ENVIADO,
+        versao: 3,
+        validade: null
+      })
+      .mockResolvedValueOnce(publicoAprovado)
+    prismaMocks.atualizarOrcamento.mockResolvedValue({ count: 1 })
+    prismaMocks.criarHistoricoOrcamento.mockResolvedValue({ id: 3 })
+
+    const resultado = await aprovarOrcamentoPublicoService(
+      "12345678-1234-1234-1234-123456789012",
+      {
+        versaoEsperada: 3,
+        formaPagamento: FormaPagamento.CARTAO_CREDITO
+      }
+    )
+
+    expect(resultado).toMatchObject({ sucesso: true })
+    expect(prismaMocks.atualizarOrcamento).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: StatusOrcamento.ENVIADO,
+          versao: 3
+        }),
+        data: expect.objectContaining({
+          status: StatusOrcamento.APROVADO,
+          formaPagamentoEscolhida: FormaPagamento.CARTAO_CREDITO,
+          versao: { increment: 1 }
+        })
+      })
+    )
+  })
+
+  it("recusa Pix indisponivel antes de aprovar", async () => {
+    prismaMocks.buscarOrcamento.mockResolvedValueOnce({
+      id: 17,
+      empresaId: 8,
+      status: StatusOrcamento.ENVIADO,
+      versao: 3,
+      validade: null
+    })
+    prismaMocks.buscarConfiguracaoPagamento.mockResolvedValue({
+      provedor: "MANUAL",
+      status: "ATIVA",
+      ativo: true,
+      pixHabilitado: false
+    })
+    prismaMocks.configuracaoAceitaPix.mockReturnValue(false)
+
+    const resultado = await aprovarOrcamentoPublicoService(
+      "12345678-1234-1234-1234-123456789012",
+      {
+        versaoEsperada: 3,
+        formaPagamento: FormaPagamento.PIX
+      }
+    )
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      motivo: "pix_indisponivel"
+    })
+    expect(prismaMocks.atualizarOrcamento).not.toHaveBeenCalled()
   })
 })

@@ -1,18 +1,33 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import DashboardPage from '../features/dashboard/pages/DashboardPage'
-import LoginPage from '../features/auth/pages/LoginPage'
-import ClientFormPage from '../features/clients/pages/ClientFormPage'
-import ClientsPage from '../features/clients/pages/ClientsPage'
-import BudgetDetailsPage from '../features/budgets/pages/BudgetDetailsPage'
-import BudgetFormPage from '../features/budgets/pages/BudgetFormPage'
-import BudgetsPage from '../features/budgets/pages/BudgetsPage'
-import PublicBudgetPage from '../features/budgets/pages/PublicBudgetPage'
-import EditOrderPage from '../features/orders/pages/EditOrderPage'
-import NewOrderPage from '../features/orders/pages/NewOrderPage'
-import OrderDetailsPage from '../features/orders/pages/OrderDetailsPage'
-import OrdersPage from '../features/orders/pages/OrdersPage'
 import type { UsuarioAutenticado } from '../features/auth/types/auth.types'
-import AppLayout from '../shared/layouts/AppLayout'
+
+const AppLayout = lazy(() => import('../shared/layouts/AppLayout'))
+const PublicLayout = lazy(() => import('../shared/layouts/PublicLayout'))
+const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
+const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'))
+const ClientFormPage = lazy(() => import('../features/clients/pages/ClientFormPage'))
+const ClientsPage = lazy(() => import('../features/clients/pages/ClientsPage'))
+const BudgetDetailsPage = lazy(() => import('../features/budgets/pages/BudgetDetailsPage'))
+const BudgetFormPage = lazy(() => import('../features/budgets/pages/BudgetFormPage'))
+const BudgetsPage = lazy(() => import('../features/budgets/pages/BudgetsPage'))
+const PublicBudgetPage = lazy(() => import('../features/budgets/pages/PublicBudgetPage'))
+const EditOrderPage = lazy(() => import('../features/orders/pages/EditOrderPage'))
+const NewOrderPage = lazy(() => import('../features/orders/pages/NewOrderPage'))
+const OrderDetailsPage = lazy(() => import('../features/orders/pages/OrderDetailsPage'))
+const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
+const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicTrackingPage'))
+const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
+const CadastroConcluidoPage = lazy(() => import('../features/site/pages/CadastroConcluidoPage'))
+const CadastroEmpresaPage = lazy(() => import('../features/site/pages/CadastroEmpresaPage'))
+const CheckoutPage = lazy(() => import('../features/site/pages/CheckoutPage'))
+const ContatoPage = lazy(() => import('../features/site/pages/ContatoPage'))
+const HomePage = lazy(() => import('../features/site/pages/HomePage'))
+const PlanosPage = lazy(() => import('../features/site/pages/PlanosPage'))
+const PoliticaPrivacidadePage = lazy(() => import('../features/site/pages/PoliticaPrivacidadePage'))
+const PublicNotFoundPage = lazy(() => import('../features/site/pages/PublicNotFoundPage'))
+const SuportePage = lazy(() => import('../features/site/pages/SuportePage'))
+const TermosUsoPage = lazy(() => import('../features/site/pages/TermosUsoPage'))
 
 interface AppRouterProps {
   usuario: UsuarioAutenticado | null
@@ -30,8 +45,10 @@ export default function AppRouter({
   ) : null
 
   return (
-    <Routes>
+    <Suspense fallback={<div className="route-loading" role="status">Carregando...</div>}>
+      <Routes>
       <Route path="/orcamento/:token" element={<PublicBudgetPage />} />
+      <Route path="/acompanhar/:token" element={<PublicTrackingPage />} />
 
       <Route
         path="/login"
@@ -68,17 +85,41 @@ export default function AppRouter({
         <Route path="ordens/nova" element={<NewOrderPage />} />
         <Route path="ordens/:id/editar" element={<EditOrderPage />} />
         <Route path="ordens/:id" element={<OrderDetailsPage />} />
+        <Route
+          path="configuracoes"
+          element={
+            usuario?.papel === 'ADMIN' ? (
+              <Navigate to="/configuracoes/pagamentos" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="configuracoes/pagamentos"
+          element={
+            usuario?.papel === 'ADMIN' ? (
+              <PaymentSettingsPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
       </Route>
 
-      <Route
-        path="*"
-        element={
-          <Navigate
-            to={usuario ? '/dashboard' : '/login'}
-            replace
-          />
-        }
-      />
-    </Routes>
+      <Route element={<PublicLayout />}>
+        <Route index element={<HomePage />} />
+        <Route path="planos" element={<PlanosPage />} />
+        <Route path="cadastro" element={<CadastroEmpresaPage />} />
+        <Route path="cadastro/concluido" element={<CadastroConcluidoPage />} />
+        <Route path="checkout/:token" element={<CheckoutPage />} />
+        <Route path="contato" element={<ContatoPage />} />
+        <Route path="suporte" element={<SuportePage />} />
+        <Route path="politica-de-privacidade" element={<PoliticaPrivacidadePage />} />
+        <Route path="termos-de-uso" element={<TermosUsoPage />} />
+        <Route path="*" element={<PublicNotFoundPage />} />
+      </Route>
+      </Routes>
+    </Suspense>
   )
 }

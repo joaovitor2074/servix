@@ -1,4 +1,6 @@
 .payment-panel {
+  container-name: payment-panel;
+  container-type: inline-size;
   display: grid;
   gap: 18px;
 }
@@ -229,7 +231,7 @@
   color: #64748b;
 }
 
-@media (max-width: 620px) {
+@container payment-panel (max-width: 620px) {
   .payment-panel__summary dl,
   .payment-panel__form-grid {
     grid-template-columns: 1fr;
@@ -237,5 +239,25 @@
 
   .payment-panel__form-observation {
     grid-column: auto;
+  }
+}
+
+@container payment-panel (max-width: 420px) {
+  .payment-panel__ledger li {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-panel__ledger-status {
+    justify-items: start;
+  }
+
+  .payment-panel__ledger-status button {
+    min-height: 36px;
+  }
+
+  .payment-panel__error,
+  .payment-panel__feedback {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

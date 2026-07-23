@@ -1,4 +1,7 @@
-import type { StatusOrdem } from '../../../shared/types/ordem.types'
+import type {
+  FormaPagamento,
+  StatusOrdem,
+} from '../../../shared/types/ordem.types'
 
 export const STATUS_ORCAMENTO = [
   'RASCUNHO',
@@ -55,6 +58,7 @@ export interface ItemOrcamento {
 
 export interface OrdemResumoOrcamento {
   id: number
+  numero: number
   status?: StatusOrdem
 }
 
@@ -114,9 +118,35 @@ export interface AlterarStatusOrcamentoInput {
 export interface TransformarOrcamentoResposta {
   ordem: {
     id: number
+    numero: number
     status?: StatusOrdem
   }
   jaExistente: boolean
+}
+
+export type FormaPagamentoPublica = Exclude<
+  FormaPagamento,
+  'NAO_INFORMADA'
+>
+
+export const STATUS_COBRANCA = [
+  'PENDENTE',
+  'PAGA',
+  'EXPIRADA',
+  'CANCELADA',
+  'ESTORNADA',
+] as const
+
+export type StatusCobranca = (typeof STATUS_COBRANCA)[number]
+
+export interface CobrancaPublica {
+  id: number
+  status: StatusCobranca
+  valor: string
+  formaPagamento: FormaPagamentoPublica
+  codigoPix: string | null
+  expiraEm: string | null
+  pagaEm: string | null
 }
 
 export interface OrcamentoPublico {
@@ -129,11 +159,15 @@ export interface OrcamentoPublico {
   total: string
   validade: string | null
   observacoes?: string | null
+  formaPagamentoEscolhida: FormaPagamentoPublica | null
+  pixDisponivel: boolean
   versao: number
   enviadoEm?: string | null
   aprovadoEm?: string | null
   criadoEm?: string
   atualizadoEm?: string
+  tokenAcompanhamento?: string | null
+  rotaAcompanhamento?: string | null
   empresa: {
     nome: string
     telefone?: string | null
@@ -143,7 +177,6 @@ export interface OrcamentoPublico {
     nome: string
   }
   itens: Array<{
-    id: number
     descricao: string
     quantidade: number
     valorUnitario: string

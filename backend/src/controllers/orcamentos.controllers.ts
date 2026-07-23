@@ -15,12 +15,14 @@ import {
   idOrcamentoEhInvalido,
   tokenOrcamentoEhInvalido,
   validarAcaoPublicaOrcamento,
+  validarAprovacaoPublicaOrcamento,
   validarAlteracaoStatusOrcamento,
   validarAtualizacaoOrcamento,
   validarCriacaoOrcamento,
   validarQueryOrcamentos,
   validarTransformacaoOrcamento
 } from "../validators/orcamentos.validators.js"
+import type { ResultadoValidacao } from "../validators/validation.js"
 
 type FalhaOrcamento = {
   motivo: string
@@ -114,6 +116,20 @@ function responderFalhaOrcamento(res: Response, falha: FalhaOrcamento) {
         statusAtual: falha.statusAtual,
         versaoAtual: falha.versaoAtual
       }
+    })
+  }
+
+  if (falha.motivo === "pix_indisponivel") {
+    return res.status(409).json({
+      erro: "O pagamento por Pix nao esta disponivel para esta empresa.",
+      codigo: "PIX_INDISPONIVEL"
+    })
+  }
+
+  if (falha.motivo === "cobranca_paga") {
+    return res.status(409).json({
+      erro: "O orcamento possui uma cobranca paga e nao pode ser cancelado.",
+      codigo: "ORCAMENTO_POSSUI_COBRANCA_PAGA"
     })
   }
 
@@ -321,6 +337,7 @@ export async function buscarOrcamentoPublico(
   next: NextFunction
 ) {
   try {
+    res.setHeader("Cache-Control", "no-store")
     const token = req.params.token
     if (tokenOrcamentoEhInvalido(token)) {
       return res.status(400).json({ erro: "Token invalido" })
@@ -341,20 +358,26 @@ export async function buscarOrcamentoPublico(
   }
 }
 
-async function executarAcaoPublica(
-  acao: typeof aprovarOrcamentoPublicoService,
+type ResultadoAcaoPublica = Awaited<
+  ReturnType<typeof aprovarOrcamentoPublicoService>
+> | Awaited<ReturnType<typeof rejeitarOrcamentoPublicoService>>
+
+async function executarAcaoPublica<T>(
+  acao: (token: string, dados: T) => Promise<ResultadoAcaoPublica>,
+  validar: (dados: unknown) => ResultadoValidacao<T>,
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
+    res.setHeader("Cache-Control", "no-store")
     const token = req.params.token
     if (tokenOrcamentoEhInvalido(token)) {
       return res.status(400).json({ erro: "Token invalido" })
     }
     const tokenNormalizado = typeof token === "string" ? token.trim() : ""
 
-    const validacao = validarAcaoPublicaOrcamento(req.body)
+    const validacao = validar(req.body)
     if (!validacao.valido) {
       return res.status(400).json({
         erro: validacao.erro,
@@ -380,6 +403,7 @@ export function aprovarOrcamentoPublico(
 ) {
   return executarAcaoPublica(
     aprovarOrcamentoPublicoService,
+    validarAprovacaoPublicaOrcamento,
     req,
     res,
     next
@@ -393,6 +417,7 @@ export function rejeitarOrcamentoPublico(
 ) {
   return executarAcaoPublica(
     rejeitarOrcamentoPublicoService,
+    validarAcaoPublicaOrcamento,
     req,
     res,
     next

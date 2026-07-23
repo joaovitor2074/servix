@@ -10,13 +10,16 @@ import {
 
 const prismaMocks = vi.hoisted(() => ({
   executarTransacao: vi.fn(),
+  bloquearPagamento: vi.fn(),
   buscarOrdem: vi.fn(),
   buscarOrdemNaTransacao: vi.fn(),
   atualizarOrdem: vi.fn(),
   agruparPagamentos: vi.fn(),
   criarPagamento: vi.fn(),
   buscarPagamento: vi.fn(),
-  atualizarPagamento: vi.fn()
+  atualizarPagamento: vi.fn(),
+  cancelarCobrancas: vi.fn(),
+  buscarCobrancaPaga: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -38,6 +41,7 @@ import {
 } from "./pagamentos.service.js"
 
 const txMock = {
+  $queryRaw: prismaMocks.bloquearPagamento,
   ordemServico: {
     findUnique: prismaMocks.buscarOrdemNaTransacao,
     updateMany: prismaMocks.atualizarOrdem
@@ -47,11 +51,16 @@ const txMock = {
     create: prismaMocks.criarPagamento,
     findFirst: prismaMocks.buscarPagamento,
     update: prismaMocks.atualizarPagamento
+  },
+  cobranca: {
+    updateMany: prismaMocks.cancelarCobrancas,
+    findFirst: prismaMocks.buscarCobrancaPaga
   }
 }
 
 const ordemBase = {
   id: 17,
+  orcamentoId: 12,
   valor: new Prisma.Decimal("100.00"),
   status: StatusOrdem.PRONTO,
   versao: 7
@@ -84,6 +93,9 @@ beforeEach(() => {
       executar: (transacao: typeof txMock) => Promise<unknown>
     ) => executar(txMock)
   )
+  prismaMocks.cancelarCobrancas.mockResolvedValue({ count: 0 })
+  prismaMocks.bloquearPagamento.mockResolvedValue([])
+  prismaMocks.buscarCobrancaPaga.mockResolvedValue(null)
 })
 
 describe("resumo de pagamentos", () => {
@@ -194,6 +206,23 @@ describe("registrarPagamentoService", () => {
         versao: { increment: 1 }
       }
     })
+    expect(prismaMocks.cancelarCobrancas).toHaveBeenCalledWith({
+      where: {
+        empresaId: 8,
+        status: "PENDENTE",
+        OR: [
+          { ordemId: 17 },
+          { orcamentoId: 12 }
+        ]
+      },
+      data: {
+        status: "CANCELADA",
+        canceladaEm: expect.any(Date)
+      }
+    })
+    expect(
+      prismaMocks.cancelarCobrancas.mock.invocationCallOrder[0]
+    ).toBeLessThan(prismaMocks.atualizarOrdem.mock.invocationCallOrder[0]!)
     expect(prismaMocks.criarPagamento).toHaveBeenCalledWith({
       data: {
         empresaId: 8,
@@ -243,6 +272,26 @@ describe("registrarPagamentoService", () => {
       resumo: {
         saldo: "20.00"
       }
+    })
+    expect(prismaMocks.atualizarOrdem).not.toHaveBeenCalled()
+    expect(prismaMocks.criarPagamento).not.toHaveBeenCalled()
+  })
+
+  it("bloqueia pagamento manual enquanto uma cobranca paga aguarda conciliacao", async () => {
+    prismaMocks.buscarOrdemNaTransacao.mockResolvedValueOnce(ordemBase)
+    prismaMocks.agruparPagamentos.mockResolvedValueOnce([])
+    prismaMocks.buscarCobrancaPaga.mockResolvedValue({ id: 31 })
+
+    const resultado = await registrarPagamentoService(17, 8, 23, {
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      valor: 40,
+      formaPagamento: FormaPagamento.DINHEIRO
+    })
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      motivo: "cobranca_em_conciliacao"
     })
     expect(prismaMocks.atualizarOrdem).not.toHaveBeenCalled()
     expect(prismaMocks.criarPagamento).not.toHaveBeenCalled()
@@ -374,7 +423,8 @@ describe("estornarPagamentoService", () => {
     prismaMocks.buscarOrdemNaTransacao.mockResolvedValueOnce(ordemBase)
     prismaMocks.buscarPagamento.mockResolvedValue({
       id: 21,
-      status: StatusRegistroPagamento.CONFIRMADO
+      status: StatusRegistroPagamento.CONFIRMADO,
+      origem: OrigemPagamento.MANUAL
     })
     prismaMocks.atualizarOrdem.mockResolvedValue({ count: 1 })
     prismaMocks.atualizarPagamento.mockResolvedValue(pagamentoEstornado)
@@ -424,7 +474,8 @@ describe("estornarPagamentoService", () => {
     prismaMocks.buscarOrdemNaTransacao.mockResolvedValueOnce(ordemBase)
     prismaMocks.buscarPagamento.mockResolvedValue({
       id: 21,
-      status: StatusRegistroPagamento.ESTORNADO
+      status: StatusRegistroPagamento.ESTORNADO,
+      origem: OrigemPagamento.MANUAL
     })
 
     const resultado = await estornarPagamentoService(17, 21, 8, 24, {
@@ -437,6 +488,37 @@ describe("estornarPagamentoService", () => {
       sucesso: false,
       motivo: "pagamento_ja_estornado"
     })
+    expect(prismaMocks.atualizarOrdem).not.toHaveBeenCalled()
+    expect(prismaMocks.atualizarPagamento).not.toHaveBeenCalled()
+  })
+
+  it("bloqueia estorno local de pagamento confirmado pelo gateway", async () => {
+    prismaMocks.buscarOrdemNaTransacao.mockResolvedValueOnce(ordemBase)
+    prismaMocks.buscarPagamento.mockResolvedValue({
+      id: 21,
+      status: StatusRegistroPagamento.CONFIRMADO,
+      origem: OrigemPagamento.GATEWAY
+    })
+
+    const resultado = await estornarPagamentoService(17, 21, 8, 24, {
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      motivo: "solicitacao do cliente"
+    })
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      motivo: "pagamento_gateway_exige_estorno_gateway"
+    })
+    expect(prismaMocks.buscarPagamento).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: {
+          id: true,
+          status: true,
+          origem: true
+        }
+      })
+    )
     expect(prismaMocks.atualizarOrdem).not.toHaveBeenCalled()
     expect(prismaMocks.atualizarPagamento).not.toHaveBeenCalled()
   })

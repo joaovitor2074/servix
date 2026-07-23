@@ -115,6 +115,16 @@ export async function registrarPagamentoController(
         })
       }
 
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return res.status(409).json({
+          erro: "Existe uma cobranca do gateway aguardando conciliacao.",
+          codigo: "PAGAMENTO_COBRANCA_EM_CONCILIACAO"
+        })
+      }
+
       return res.status(409).json({
         erro: "O valor do pagamento excede o saldo da ordem",
         codigo: "PAGAMENTO_EXCEDE_SALDO",
@@ -197,6 +207,13 @@ export async function estornarPagamentoController(
           detalhes: {
             statusAtual: resultado.statusAtual
           }
+        })
+      }
+
+      if (resultado.motivo === "pagamento_gateway_exige_estorno_gateway") {
+        return res.status(409).json({
+          erro: "Pagamentos confirmados pelo gateway devem ser estornados pelo provedor.",
+          codigo: "PAGAMENTO_GATEWAY_EXIGE_ESTORNO_NO_PROVEDOR"
         })
       }
 

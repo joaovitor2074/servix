@@ -7,6 +7,7 @@ import {
 } from '../../../shared/types/ordem.types'
 import { buscarResumoDashboard } from '../services/dashboard.service'
 import type {
+  CobrancaPendenteDashboard,
   PendenciaDashboard,
   ResumoDashboard,
   TipoPendenciaDashboard,
@@ -169,6 +170,14 @@ export default function DashboardPage({ usuario }: DashboardPageProps) {
           to="/orcamentos"
           icon={<BudgetIcon />}
         />
+        <MetricCard
+          label="Cobranças pendentes"
+          hint="Pix aguardando confirmação"
+          value={resumo.cobrancas.pendentes}
+          tone="red"
+          to="/dashboard#cobrancas-pendentes"
+          icon={<PixIcon />}
+        />
       </section>
 
       <div className="dashboard-grid">
@@ -225,6 +234,31 @@ export default function DashboardPage({ usuario }: DashboardPageProps) {
           </div>
         </section>
 
+        <section
+          className="dashboard-card dashboard-card--charges"
+          id="cobrancas-pendentes"
+        >
+          <CardHeader
+            eyebrow="Financeiro"
+            title="Cobranças pendentes"
+            description="Pix gerados que ainda aguardam confirmação do pagamento."
+          />
+
+          {resumo.cobrancas.listaPendentes.length === 0 ? (
+            <EmptyState
+              icon={<PixIcon />}
+              title="Nenhuma cobrança pendente"
+              description="Os pagamentos por gateway estão em dia."
+            />
+          ) : (
+            <div className="dashboard-charge-list">
+              {resumo.cobrancas.listaPendentes.map(cobranca => (
+                <ChargeRow cobranca={cobranca} key={cobranca.id} />
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="dashboard-card dashboard-card--open">
           <CardHeader
             eyebrow="Andamento"
@@ -253,7 +287,7 @@ export default function DashboardPage({ usuario }: DashboardPageProps) {
             <div className="dashboard-open-list">
               {resumo.ordens.emAberto.map(ordem => (
                 <Link className="dashboard-order" to={`/ordens/${ordem.id}`} key={ordem.id}>
-                  <span className="dashboard-order__number">OS #{ordem.id}</span>
+                  <span className="dashboard-order__number">OS #{ordem.numero}</span>
                   <span className="dashboard-order__main">
                     <strong>{ordem.equipamento}</strong>
                     <small>{ordem.cliente.nome}</small>
@@ -284,7 +318,7 @@ function MetricCard({
   label: string
   hint: string
   value: number
-  tone: 'blue' | 'amber' | 'green' | 'purple'
+  tone: 'blue' | 'amber' | 'green' | 'purple' | 'red'
   to: string
   icon: ReactNode
 }) {
@@ -296,6 +330,41 @@ function MetricCard({
         <strong>{value.toLocaleString('pt-BR')}</strong>
         <small>{hint}</small>
       </span>
+      <ArrowIcon />
+    </Link>
+  )
+}
+
+function ChargeRow({
+  cobranca,
+}: {
+  cobranca: CobrancaPendenteDashboard
+}) {
+  const destino = cobranca.ordem
+    ? `/ordens/${cobranca.ordem.id}`
+    : `/orcamentos/${cobranca.orcamento.id}`
+
+  return (
+    <Link className="dashboard-charge" to={destino}>
+      <span className="dashboard-charge__icon"><PixIcon /></span>
+      <span className="dashboard-charge__content">
+        <span className="dashboard-charge__topline">
+          <strong>Cobrança #{cobranca.id}</strong>
+          <small>Orçamento #{cobranca.orcamento.numero}</small>
+        </span>
+        <span className="dashboard-charge__service">
+          {cobranca.orcamento.equipamento} · {cobranca.orcamento.cliente.nome}
+        </span>
+        <span className="dashboard-charge__detail">
+          {cobranca.expiraEm
+            ? `Vence ${formatarDataHora(cobranca.expiraEm)}`
+            : 'Sem vencimento informado'}
+        </span>
+      </span>
+      <strong className="dashboard-charge__value">
+        {formatarMoeda(cobranca.valor)}
+      </strong>
+      <span className="dashboard-charge__status">Pendente</span>
       <ArrowIcon />
     </Link>
   )
@@ -337,7 +406,7 @@ function PendingRow({ pendencia }: { pendencia: PendenciaDashboard }) {
       <span className="dashboard-pending__content">
         <span className="dashboard-pending__topline">
           <strong>{meta.titulo}</strong>
-          <small>OS #{pendencia.id}</small>
+          <small>OS #{pendencia.numero}</small>
         </span>
         <span className="dashboard-pending__service">
           {pendencia.equipamento} · {pendencia.cliente.nome}
@@ -411,7 +480,7 @@ function DashboardSkeleton() {
       <span className="sr-only">Carregando dashboard</span>
       <div className="dashboard-skeleton dashboard-skeleton--title" />
       <div className="dashboard-metrics">
-        {Array.from({ length: 4 }, (_, index) => (
+        {Array.from({ length: 5 }, (_, index) => (
           <div className="dashboard-skeleton dashboard-skeleton--metric" key={index} />
         ))}
       </div>
@@ -432,6 +501,15 @@ function formatarData(data: string) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: 'short',
+  }).format(new Date(data))
+}
+
+function formatarDataHora(data: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(new Date(data))
 }
 
@@ -464,6 +542,10 @@ function CheckIcon() {
 
 function BudgetIcon() {
   return <Icon><path d="M7 3h10v4H7V3ZM5 5H4a1 1 0 0 0-1 1v15h18V6a1 1 0 0 0-1-1h-1M7 12h10M7 16h7" /></Icon>
+}
+
+function PixIcon() {
+  return <Icon><path d="M8.7 4.7 12 8l3.3-3.3a2.4 2.4 0 0 1 3.4 0l.6.6M5.3 5.3l-.6.6a2.4 2.4 0 0 0 0 3.4L8 12l-3.3 3.3a2.4 2.4 0 0 0 0 3.4l.6.6M18.7 18.7l.6-.6a2.4 2.4 0 0 0 0-3.4L16 12l3.3-3.3M8.7 19.3 12 16l3.3 3.3" /><path d="m8 12 4-4 4 4-4 4-4-4Z" /></Icon>
 }
 
 function PlusIcon() {

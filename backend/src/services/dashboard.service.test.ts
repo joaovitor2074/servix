@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
+  FormaPagamento,
+  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   StatusRegistroPagamento
@@ -8,10 +10,20 @@ import {
 
 const prismaMocks = vi.hoisted(() => ({
   contarClientes: vi.fn(),
+  contarCobrancas: vi.fn(),
   agruparOrdens: vi.fn(),
   listarOrdens: vi.fn(),
+  listarCobrancas: vi.fn(),
   agruparOrcamentos: vi.fn(),
   executarTransacao: vi.fn()
+}))
+
+const cobrancaServiceMocks = vi.hoisted(() => ({
+  expirarVencidas: vi.fn()
+}))
+
+vi.mock("./cobrancas.service.js", () => ({
+  expirarCobrancasVencidasService: cobrancaServiceMocks.expirarVencidas
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -26,6 +38,10 @@ vi.mock("../lib/prisma.js", () => ({
     orcamento: {
       groupBy: prismaMocks.agruparOrcamentos
     },
+    cobranca: {
+      count: prismaMocks.contarCobrancas,
+      findMany: prismaMocks.listarCobrancas
+    },
     $transaction: prismaMocks.executarTransacao
   }
 }))
@@ -35,6 +51,7 @@ import { buscarResumoDashboardService } from "./dashboard.service.js"
 describe("buscarResumoDashboardService", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    cobrancaServiceMocks.expirarVencidas.mockResolvedValue(0)
   })
 
   it("monta indicadores e filas operacionais isolados por empresa", async () => {
@@ -97,6 +114,26 @@ describe("buscarResumoDashboardService", () => {
         ]
       }
     ]
+    const cobrancasPendentes = [
+      {
+        id: 21,
+        valor: "300.00",
+        formaPagamento: FormaPagamento.PIX,
+        status: StatusCobranca.PENDENTE,
+        criadoEm,
+        expiraEm: new Date("2026-07-22T15:00:00.000Z"),
+        orcamento: {
+          id: 15,
+          numero: 20260015,
+          equipamento: "Notebook",
+          cliente
+        },
+        ordem: {
+          id: 9,
+          status: StatusOrdem.PRONTO
+        }
+      }
+    ]
 
     prismaMocks.executarTransacao.mockResolvedValue([
       4,
@@ -114,11 +151,14 @@ describe("buscarResumoDashboardService", () => {
       [
         { status: StatusOrcamento.ENVIADO, _count: { _all: 3 } },
         { status: StatusOrcamento.APROVADO, _count: { _all: 2 } }
-      ]
+      ],
+      1,
+      cobrancasPendentes
     ])
 
     const resumo = await buscarResumoDashboardService(12)
 
+    expect(cobrancaServiceMocks.expirarVencidas).toHaveBeenCalledWith(12)
     expect(prismaMocks.contarClientes).toHaveBeenCalledWith({
       where: { empresaId: 12 }
     })
@@ -146,6 +186,21 @@ describe("buscarResumoDashboardService", () => {
         where: expect.objectContaining({ empresaId: 12 })
       })
     )
+    expect(prismaMocks.contarCobrancas).toHaveBeenCalledWith({
+      where: {
+        empresaId: 12,
+        status: StatusCobranca.PENDENTE
+      }
+    })
+    expect(prismaMocks.listarCobrancas).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          empresaId: 12,
+          status: StatusCobranca.PENDENTE
+        },
+        take: 8
+      })
+    )
 
     expect(resumo.clientes.total).toBe(4)
     expect(resumo.ordens.total).toBe(11)
@@ -158,6 +213,10 @@ describe("buscarResumoDashboardService", () => {
     expect(resumo.orcamentos).toEqual({
       aguardandoCliente: 3,
       aprovadosParaOrdem: 2
+    })
+    expect(resumo.cobrancas).toEqual({
+      pendentes: 1,
+      listaPendentes: cobrancasPendentes
     })
 
     expect(resumo.ordens.pendencias).toEqual([
@@ -187,7 +246,16 @@ describe("buscarResumoDashboardService", () => {
   })
 
   it("retorna zero e listas vazias quando a empresa ainda nao tem operacao", async () => {
-    prismaMocks.executarTransacao.mockResolvedValue([0, [], [], [], [], []])
+    prismaMocks.executarTransacao.mockResolvedValue([
+      0,
+      [],
+      [],
+      [],
+      [],
+      [],
+      0,
+      []
+    ])
 
     const resumo = await buscarResumoDashboardService(99)
 
@@ -214,6 +282,10 @@ describe("buscarResumoDashboardService", () => {
       orcamentos: {
         aguardandoCliente: 0,
         aprovadosParaOrdem: 0
+      },
+      cobrancas: {
+        pendentes: 0,
+        listaPendentes: []
       }
     })
   })

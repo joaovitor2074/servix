@@ -7,10 +7,13 @@ import {
 
 const prismaMocks = vi.hoisted(() => ({
   executarTransacao: vi.fn(),
+  bloquearPagamento: vi.fn(),
   atualizarCondicionalmente: vi.fn(),
   buscarOrdemNaTransacao: vi.fn(),
   criarHistorico: vi.fn(),
-  agruparPagamentos: vi.fn()
+  agruparPagamentos: vi.fn(),
+  cancelarCobrancas: vi.fn(),
+  buscarCobrancaPaga: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -26,6 +29,7 @@ import {
 } from "./ordens.service.js"
 
 const txMock = {
+  $queryRaw: prismaMocks.bloquearPagamento,
   ordemServico: {
     updateMany: prismaMocks.atualizarCondicionalmente,
     findUnique: prismaMocks.buscarOrdemNaTransacao
@@ -35,6 +39,10 @@ const txMock = {
   },
   pagamento: {
     groupBy: prismaMocks.agruparPagamentos
+  },
+  cobranca: {
+    updateMany: prismaMocks.cancelarCobrancas,
+    findFirst: prismaMocks.buscarCobrancaPaga
   }
 }
 
@@ -42,6 +50,7 @@ const ordemBase = {
   id: 17,
   empresaId: 8,
   clienteId: 4,
+  orcamentoId: 12,
   equipamento: "Notebook",
   problemaRelatado: "Não liga",
   valor: "100.00",
@@ -68,6 +77,9 @@ beforeEach(() => {
     ) => executar(txMock)
   )
   prismaMocks.agruparPagamentos.mockResolvedValue([])
+  prismaMocks.bloquearPagamento.mockResolvedValue([])
+  prismaMocks.cancelarCobrancas.mockResolvedValue({ count: 0 })
+  prismaMocks.buscarCobrancaPaga.mockResolvedValue(null)
 })
 
 describe("alterarStatusOrdemService", () => {
@@ -81,7 +93,8 @@ describe("alterarStatusOrdemService", () => {
     const resultado = await alterarStatusOrdemService(17, 8, 23, {
       statusEsperado: StatusOrdem.RECEBIDO,
       versaoEsperada: 4,
-      status: StatusOrdem.EM_ANALISE
+      status: StatusOrdem.EM_ANALISE,
+      mensagemPublica: "Equipamento em análise."
     })
 
     expect(prismaMocks.atualizarCondicionalmente).toHaveBeenCalledWith({
@@ -103,6 +116,7 @@ describe("alterarStatusOrdemService", () => {
         empresaId: 8,
         statusAnterior: StatusOrdem.RECEBIDO,
         status: StatusOrdem.EM_ANALISE,
+        mensagemPublica: "Equipamento em análise.",
         alteradoPorId: 23
       }
     })
@@ -241,6 +255,25 @@ describe("alterarStatusOrdemService", () => {
     })
 
     expect(resultado).toEqual({ sucesso: true, ordem: ordemEntregue })
+    expect(prismaMocks.cancelarCobrancas).toHaveBeenCalledWith({
+      where: {
+        empresaId: 8,
+        status: "PENDENTE",
+        OR: [
+          { ordemId: 17 },
+          { orcamentoId: 12 }
+        ]
+      },
+      data: {
+        status: "CANCELADA",
+        canceladaEm: expect.any(Date)
+      }
+    })
+    expect(
+      prismaMocks.cancelarCobrancas.mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      prismaMocks.atualizarCondicionalmente.mock.invocationCallOrder[0]!
+    )
     expect(prismaMocks.atualizarCondicionalmente).toHaveBeenCalledOnce()
     expect(prismaMocks.criarHistorico).toHaveBeenCalledWith({
       data: {
@@ -251,6 +284,32 @@ describe("alterarStatusOrdemService", () => {
         alteradoPorId: 23
       }
     })
+  })
+
+  it("bloqueia status terminal com cobranca paga ainda nao conciliada", async () => {
+    const ordemPronta = {
+      ...ordemBase,
+      status: StatusOrdem.PRONTO,
+      versao: 7
+    }
+    prismaMocks.buscarOrdemNaTransacao.mockResolvedValueOnce(ordemPronta)
+    prismaMocks.agruparPagamentos.mockResolvedValueOnce([{
+      status: StatusRegistroPagamento.CONFIRMADO,
+      _sum: { valor: "100.00" }
+    }])
+    prismaMocks.buscarCobrancaPaga.mockResolvedValue({ id: 31 })
+
+    const resultado = await alterarStatusOrdemService(17, 8, 23, {
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      status: StatusOrdem.ENTREGUE
+    })
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      motivo: "cobranca_em_conciliacao"
+    })
+    expect(prismaMocks.atualizarCondicionalmente).not.toHaveBeenCalled()
   })
 
   it("mantém o mesmo estado sem incrementar versão nem criar histórico", async () => {
@@ -465,6 +524,12 @@ describe("removerOrdemService", () => {
       versaoEsperada: 4
     })
 
+    expect(prismaMocks.cancelarCobrancas).toHaveBeenCalledOnce()
+    expect(
+      prismaMocks.cancelarCobrancas.mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      prismaMocks.atualizarCondicionalmente.mock.invocationCallOrder[0]!
+    )
     expect(prismaMocks.atualizarCondicionalmente).toHaveBeenCalledWith({
       where: {
         id: 17,

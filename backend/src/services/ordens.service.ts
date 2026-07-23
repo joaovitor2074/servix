@@ -5,6 +5,10 @@ import {
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import {
+  abortarTransacaoComResultado,
+  executarTransacaoComRollback
+} from "../lib/transacao.js"
+import {
   listarStatusPermitidos,
   transicaoStatusEhPermitida
 } from "../rules/status-ordem.js"
@@ -13,6 +17,10 @@ import {
   calcularResumoPagamento,
   pagamentoEstaQuitado
 } from "./pagamentos.service.js"
+import {
+  buscarCobrancaPagaNaoConciliadaTx,
+  cancelarCobrancasPendentesTx
+} from "./cobrancas.service.js"
 import type {
   AlterarStatusOrdemInput,
   AtualizarOrdemInput,
@@ -87,6 +95,40 @@ async function validarRestricaoFinanceira(
   return null
 }
 
+async function cancelarPendenciasAntesDoStatusFinal(
+  tx: Prisma.TransactionClient,
+  ordem: { id: number; empresaId: number; orcamentoId: number },
+  proximoStatus: StatusOrdem
+) {
+  if (
+    proximoStatus !== StatusOrdem.ENTREGUE &&
+    proximoStatus !== StatusOrdem.CANCELADO
+  ) {
+    return
+  }
+
+  await cancelarCobrancasPendentesTx(tx, ordem.empresaId, {
+    ordemId: ordem.id,
+    orcamentoId: ordem.orcamentoId
+  })
+
+  const pagaNaoConciliada = await buscarCobrancaPagaNaoConciliadaTx(
+    tx,
+    ordem.empresaId,
+    {
+      ordemId: ordem.id,
+      orcamentoId: ordem.orcamentoId
+    }
+  )
+
+  if (pagaNaoConciliada) {
+    abortarTransacaoComResultado({
+      sucesso: false as const,
+      motivo: "cobranca_em_conciliacao" as const
+    })
+  }
+}
+
 // Depois que o UPDATE condicional falha, esta consulta diferencia uma ordem
 // inexistente de uma fotografia desatualizada sem expor dados de outra empresa.
 function criarResultadoDeConflito(
@@ -143,6 +185,7 @@ export async function listarOrdensService(
   empresaId: number,
   filtros: ListarOrdensQuery
 ) {
+  const numeroBuscado = filtros.busca ? Number(filtros.busca) : NaN
   const where: Prisma.OrdemServicoWhereInput = {
     empresaId,
     ...(filtros.status ? { status: filtros.status } : {}),
@@ -150,6 +193,9 @@ export async function listarOrdensService(
     ...(filtros.busca
       ? {
           OR: [
+            ...(Number.isInteger(numeroBuscado) && numeroBuscado > 0
+              ? [{ numero: numeroBuscado }]
+              : []),
             {
               equipamento: {
                 contains: filtros.busca,
@@ -192,7 +238,9 @@ export async function listarOrdensService(
   ])
 
   return {
-    dados,
+    // O bearer token só é necessário no detalhe da OS para copiar o link.
+    // A listagem não o distribui em massa para o navegador autenticado.
+    dados: dados.map(({ tokenAcompanhamento: _token, ...ordem }) => ordem),
     paginacao: {
       pagina: filtros.pagina,
       limite: filtros.limite,
@@ -262,7 +310,7 @@ export async function atualizarOrdemService(
   usuarioId: number,
   dados: AtualizarOrdemInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
@@ -321,7 +369,8 @@ export async function atualizarOrdemService(
       campo =>
         campo !== "statusEsperado" &&
         campo !== "versaoEsperada" &&
-        campo !== "status"
+        campo !== "status" &&
+        campo !== "mensagemPublica"
     )
 
     if (dados.status === ordemAtual.status && !possuiOutroCampo) {
@@ -329,6 +378,14 @@ export async function atualizarOrdemService(
         sucesso: true as const,
         ordem: ordemAtual
       }
+    }
+
+    if (dados.status !== undefined) {
+      await cancelarPendenciasAntesDoStatusFinal(
+        tx,
+        ordemAtual,
+        dados.status
+      )
     }
 
     // Spreads condicionais diferenciam campo ausente de um valor enviado.
@@ -363,13 +420,14 @@ export async function atualizarOrdemService(
     })
 
     if (atualizacao.count === 0) {
-      return buscarFalhaDeConcorrencia(
+      const falha = await buscarFalhaDeConcorrencia(
         tx,
         id,
         empresaId,
         dados.statusEsperado,
         dados.versaoEsperada
       )
+      abortarTransacaoComResultado(falha)
     }
 
     // O histórico só ganha uma linha depois que o compare-and-swap venceu.
@@ -383,6 +441,9 @@ export async function atualizarOrdemService(
           empresaId,
           statusAnterior: dados.statusEsperado,
           status: dados.status,
+          ...(dados.mensagemPublica !== undefined && {
+            mensagemPublica: dados.mensagemPublica
+          }),
           alteradoPorId: usuarioId
         }
       })
@@ -412,7 +473,7 @@ export async function alterarStatusOrdemService(
   usuarioId: number,
   dados: AlterarStatusOrdemInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
@@ -468,6 +529,12 @@ export async function alterarStatusOrdemService(
 
     if (restricaoFinanceira) return restricaoFinanceira
 
+    await cancelarPendenciasAntesDoStatusFinal(
+      tx,
+      ordemAtual,
+      dados.status
+    )
+
     const atualizacao = await tx.ordemServico.updateMany({
       where: {
         id,
@@ -482,13 +549,14 @@ export async function alterarStatusOrdemService(
     })
 
     if (atualizacao.count === 0) {
-      return buscarFalhaDeConcorrencia(
+      const falha = await buscarFalhaDeConcorrencia(
         tx,
         id,
         empresaId,
         dados.statusEsperado,
         dados.versaoEsperada
       )
+      abortarTransacaoComResultado(falha)
     }
 
     if (dados.status !== dados.statusEsperado) {
@@ -498,6 +566,9 @@ export async function alterarStatusOrdemService(
           empresaId,
           statusAnterior: dados.statusEsperado,
           status: dados.status,
+          ...(dados.mensagemPublica !== undefined && {
+            mensagemPublica: dados.mensagemPublica
+          }),
           alteradoPorId: usuarioId
         }
       })
@@ -569,7 +640,7 @@ export async function removerOrdemService(
   usuarioId: number,
   dados: CancelarOrdemInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
@@ -630,6 +701,12 @@ export async function removerOrdemService(
 
     if (restricaoFinanceira) return restricaoFinanceira
 
+    await cancelarPendenciasAntesDoStatusFinal(
+      tx,
+      ordemAtual,
+      StatusOrdem.CANCELADO
+    )
+
     const atualizacao = await tx.ordemServico.updateMany({
       where: {
         id,
@@ -644,13 +721,14 @@ export async function removerOrdemService(
     })
 
     if (atualizacao.count === 0) {
-      return buscarFalhaDeConcorrencia(
+      const falha = await buscarFalhaDeConcorrencia(
         tx,
         id,
         empresaId,
         dados.statusEsperado,
         dados.versaoEsperada
       )
+      abortarTransacaoComResultado(falha)
     }
 
     if (dados.statusEsperado !== StatusOrdem.CANCELADO) {
@@ -660,6 +738,9 @@ export async function removerOrdemService(
           empresaId,
           statusAnterior: dados.statusEsperado,
           status: StatusOrdem.CANCELADO,
+          ...(dados.mensagemPublica !== undefined && {
+            mensagemPublica: dados.mensagemPublica
+          }),
           alteradoPorId: usuarioId
         }
       })

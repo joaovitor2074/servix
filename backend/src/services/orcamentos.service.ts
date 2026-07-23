@@ -1,16 +1,28 @@
 import { Prisma } from "../generated/prisma/client.js"
 import {
+  FormaPagamento,
+  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   type StatusOrcamento as StatusOrcamentoType
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import {
+  abortarTransacaoComResultado,
+  executarTransacaoComRollback
+} from "../lib/transacao.js"
+import {
+  cancelarCobrancasPendentesTx,
+  configuracaoPagamentoAceitaPix,
+  materializarPagamentoDaCobrancaTx
+} from "./cobrancas.service.js"
+import {
   listarStatusOrcamentoPermitidos,
   transicaoStatusOrcamentoEhPermitida
 } from "../rules/status-orcamento.js"
 import type {
   AcaoPublicaOrcamentoInput,
+  AprovacaoPublicaOrcamentoInput,
   AlterarStatusOrcamentoInput,
   AtualizarOrcamentoInput,
   CriarOrcamentoInput,
@@ -41,6 +53,7 @@ const orcamentoResumoInclude = {
   ordem: {
     select: {
       id: true,
+      numero: true,
       status: true,
       versao: true,
       criadoEm: true
@@ -74,14 +87,25 @@ const orcamentoPublicoSelect = {
   total: true,
   validade: true,
   observacoes: true,
+  formaPagamentoEscolhida: true,
   versao: true,
   enviadoEm: true,
   aprovadoEm: true,
   empresa: {
     select: {
+      id: true,
       nome: true,
       telefone: true,
-      email: true
+      email: true,
+      configuracaoPagamento: {
+        select: {
+          provedor: true,
+          ambiente: true,
+          status: true,
+          ativo: true,
+          pixHabilitado: true
+        }
+      }
     }
   },
   cliente: {
@@ -91,7 +115,6 @@ const orcamentoPublicoSelect = {
   },
   itens: {
     select: {
-      id: true,
       descricao: true,
       quantidade: true,
       valorUnitario: true,
@@ -99,8 +122,44 @@ const orcamentoPublicoSelect = {
       tipo: true
     },
     orderBy: { id: "asc" as const }
+  },
+  ordem: {
+    select: {
+      tokenAcompanhamento: true
+    }
   }
 } as const
+
+type OrcamentoPublicoSelecionado = Prisma.OrcamentoGetPayload<{
+  select: typeof orcamentoPublicoSelect
+}>
+
+function sanitizarOrcamentoPublico(
+  orcamento: OrcamentoPublicoSelecionado
+) {
+  const {
+    configuracaoPagamento,
+    id: empresaId,
+    ...empresa
+  } = orcamento.empresa
+  const { ordem, ...dadosPublicos } = orcamento
+
+  return {
+    ...dadosPublicos,
+    empresa,
+    formaPagamentoEscolhida:
+      orcamento.formaPagamentoEscolhida === FormaPagamento.NAO_INFORMADA
+          ? null
+          : orcamento.formaPagamentoEscolhida,
+    pixDisponivel: configuracaoPagamentoAceitaPix(
+      configuracaoPagamento,
+      empresaId
+    ),
+    ...(ordem && {
+      tokenAcompanhamento: ordem.tokenAcompanhamento
+    })
+  }
+}
 
 type ItemRecebido = CriarOrcamentoInput["itens"][number]
 const limiteMonetario = new Prisma.Decimal("9999999999.99")
@@ -250,7 +309,8 @@ async function aplicarTransicao(
   },
   proximoStatus: StatusOrcamentoType,
   alteradoPorId: number | null,
-  observacao: string | null | undefined
+  observacao: string | null | undefined,
+  camposExtras: Prisma.OrcamentoUncheckedUpdateManyInput = {}
 ) {
   const agora = new Date()
   const novaVersao = atual.versao + 1
@@ -264,7 +324,8 @@ async function aplicarTransicao(
     data: {
       status: proximoStatus,
       versao: { increment: 1 },
-      ...camposDeDataParaStatus(proximoStatus, agora)
+      ...camposDeDataParaStatus(proximoStatus, agora),
+      ...camposExtras
     }
   })
 
@@ -447,7 +508,7 @@ export async function atualizarOrcamentoService(
   empresaId: number,
   dados: AtualizarOrcamentoInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const atual = await tx.orcamento.findUnique({
       where: {
         id_empresaId: { id, empresaId }
@@ -609,7 +670,7 @@ export async function alterarStatusOrcamentoService(
   usuarioId: number,
   dados: AlterarStatusOrcamentoInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const atual = await tx.orcamento.findUnique({
       where: {
         id_empresaId: { id, empresaId }
@@ -664,6 +725,31 @@ export async function alterarStatusOrcamentoService(
       }
     }
 
+    if (
+      atual.status === StatusOrcamento.APROVADO &&
+      dados.status === StatusOrcamento.CANCELADO
+    ) {
+      await cancelarCobrancasPendentesTx(tx, empresaId, {
+        orcamentoId: id
+      })
+
+      const cobrancaPaga = await tx.cobranca.findFirst({
+        where: {
+          empresaId,
+          orcamentoId: id,
+          status: StatusCobranca.PAGA
+        },
+        select: { id: true }
+      })
+
+      if (cobrancaPaga) {
+        abortarTransacaoComResultado({
+          sucesso: false as const,
+          motivo: "cobranca_paga" as const
+        })
+      }
+    }
+
     const transicao = await aplicarTransicao(
       tx,
       atual,
@@ -673,7 +759,7 @@ export async function alterarStatusOrcamentoService(
     )
 
     if (!transicao.sucesso) {
-      return transicao
+      abortarTransacaoComResultado(transicao)
     }
 
     const orcamento = await tx.orcamento.findUnique({
@@ -787,18 +873,32 @@ export async function transformarOrcamentoEmOrdemService(
       )
     }
 
+    // O contador é incrementado dentro da mesma transação serializável da
+    // conversão. Duas OS da mesma empresa nunca recebem o mesmo número e um
+    // rollback também desfaz a reserva.
+    const numeracao = await tx.empresa.update({
+      where: { id: empresaId },
+      data: {
+        proximoNumeroOrdem: { increment: 1 }
+      },
+      select: { proximoNumeroOrdem: true }
+    })
+
     const ordem = await tx.ordemServico.create({
       data: {
+        numero: numeracao.proximoNumeroOrdem - 1,
         empresaId,
         clienteId: atual.clienteId,
         orcamentoId: atual.id,
         equipamento: atual.equipamento,
         problemaRelatado: atual.descricaoProblema,
         valor: atual.total,
+        formaDePagamento: atual.formaPagamentoEscolhida,
         status: StatusOrdem.RECEBIDO,
         historico: {
           create: {
             status: StatusOrdem.RECEBIDO,
+            mensagemPublica: "Ordem de serviço recebida.",
             alteradoPorId: usuarioId
           }
         }
@@ -807,6 +907,26 @@ export async function transformarOrcamentoEmOrdemService(
         cliente: clienteResumo
       }
     })
+
+    // Uma cobranca pode ter sido paga logo apos a aprovacao, antes de existir
+    // OS. A conversao associa e materializa essas entradas no ledger uma vez.
+    const cobrancasPagas = await tx.cobranca.findMany({
+      where: {
+        empresaId,
+        orcamentoId: id,
+        status: StatusCobranca.PAGA
+      },
+      select: { id: true }
+    })
+
+    for (const cobranca of cobrancasPagas) {
+      await materializarPagamentoDaCobrancaTx(
+        tx,
+        cobranca.id,
+        empresaId,
+        false
+      )
+    }
 
     await tx.historicoStatusOrcamento.create({
       data: {
@@ -828,16 +948,18 @@ export async function transformarOrcamentoEmOrdemService(
   })
 }
 
-export function buscarOrcamentoPublicoService(token: string) {
-  return prisma.orcamento.findUnique({
+export async function buscarOrcamentoPublicoService(token: string) {
+  const orcamento = await prisma.orcamento.findUnique({
     where: { tokenPublico: token },
     select: orcamentoPublicoSelect
   })
+
+  return orcamento ? sanitizarOrcamentoPublico(orcamento) : null
 }
 
 async function executarAcaoPublicaOrcamento(
   token: string,
-  dados: AcaoPublicaOrcamentoInput,
+  dados: AcaoPublicaOrcamentoInput | AprovacaoPublicaOrcamentoInput,
   proximoStatus: typeof StatusOrcamento.APROVADO | typeof StatusOrcamento.REJEITADO
 ) {
   return prisma.$transaction(async tx => {
@@ -894,6 +1016,34 @@ async function executarAcaoPublicaOrcamento(
       }
     }
 
+    if (proximoStatus === StatusOrcamento.APROVADO) {
+      const formaPagamento = (dados as AprovacaoPublicaOrcamentoInput)
+        .formaPagamento
+
+      if (formaPagamento === FormaPagamento.PIX) {
+        const configuracao = await tx.configuracaoPagamento.findUnique({
+          where: { empresaId: atual.empresaId },
+          select: {
+            provedor: true,
+            ambiente: true,
+            status: true,
+            ativo: true,
+            pixHabilitado: true
+          }
+        })
+
+        if (!configuracaoPagamentoAceitaPix(
+          configuracao,
+          atual.empresaId
+        )) {
+          return {
+            sucesso: false as const,
+            motivo: "pix_indisponivel" as const
+          }
+        }
+      }
+    }
+
     const transicao = await aplicarTransicao(
       tx,
       atual,
@@ -901,7 +1051,14 @@ async function executarAcaoPublicaOrcamento(
       null,
       proximoStatus === StatusOrcamento.APROVADO
         ? "Orcamento aprovado pelo link publico"
-        : "Orcamento rejeitado pelo link publico"
+        : "Orcamento rejeitado pelo link publico",
+      proximoStatus === StatusOrcamento.APROVADO
+        ? {
+            formaPagamentoEscolhida: (
+              dados as AprovacaoPublicaOrcamentoInput
+            ).formaPagamento
+          }
+        : {}
     )
 
     if (!transicao.sucesso) {
@@ -915,14 +1072,14 @@ async function executarAcaoPublicaOrcamento(
 
     return {
       sucesso: true as const,
-      orcamento: orcamento!
+      orcamento: sanitizarOrcamentoPublico(orcamento!)
     }
   })
 }
 
 export function aprovarOrcamentoPublicoService(
   token: string,
-  dados: AcaoPublicaOrcamentoInput
+  dados: AprovacaoPublicaOrcamentoInput
 ) {
   return executarAcaoPublicaOrcamento(
     token,

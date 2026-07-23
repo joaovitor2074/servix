@@ -3,7 +3,9 @@ import type { RespostaPaginada } from '../../../shared/types/api.types'
 import type {
   AlterarStatusOrcamentoInput,
   AtualizarOrcamentoInput,
+  CobrancaPublica,
   CriarOrcamentoInput,
+  FormaPagamentoPublica,
   Orcamento,
   OrcamentoPublico,
   StatusOrcamento,
@@ -26,18 +28,21 @@ export class OrcamentoApiError extends Error {
   readonly status: number
   readonly codigo?: string
   readonly detalhes?: unknown
+  readonly retryAfterSegundos?: number
 
   constructor(
     message: string,
     status: number,
     codigo?: string,
     detalhes?: unknown,
+    retryAfterSegundos?: number,
   ) {
     super(message)
     this.name = 'OrcamentoApiError'
     this.status = status
     this.codigo = codigo
     this.detalhes = detalhes
+    this.retryAfterSegundos = retryAfterSegundos
   }
 }
 
@@ -159,12 +164,16 @@ export async function responderOrcamentoPublico(
   token: string,
   acao: 'aprovar' | 'rejeitar',
   versaoEsperada: number,
+  formaPagamento?: FormaPagamentoPublica,
 ): Promise<OrcamentoPublico> {
   const resposta = await apiFetch(
     `/publico/orcamentos/${encodeURIComponent(token)}/${acao}`,
     {
       method: 'POST',
-      body: JSON.stringify({ versaoEsperada }),
+      body: JSON.stringify({
+        versaoEsperada,
+        ...(acao === 'aprovar' && formaPagamento ? { formaPagamento } : {}),
+      }),
     },
   )
 
@@ -173,6 +182,43 @@ export async function responderOrcamentoPublico(
     acao === 'aprovar'
       ? 'Não foi possível aprovar o orçamento'
       : 'Não foi possível rejeitar o orçamento',
+  )
+}
+
+export async function buscarCobrancaPublica(
+  token: string,
+  options: RequestOptions = {},
+): Promise<CobrancaPublica | null> {
+  const resposta = await apiFetch(
+    `/publico/orcamentos/${encodeURIComponent(token)}/cobranca`,
+    { cache: 'no-store', signal: options.signal },
+  )
+
+  if (resposta.status === 204) return null
+
+  return lerResposta<CobrancaPublica>(
+    resposta,
+    'NÃ£o foi possÃ­vel consultar a cobranÃ§a',
+  )
+}
+
+export async function criarCobrancaPublica(
+  token: string,
+  chaveIdempotencia: string,
+  options: RequestOptions = {},
+): Promise<CobrancaPublica> {
+  const resposta = await apiFetch(
+    `/publico/orcamentos/${encodeURIComponent(token)}/cobrancas`,
+    {
+      method: 'POST',
+      headers: { 'Idempotency-Key': chaveIdempotencia },
+      signal: options.signal,
+    },
+  )
+
+  return lerResposta<CobrancaPublica>(
+    resposta,
+    'NÃ£o foi possÃ­vel gerar a cobranÃ§a Pix',
   )
 }
 
@@ -200,12 +246,14 @@ async function lerResposta<T>(resposta: Response, mensagemPadrao: string) {
         ? objeto.codigo
         : undefined
     const detalhes = objeto && 'detalhes' in objeto ? objeto.detalhes : undefined
+    const retryAfter = Number(resposta.headers.get('Retry-After'))
 
     throw new OrcamentoApiError(
       mensagem,
       resposta.status,
       codigo,
       detalhes,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     )
   }
 

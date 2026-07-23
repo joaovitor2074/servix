@@ -30,6 +30,7 @@ export const editarOrdemSchema = z.object({
   tecnicoResponsavel: textoOpcional(120),
   previsaoDeEntrega: previsaoSchema,
   status: z.enum(STATUS_ORDEM),
+  mensagemPublica: textoOpcional(500),
 })
 
 export type EditarOrdemFormData = z.infer<typeof editarOrdemSchema>

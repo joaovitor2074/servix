@@ -313,7 +313,7 @@ function OrdersContent({
             {dados.map(ordem => (
               <tr key={ordem.id}>
                 <td data-label="Ordem">
-                  <strong className="orders-table__id">#{ordem.id}</strong>
+                  <strong className="orders-table__id">#{ordem.numero}</strong>
                 </td>
                 <td data-label="Cliente">
                   <div className="orders-table__primary">
@@ -344,7 +344,7 @@ function OrdersContent({
                   <Link
                     className="orders-table__view"
                     to={`/ordens/${ordem.id}`}
-                    aria-label={`Ver detalhes da ordem ${ordem.id}`}
+                    aria-label={`Ver detalhes da ordem ${ordem.numero}`}
                     title="Ver detalhes"
                   >
                     <EyeIcon />

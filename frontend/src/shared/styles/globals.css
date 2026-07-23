@@ -50,6 +50,15 @@ body {
   min-height: 100vh;
 }
 
+.route-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
 button,
 input,
 textarea,

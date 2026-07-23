@@ -264,6 +264,13 @@
   resize: vertical;
 }
 
+.edit-order-field textarea:disabled {
+  color: #98a2b3;
+  border-color: #e4e7ec;
+  background: #f2f4f7;
+  cursor: not-allowed;
+}
+
 .edit-order-field input:focus,
 .edit-order-field textarea:focus,
 .edit-order-field select:focus,

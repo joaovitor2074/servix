@@ -73,6 +73,62 @@ describe("validação de ordens", () => {
     ).toBe(true)
   })
 
+  it("aceita mensagem pública somente em uma mudança real de status", () => {
+    const mudanca = validarAlteracaoStatus({
+      statusEsperado: StatusOrdem.RECEBIDO,
+      versaoEsperada: 1,
+      status: StatusOrdem.EM_ANALISE,
+      mensagemPublica: "  Equipamento em análise.  "
+    })
+
+    expect(mudanca.valido).toBe(true)
+    if (mudanca.valido) {
+      expect(mudanca.dados.mensagemPublica).toBe(
+        "Equipamento em análise."
+      )
+    }
+
+    expect(
+      validarAlteracaoStatus({
+        statusEsperado: StatusOrdem.RECEBIDO,
+        versaoEsperada: 1,
+        status: StatusOrdem.RECEBIDO,
+        mensagemPublica: "Mensagem sem mudança"
+      }).valido
+    ).toBe(false)
+
+    expect(
+      validarAtualizacaoOrdem({
+        statusEsperado: StatusOrdem.RECEBIDO,
+        versaoEsperada: 1,
+        diagnostico: "Fonte queimada",
+        mensagemPublica: "Não deve acompanhar edição técnica"
+      }).valido
+    ).toBe(false)
+  })
+
+  it("limita a mensagem pública e normaliza texto vazio", () => {
+    expect(
+      validarAlteracaoStatus({
+        statusEsperado: StatusOrdem.RECEBIDO,
+        versaoEsperada: 1,
+        status: StatusOrdem.EM_ANALISE,
+        mensagemPublica: "x".repeat(501)
+      }).valido
+    ).toBe(false)
+
+    const vazio = validarAlteracaoStatus({
+      statusEsperado: StatusOrdem.RECEBIDO,
+      versaoEsperada: 1,
+      status: StatusOrdem.EM_ANALISE,
+      mensagemPublica: "   "
+    })
+    expect(vazio.valido).toBe(true)
+    if (vazio.valido) {
+      expect(vazio.dados.mensagemPublica).toBeNull()
+    }
+  })
+
   it("protege o cancelamento com status e versão esperados", () => {
     expect(validarCancelamentoOrdem({}).valido).toBe(false)
     expect(

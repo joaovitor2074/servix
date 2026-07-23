@@ -81,6 +81,27 @@ describe("controllers de ordens", () => {
     expect(next).not.toHaveBeenCalled()
   })
 
+  it("traduz cobranca em conciliacao para conflito da ordem", async () => {
+    serviceMocks.alterarStatusOrdemService.mockResolvedValue({
+      sucesso: false,
+      motivo: "cobranca_em_conciliacao"
+    })
+    const req = criarRequest({
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      status: StatusOrdem.ENTREGUE
+    })
+    const { response, status, json } = criarResponse()
+
+    await alterarStatusOrdem(req, response, next)
+
+    expect(status).toHaveBeenCalledWith(409)
+    expect(json).toHaveBeenCalledWith({
+      erro: "Existe uma cobranca do gateway aguardando conciliacao.",
+      codigo: "ORDEM_COBRANCA_EM_CONCILIACAO"
+    })
+  })
+
   it("mantem codigo distinto para transicao de status invalida", async () => {
     serviceMocks.atualizarOrdemService.mockResolvedValue({
       sucesso: false,

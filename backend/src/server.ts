@@ -1,5 +1,11 @@
 import app from "./app.js"
-import { env, obterJwtSecret } from "./config/env.js"
+import { obterModoBillingServix } from "./billing/billing-servix.config.js"
+import {
+  env,
+  gatewayPagamentoSimuladoHabilitado,
+  obterJwtSecret,
+  obterModoPagamentosClientesMercadoPago
+} from "./config/env.js"
 import { prisma } from "./lib/prisma.js"
 
 // Falha imediatamente na inicialização caso o segredo JWT esteja ausente ou
@@ -9,6 +15,15 @@ obterJwtSecret()
 // Este é o ponto de entrada usado por `npm run dev` e pelo build de produção.
 const server = app.listen(env.port, env.host, () => {
   console.log(`Servidor rodando em http://${env.host}:${env.port}`)
+  // Registra somente estados nao sensiveis. Isso permite conferir no Railway
+  // que o beta iniciou bloqueado para dinheiro real sem revelar credenciais.
+  console.log("Modos financeiros:", {
+    assinaturaServix: obterModoBillingServix(),
+    pagamentosClientes: obterModoPagamentosClientesMercadoPago(),
+    simulador: gatewayPagamentoSimuladoHabilitado()
+      ? "HABILITADO"
+      : "DESABILITADO"
+  })
 })
 
 // Encerra o servidor de forma controlada e libera a conexão com o banco.

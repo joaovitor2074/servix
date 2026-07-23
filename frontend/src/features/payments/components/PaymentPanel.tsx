@@ -252,6 +252,9 @@ export default function PaymentPanel({ ordem, onChanged }: PaymentPanelProps) {
                 <div>
                   <strong>{formatarMoeda(pagamento.valor)}</strong>
                   <span>{FORMA_PAGAMENTO_LABELS[pagamento.formaPagamento]}</span>
+                  {pagamento.origem === 'GATEWAY' && (
+                    <span>Confirmado automaticamente pelo gateway</span>
+                  )}
                   <time dateTime={pagamento.pagoEm}>
                     {formatarDataHora(pagamento.pagoEm)}
                   </time>
@@ -260,7 +263,9 @@ export default function PaymentPanel({ ordem, onChanged }: PaymentPanelProps) {
                   <span className={pagamento.status === 'ESTORNADO' ? 'is-refunded' : ''}>
                     {pagamento.status === 'ESTORNADO' ? 'Estornado' : 'Confirmado'}
                   </span>
-                  {pagamento.status === 'CONFIRMADO' && !finalizada && (
+                  {pagamento.status === 'CONFIRMADO' &&
+                    pagamento.origem !== 'GATEWAY' &&
+                    !finalizada && (
                     <button
                       type="button"
                       disabled={salvando}

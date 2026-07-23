@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import {
+  FormaPagamento,
   StatusOrcamento,
   TipoItemOrcamento
 } from "../generated/prisma/enums.js"
@@ -118,9 +119,25 @@ export const transformarOrcamentoSchema = z
   })
   .strict()
 
+const formaPagamentoPublicaSchema = z.enum([
+  FormaPagamento.PIX,
+  FormaPagamento.DINHEIRO,
+  FormaPagamento.CARTAO_CREDITO,
+  FormaPagamento.CARTAO_DEBITO,
+  FormaPagamento.BOLETO,
+  FormaPagamento.OUTRO
+])
+
 export const acaoPublicaOrcamentoSchema = z
   .object({
     versaoEsperada: z.number().int().positive()
+  })
+  .strict()
+
+export const aprovacaoPublicaOrcamentoSchema = z
+  .object({
+    versaoEsperada: z.number().int().positive(),
+    formaPagamento: formaPagamentoPublicaSchema
   })
   .strict()
 
@@ -145,6 +162,9 @@ export type TransformarOrcamentoInput = z.infer<
 export type AcaoPublicaOrcamentoInput = z.infer<
   typeof acaoPublicaOrcamentoSchema
 >
+export type AprovacaoPublicaOrcamentoInput = z.infer<
+  typeof aprovacaoPublicaOrcamentoSchema
+>
 export type ListarOrcamentosQuery = z.infer<
   typeof listarOrcamentosQuerySchema
 >
@@ -167,6 +187,10 @@ export function validarTransformacaoOrcamento(dados: unknown) {
 
 export function validarAcaoPublicaOrcamento(dados: unknown) {
   return validarComSchema(acaoPublicaOrcamentoSchema, dados)
+}
+
+export function validarAprovacaoPublicaOrcamento(dados: unknown) {
+  return validarComSchema(aprovacaoPublicaOrcamentoSchema, dados)
 }
 
 export function validarQueryOrcamentos(dados: unknown) {

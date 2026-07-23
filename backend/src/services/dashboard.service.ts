@@ -1,4 +1,6 @@
 import {
+  FormaPagamento,
+  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   StatusRegistroPagamento
@@ -9,6 +11,7 @@ import {
   calcularResumoPagamento,
   type ResumoPagamento
 } from "./pagamentos.service.js"
+import { expirarCobrancasVencidasService } from "./cobrancas.service.js"
 
 const STATUS_ORDENS_ABERTAS = [
   StatusOrdem.RECEBIDO,
@@ -20,6 +23,7 @@ const STATUS_ORDENS_ABERTAS = [
 
 type OrdemResumoDashboard = {
   id: number
+  numero: number
   equipamento: string
   status: StatusOrdem
   criadoEm: Date
@@ -64,10 +68,37 @@ type Resumo = {
     aguardandoCliente: number
     aprovadosParaOrdem: number
   }
+  cobrancas: {
+    pendentes: number
+    listaPendentes: CobrancaPendenteDashboard[]
+  }
+}
+
+type CobrancaPendenteDashboard = {
+  id: number
+  valor: Prisma.Decimal
+  formaPagamento: FormaPagamento
+  status: StatusCobranca
+  criadoEm: Date
+  expiraEm: Date | null
+  orcamento: {
+    id: number
+    numero: number
+    equipamento: string
+    cliente: {
+      id: number
+      nome: string
+    }
+  }
+  ordem: {
+    id: number
+    status: StatusOrdem
+  } | null
 }
 
 const ordemAbertaSelect = {
   id: true,
+  numero: true,
   equipamento: true,
   status: true,
   criadoEm: true,
@@ -84,6 +115,10 @@ const ordemAbertaSelect = {
 export async function buscarResumoDashboardService(
   empresaId: number
 ): Promise<Resumo> {
+  // Atualiza estados vencidos antes de montar o indicador. Assim uma cobranca
+  // cujo Pix expirou nunca continua inflando a fila de pendencias.
+  await expirarCobrancasVencidasService(empresaId)
+
   // Todas as consultas usam o empresaId autenticado e compartilham a mesma
   // transacao, evitando que a dashboard misture dados de momentos diferentes.
   const [
@@ -92,7 +127,9 @@ export async function buscarResumoDashboardService(
     ordensRecentes,
     ordensEmAberto,
     ordensComPendencia,
-    contagensOrcamentos
+    contagensOrcamentos,
+    totalCobrancasPendentes,
+    cobrancasPendentes
   ] = await prisma.$transaction([
     prisma.cliente.count({
       where: { empresaId }
@@ -110,6 +147,7 @@ export async function buscarResumoDashboardService(
       take: 5,
       select: {
         id: true,
+        numero: true,
         equipamento: true,
         status: true,
         criadoEm: true,
@@ -161,6 +199,47 @@ export async function buscarResumoDashboardService(
       },
       _count: {
         _all: true
+      }
+    }),
+    prisma.cobranca.count({
+      where: {
+        empresaId,
+        status: StatusCobranca.PENDENTE
+      }
+    }),
+    prisma.cobranca.findMany({
+      where: {
+        empresaId,
+        status: StatusCobranca.PENDENTE
+      },
+      orderBy: [{ expiraEm: "asc" }, { criadoEm: "asc" }, { id: "asc" }],
+      take: 8,
+      select: {
+        id: true,
+        valor: true,
+        formaPagamento: true,
+        status: true,
+        criadoEm: true,
+        expiraEm: true,
+        orcamento: {
+          select: {
+            id: true,
+            numero: true,
+            equipamento: true,
+            cliente: {
+              select: {
+                id: true,
+                nome: true
+              }
+            }
+          }
+        },
+        ordem: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
       }
     })
   ])
@@ -241,6 +320,10 @@ export async function buscarResumoDashboardService(
     orcamentos: {
       aguardandoCliente: contagemOrcamento(StatusOrcamento.ENVIADO),
       aprovadosParaOrdem: contagemOrcamento(StatusOrcamento.APROVADO)
+    },
+    cobrancas: {
+      pendentes: totalCobrancasPendentes,
+      listaPendentes: cobrancasPendentes
     }
   }
 }

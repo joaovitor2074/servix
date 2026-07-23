@@ -5,6 +5,14 @@ import {
   StatusRegistroPagamento
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
+import {
+  abortarTransacaoComResultado,
+  executarTransacaoComRollback
+} from "../lib/transacao.js"
+import {
+  buscarCobrancaPagaNaoConciliadaTx,
+  cancelarCobrancasPendentesTx
+} from "./cobrancas.service.js"
 import type {
   EstornarPagamentoInput,
   RegistrarPagamentoInput
@@ -253,7 +261,7 @@ export async function registrarPagamentoService(
   usuarioId: number,
   dados: RegistrarPagamentoInput
 ) {
-  return prisma.$transaction(async tx => {
+  return executarTransacaoComRollback(async tx => {
     const ordemAtual = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
@@ -263,6 +271,7 @@ export async function registrarPagamentoService(
       },
       select: {
         id: true,
+        orcamentoId: true,
         valor: true,
         status: true,
         versao: true
@@ -312,6 +321,27 @@ export async function registrarPagamentoService(
       }
     }
 
+    await cancelarCobrancasPendentesTx(tx, empresaId, {
+      ordemId,
+      orcamentoId: ordemAtual.orcamentoId
+    })
+
+    const pagaNaoConciliada = await buscarCobrancaPagaNaoConciliadaTx(
+      tx,
+      empresaId,
+      {
+        ordemId,
+        orcamentoId: ordemAtual.orcamentoId
+      }
+    )
+
+    if (pagaNaoConciliada) {
+      abortarTransacaoComResultado({
+        sucesso: false as const,
+        motivo: "cobranca_em_conciliacao" as const
+      })
+    }
+
     const atualizacao = await tx.ordemServico.updateMany({
       where: {
         id: ordemId,
@@ -325,13 +355,14 @@ export async function registrarPagamentoService(
     })
 
     if (atualizacao.count === 0) {
-      return buscarFalhaDeConcorrencia(
+      const falha = await buscarFalhaDeConcorrencia(
         tx,
         ordemId,
         empresaId,
         dados.statusEsperado,
         dados.versaoEsperada
       )
+      abortarTransacaoComResultado(falha)
     }
 
     const pagamento = await tx.pagamento.create({
@@ -424,7 +455,8 @@ export async function estornarPagamentoService(
       },
       select: {
         id: true,
-        status: true
+        status: true,
+        origem: true
       }
     })
 
@@ -439,6 +471,13 @@ export async function estornarPagamentoService(
       return {
         sucesso: false as const,
         motivo: "pagamento_ja_estornado" as const
+      }
+    }
+
+    if (pagamentoAtual.origem === OrigemPagamento.GATEWAY) {
+      return {
+        sucesso: false as const,
+        motivo: "pagamento_gateway_exige_estorno_gateway" as const
       }
     }
 

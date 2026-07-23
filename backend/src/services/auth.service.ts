@@ -2,6 +2,7 @@ import { compare } from "bcryptjs"
 import jsonwebtoken from "jsonwebtoken"
 
 import { obterJwtSecret } from "../config/env.js"
+import { StatusEmpresa } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import type { LoginInput } from "../validators/auth.validators.js"
 
@@ -13,7 +14,8 @@ export async function autenticarUsuarioService(dados: LoginInput) {
       email: dados.email,
       ativo: true,
       empresa: {
-        slug: dados.empresaSlug
+        slug: dados.empresaSlug,
+        status: StatusEmpresa.ATIVA
       }
     },
     include: {
@@ -72,7 +74,10 @@ export function buscarUsuarioAutenticadoService(
     where: {
       id: usuarioId,
       empresaId,
-      ativo: true
+      ativo: true,
+      empresa: {
+        status: StatusEmpresa.ATIVA
+      }
     },
     select: {
       id: true,

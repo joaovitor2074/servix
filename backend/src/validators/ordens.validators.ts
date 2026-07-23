@@ -21,6 +21,36 @@ const textoOpcional = (limite: number) =>
     z.string().trim().max(limite).nullable().optional()
   )
 
+// A mensagem pública é separada dos campos técnicos. Texto vazio vira nulo e
+// uma mensagem real só pode acompanhar uma mudança efetiva de status.
+const mensagemPublicaSchema = z.preprocess(
+  valor =>
+    typeof valor === "string" && valor.trim() === ""
+      ? null
+      : valor,
+  z.string().trim().max(500).nullable().optional()
+)
+
+function validarMensagemDeTransicao(
+  dados: {
+    statusEsperado: StatusOrdem
+    status?: StatusOrdem | undefined
+    mensagemPublica?: string | null | undefined
+  },
+  contexto: z.RefinementCtx
+) {
+  if (
+    dados.mensagemPublica != null &&
+    (dados.status === undefined || dados.status === dados.statusEsperado)
+  ) {
+    contexto.addIssue({
+      code: "custom",
+      path: ["mensagemPublica"],
+      message: "A mensagem pública deve acompanhar uma mudança de status"
+    })
+  }
+}
+
 // Datas chegam como texto ISO com fuso e são transformadas em Date para o Prisma.
 const dataOpcional = z.preprocess(
   valor => valor === "" ? null : valor,
@@ -59,22 +89,30 @@ export const atualizarOrdemSchema = z
     pecasUtilizadas: camposEditaveis.pecasUtilizadas,
     tecnicoResponsavel: camposEditaveis.tecnicoResponsavel,
     previsaoDeEntrega: camposEditaveis.previsaoDeEntrega,
-    status: camposEditaveis.status.optional()
+    status: camposEditaveis.status.optional(),
+    mensagemPublica: mensagemPublicaSchema
   })
   .strict()
   .refine(
-    ({ statusEsperado: _statusEsperado, versaoEsperada: _versaoEsperada, ...campos }) =>
-      Object.keys(campos).length > 0,
+    ({
+      statusEsperado: _statusEsperado,
+      versaoEsperada: _versaoEsperada,
+      mensagemPublica: _mensagemPublica,
+      ...campos
+    }) => Object.keys(campos).length > 0,
     { message: "Informe ao menos um campo para atualização" }
   )
+  .superRefine(validarMensagemDeTransicao)
 
 // Contrato reduzido para a rota dedicada exclusivamente ao status.
 export const alterarStatusSchema = z
   .object({
     ...controleConcorrencia,
-    status: statusSchema
+    status: statusSchema,
+    mensagemPublica: mensagemPublicaSchema
   })
   .strict()
+  .superRefine(validarMensagemDeTransicao)
 
 // O cancelamento também muda o status e participa do mesmo controle otimista.
 export const cancelarOrdemSchema = z
@@ -82,9 +120,19 @@ export const cancelarOrdemSchema = z
     statusEsperado: statusSchema,
     // O DELETE também aceita estes dados na query string, onde números chegam
     // como texto. O corpo JSON continua aceitando um número normalmente.
-    versaoEsperada: z.coerce.number().int().positive()
+    versaoEsperada: z.coerce.number().int().positive(),
+    mensagemPublica: mensagemPublicaSchema
   })
   .strict()
+  .superRefine((dados, contexto) => {
+    validarMensagemDeTransicao(
+      {
+        ...dados,
+        status: StatusOrdem.CANCELADO
+      },
+      contexto
+    )
+  })
 
 // Filtros de URL são convertidos e recebem limites seguros de paginação.
 export const listarOrdensQuerySchema = z

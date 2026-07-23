@@ -13,6 +13,29 @@
   text-align: center;
 }
 
+.login-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 2px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.login-page__back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-page__back:focus-visible,
+.login-page__public-links a:focus-visible {
+  outline: 3px solid rgba(6, 72, 216, 0.2);
+  outline-offset: 3px;
+}
+
 .login-page__logo{
     width: 240px;
     height: auto;
@@ -27,6 +50,13 @@
     line-height: 1.5;
 }
 
+.login-page__header h1 {
+  color: var(--color-text);
+  font-size: 28px;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
 .login-page__card{
     width: 100%;
     padding: 24px 20px;
@@ -36,6 +66,28 @@
     background-color: rgba(255,255,255,0.94);
     box-shadow: var(--shadow-card);
     backdrop-filter: blur(12px);
+}
+
+.login-page__public-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 15px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.login-page__public-links a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 5px;
+}
+
+.login-page__public-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 @media (min-width: 768px) {
@@ -49,6 +101,10 @@
 
   .login-page__description {
     font-size: 18px;
+  }
+
+  .login-page__header h1 {
+    font-size: 34px;
   }
 
   .login-page__card {

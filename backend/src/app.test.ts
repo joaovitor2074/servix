@@ -1,6 +1,8 @@
 import type { Express } from "express"
 import request from "supertest"
-import { beforeAll, describe, expect, it } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
+
+import { prisma } from "./lib/prisma.js"
 
 // Estes são testes de integração HTTP: o Supertest chama o Express em memória,
 // sem abrir uma porta real. A importação ocorre depois da configuração do JWT.
@@ -23,6 +25,32 @@ describe("API HTTP", () => {
     })
   })
 
+  it("informa que API e banco estao prontos no health check", async () => {
+    vi.spyOn(prisma, "$queryRaw").mockResolvedValueOnce(1 as never)
+
+    const resposta = await request(app).get("/health")
+
+    expect(resposta.status).toBe(200)
+    expect(resposta.body).toEqual({
+      status: "ok",
+      service: "servix-api",
+      banco: "ok"
+    })
+  })
+
+  it("retorna 503 quando o banco nao esta disponivel", async () => {
+    vi.spyOn(prisma, "$queryRaw").mockRejectedValueOnce(new Error("offline"))
+
+    const resposta = await request(app).get("/health")
+
+    expect(resposta.status).toBe(503)
+    expect(resposta.body).toEqual({
+      status: "indisponivel",
+      service: "servix-api",
+      banco: "erro"
+    })
+  })
+
   it("protege as rotas de clientes", async () => {
     const resposta = await request(app).get("/clientes")
 
@@ -35,6 +63,50 @@ describe("API HTTP", () => {
 
     expect(resposta.status).toBe(401)
     expect(resposta.body.erro).toContain("Token")
+  })
+
+  it("protege configuracoes de pagamento", async () => {
+    const resposta = await request(app).get("/configuracoes/pagamentos")
+
+    expect(resposta.status).toBe(401)
+    expect(resposta.body.erro).toContain("Token")
+  })
+
+  it("protege a administracao de cobrancas", async () => {
+    const resposta = await request(app).get("/cobrancas")
+
+    expect(resposta.status).toBe(401)
+    expect(resposta.body.erro).toContain("Token")
+  })
+
+  it("publica o plano do Servix sem expor credenciais", async () => {
+    const resposta = await request(app).get("/assinaturas/planos")
+
+    expect(resposta.status).toBe(200)
+    expect(resposta.body).toMatchObject({
+      ambiente: "TESTE",
+      planos: [{
+        codigo: "servix-mensal",
+        valorMensal: "79.90"
+      }]
+    })
+    expect(JSON.stringify(resposta.body)).not.toContain("accessToken")
+  })
+
+  it("recusa token de checkout malformado antes de consultar o banco", async () => {
+    const resposta = await request(app)
+      .get("/assinaturas/checkout/token-curto")
+
+    expect(resposta.status).toBe(400)
+    expect(resposta.body.codigo).toBe("CHECKOUT_ASSINATURA_INVALIDO")
+  })
+
+  it("mantém o acompanhamento fora da autenticação interna", async () => {
+    const resposta = await request(app).get("/publico/ordens/token-curto")
+
+    expect(resposta.status).toBe(400)
+    expect(resposta.body.codigo).toBe("TOKEN_ACOMPANHAMENTO_INVALIDO")
+    expect(resposta.body.erro).not.toContain("Token de autenticação")
   })
 
   it("recusa campos desconhecidos no login antes de consultar o banco", async () => {

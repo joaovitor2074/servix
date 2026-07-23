@@ -4,6 +4,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import ChargePanel from '../../payments/components/ChargePanel'
 import PaymentPanel from '../../payments/components/PaymentPanel'
 import {
   STATUS_ORDEM_LABELS,
@@ -49,6 +50,9 @@ export default function OrderDetailsPage() {
     useState<FalhaCarregamento | null>(null)
   const [tentativaOrdem, setTentativaOrdem] = useState(0)
   const [tentativaHistorico, setTentativaHistorico] = useState(0)
+  const [estadoCopia, setEstadoCopia] = useState<
+    'ocioso' | 'copiado' | 'erro'
+  >('ocioso')
   const [mensagemSucesso, setMensagemSucesso] = useState(() =>
     lerMensagemDaNavegacao(location.state),
   )
@@ -68,6 +72,7 @@ export default function OrderDetailsPage() {
     // apenas na timeline não esconde os demais dados do atendimento.
     void buscarOrdem(ordemId, { signal: controller.signal })
       .then(ordem => {
+        setEstadoCopia('ocioso')
         setOrdemCarregada({ ordemId, ordem })
         setFalhaOrdem(null)
       })
@@ -134,6 +139,33 @@ export default function OrderDetailsPage() {
     setTentativaHistorico(valor => valor + 1)
   }
 
+  async function copiarLinkAcompanhamento(link: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link)
+      } else {
+        const campoTemporario = document.createElement('textarea')
+        campoTemporario.value = link
+        campoTemporario.setAttribute('readonly', '')
+        campoTemporario.style.position = 'fixed'
+        campoTemporario.style.opacity = '0'
+        document.body.appendChild(campoTemporario)
+        try {
+          campoTemporario.select()
+          if (!document.execCommand('copy')) {
+            throw new Error('Cópia não suportada')
+          }
+        } finally {
+          campoTemporario.remove()
+        }
+      }
+
+      setEstadoCopia('copiado')
+    } catch {
+      setEstadoCopia('erro')
+    }
+  }
+
   if (!idValido) {
     return (
       <OrderDetailsFeedback
@@ -167,6 +199,12 @@ export default function OrderDetailsPage() {
 
   if (!ordemAtual) return null
 
+  const linkAcompanhamento = ordemAtual.tokenAcompanhamento
+    ? `${window.location.origin}/acompanhar/${encodeURIComponent(
+        ordemAtual.tokenAcompanhamento,
+      )}`
+    : null
+
   return (
     <div className="order-details-page">
       <header className="order-details-header">
@@ -181,7 +219,7 @@ export default function OrderDetailsPage() {
 
           <div className="order-details-header__title">
             <span>Ordens de serviço</span>
-            <h1>Ordem #{ordemAtual.id}</h1>
+            <h1>Ordem #{ordemAtual.numero}</h1>
             <p>
               {ordemAtual.equipamento} · {ordemAtual.cliente.nome}
             </p>
@@ -262,6 +300,58 @@ export default function OrderDetailsPage() {
             </dl>
           </DetailsCard>
 
+          {linkAcompanhamento && (
+            <DetailsCard
+              icon={<LinkIcon />}
+              title="Acompanhamento público"
+              description="Link seguro para compartilhar com o cliente."
+              variant="violet"
+              compact
+            >
+              <div className="order-details-tracking">
+                <label htmlFor="link-acompanhamento">Link do cliente</label>
+                <input
+                  id="link-acompanhamento"
+                  type="text"
+                  value={linkAcompanhamento}
+                  readOnly
+                  onFocus={event => event.currentTarget.select()}
+                />
+                <div className="order-details-tracking__actions">
+                  <a
+                    href={linkAcompanhamento}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLinkIcon />
+                    Abrir página
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => void copiarLinkAcompanhamento(linkAcompanhamento)}
+                  >
+                    <CopyIcon />
+                    {estadoCopia === 'copiado' ? 'Link copiado' : 'Copiar link'}
+                  </button>
+                </div>
+                <p>
+                  Compartilhe apenas com o cliente desta ordem. Quem tiver o
+                  link poderá acompanhar o serviço.
+                </p>
+                {estadoCopia !== 'ocioso' && (
+                  <span
+                    className={`order-details-tracking__feedback order-details-tracking__feedback--${estadoCopia}`}
+                    role="status"
+                  >
+                    {estadoCopia === 'copiado'
+                      ? 'Link copiado para a área de transferência.'
+                      : 'Não foi possível copiar. Selecione o link acima manualmente.'}
+                  </span>
+                )}
+              </div>
+            </DetailsCard>
+          )}
+
           <DetailsCard
             icon={<ToolIcon />}
             title="Execução do serviço"
@@ -285,6 +375,15 @@ export default function OrderDetailsPage() {
                 placeholder="Nenhuma peça foi registrada."
               />
             </div>
+          </DetailsCard>
+
+          <DetailsCard
+            icon={<WalletIcon />}
+            title="Cobranças online"
+            description="Pix e outras solicitações geradas pelo gateway deste orçamento."
+            variant="green"
+          >
+            <ChargePanel orcamentoId={ordemAtual.orcamentoId} />
           </DetailsCard>
 
           <DetailsCard
@@ -560,6 +659,12 @@ function OrderHistory({
                 {formatarDataHora(item.criadoEm)}
               </time>
               <p>{formatarAutorHistorico(item)}</p>
+              {item.mensagemPublica && (
+                <blockquote className="order-history-list__public-message">
+                  <span>Mensagem exibida ao cliente</span>
+                  {item.mensagemPublica}
+                </blockquote>
+              )}
             </div>
           </li>
         )
@@ -765,4 +870,16 @@ function WarningIcon() {
 
 function CheckIcon() {
   return <Icon><path d="m5 12 4 4L19 6" /></Icon>
+}
+
+function LinkIcon() {
+  return <Icon><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1" /><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1" /></Icon>
+}
+
+function ExternalLinkIcon() {
+  return <Icon><path d="M15 3h6v6M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></Icon>
+}
+
+function CopyIcon() {
+  return <Icon><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" /></Icon>
 }

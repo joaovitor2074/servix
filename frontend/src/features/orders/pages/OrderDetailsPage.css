@@ -446,6 +446,101 @@
   font-style: italic;
 }
 
+.order-details-tracking {
+  display: grid;
+  gap: 10px;
+}
+
+.order-details-tracking label {
+  color: #344054;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.order-details-tracking input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  overflow: hidden;
+  color: #344054;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  outline: 0;
+  background: #f9fafb;
+}
+
+.order-details-tracking input:focus {
+  border-color: #6938ef;
+  box-shadow: 0 0 0 3px rgb(105 56 239 / 10%);
+}
+
+.order-details-tracking__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-details-tracking__actions a,
+.order-details-tracking__actions button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 11px;
+  color: #5925dc;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid #d9d6fe;
+  border-radius: 9px;
+  background: #f4f3ff;
+  cursor: pointer;
+}
+
+.order-details-tracking__actions a:hover,
+.order-details-tracking__actions button:hover {
+  border-color: #bdb4fe;
+  background: #ebe9fe;
+}
+
+.order-details-tracking__actions a:focus-visible,
+.order-details-tracking__actions button:focus-visible {
+  outline: 3px solid rgb(105 56 239 / 16%);
+  outline-offset: 2px;
+}
+
+.order-details-tracking__actions svg {
+  width: 15px;
+  height: 15px;
+}
+
+.order-details-tracking > p {
+  margin: 0;
+  color: #667085;
+  font-size: 0.71rem;
+  line-height: 1.5;
+}
+
+.order-details-tracking__feedback {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.order-details-tracking__feedback--copiado {
+  color: #087341;
+}
+
+.order-details-tracking__feedback--erro {
+  color: #b42318;
+}
+
 .order-details-client {
   display: flex;
   min-width: 0;
@@ -637,6 +732,27 @@
   color: #475467;
   font-size: 0.75rem;
   line-height: 1.45;
+}
+
+.order-history-list__public-message {
+  display: grid;
+  margin: 9px 0 0;
+  gap: 3px;
+  padding: 9px 11px;
+  color: #475467;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  border-left: 3px solid #9b8afb;
+  border-radius: 0 8px 8px 0;
+  background: #f9f7ff;
+}
+
+.order-history-list__public-message span {
+  color: #5925dc;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .order-history-feedback {

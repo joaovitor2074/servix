@@ -60,6 +60,13 @@ function responderRestricaoFinanceira(
   })
 }
 
+function responderCobrancaEmConciliacao(res: Response) {
+  return res.status(409).json({
+    erro: "Existe uma cobranca do gateway aguardando conciliacao.",
+    codigo: "ORDEM_COBRANCA_EM_CONCILIACAO"
+  })
+}
+
 // Lista ordens com paginação e filtros vindos da query string.
 export async function listarOrdens(
   req: Request,
@@ -183,6 +190,13 @@ export async function atualizarOrdem(
         )
       }
 
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
+      }
+
       return res.status(404).json({ erro: "Cliente não encontrado" })
     }
 
@@ -248,6 +262,13 @@ export async function alterarStatusOrdem(
         )
       }
 
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
+      }
+
       return res.status(409).json({
         erro: "Transição de status não permitida",
         codigo: "ORDEM_TRANSICAO_INVALIDA",
@@ -311,7 +332,9 @@ export async function removerOrdem(
 
     const validacao = validarCancelamentoOrdem({
       statusEsperado: req.body?.statusEsperado ?? req.query.statusEsperado,
-      versaoEsperada: req.body?.versaoEsperada ?? req.query.versaoEsperada
+      versaoEsperada: req.body?.versaoEsperada ?? req.query.versaoEsperada,
+      mensagemPublica:
+        req.body?.mensagemPublica ?? req.query.mensagemPublica
     })
 
     if (!validacao.valido) {
@@ -354,6 +377,13 @@ export async function removerOrdem(
           resultado.motivo,
           resultado.resumo
         )
+      }
+
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
       }
 
       if (resultado.motivo === "transicao_status_invalida") {

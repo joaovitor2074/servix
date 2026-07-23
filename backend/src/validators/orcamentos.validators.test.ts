@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  FormaPagamento,
   StatusOrcamento,
   TipoItemOrcamento
 } from "../generated/prisma/enums.js"
 import {
   validarAlteracaoStatusOrcamento,
+  validarAprovacaoPublicaOrcamento,
   validarAtualizacaoOrcamento,
   validarCriacaoOrcamento,
   validarTransformacaoOrcamento
@@ -115,5 +117,23 @@ describe("validadores de orcamento", () => {
         versaoEsperada: 2
       }).valido
     ).toBe(false)
+  })
+
+  it("exige uma forma de pagamento valida na aprovacao publica", () => {
+    expect(
+      validarAprovacaoPublicaOrcamento({ versaoEsperada: 2 }).valido
+    ).toBe(false)
+    expect(
+      validarAprovacaoPublicaOrcamento({
+        versaoEsperada: 2,
+        formaPagamento: FormaPagamento.NAO_INFORMADA
+      }).valido
+    ).toBe(false)
+    expect(
+      validarAprovacaoPublicaOrcamento({
+        versaoEsperada: 2,
+        formaPagamento: FormaPagamento.PIX
+      }).valido
+    ).toBe(true)
   })
 })

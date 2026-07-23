@@ -18,7 +18,7 @@ export interface Pagamento {
   valor: string
   formaPagamento: FormaPagamento
   status: StatusRegistroPagamento
-  origem: 'MANUAL' | 'MIGRACAO'
+  origem: 'MANUAL' | 'MIGRACAO' | 'GATEWAY'
   observacao: string | null
   pagoEm: string
   estornadoEm: string | null

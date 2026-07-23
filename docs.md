@@ -256,6 +256,54 @@ estados do orçamento e, por isso, não aparecem mais em `StatusOrdem`.
 - bloqueio da entrega enquanto houver saldo pendente;
 - bloqueio do cancelamento enquanto houver pagamento confirmado.
 
+### Fundação de integrações de pagamento
+
+- uma `ConfiguracaoPagamento` isolada para cada empresa;
+- uma `IntegracaoPagamento` separada por empresa para a autorização OAuth do
+  Mercado Pago;
+- provedores previstos: manual, simulado, Mercado Pago e Asaas;
+- Mercado Pago pode ser conectado por OAuth no ambiente de teste; Asaas
+  permanece “Em breve”;
+- `authorization_code` protegido por `state` de uso único e PKCE;
+- access token e refresh token criptografados no banco e nunca enviados ao
+  navegador;
+- renovação automática com persistência do refresh token rotacionado;
+- resposta `live_mode=true` bloqueada antes de qualquer persistência; os tokens
+  de produção são descartados e nenhum registro de integração é criado ou
+  atualizado nesta etapa;
+- criação de Order, troca de conta e desconexão serializadas por empresa;
+- conexão preservada enquanto existir cobrança pendente ou sem conciliação
+  definitiva no gateway;
+- cobranças separadas do ledger com estados pendente, paga, expirada, cancelada
+  e estornada;
+- interface interna neutra para trocar o gateway sem acoplar controllers e
+  regras de negócio a um SDK;
+- gateway simulado determinístico, sem Pix real e bloqueado em produção;
+- confirmação idempotente: uma cobrança gera no máximo um pagamento;
+- cobrança paga antes da OS materializada automaticamente quando o orçamento é
+  convertido;
+- escolha da forma de pagamento gravada na aprovação pública e transferida para
+  a ordem de serviço;
+- geração pública de Pix pelo token do orçamento, com `Idempotency-Key`, limite
+  dedicado de requisições e resposta sem dados internos do gateway;
+- consulta pública do vencimento e da situação da cobrança, com expiração
+  automática de pendências vencidas;
+- validação de `user_id`, referência externa, valor e método Pix nas respostas
+  da Orders API, com espera de `Retry-After` ao receber limite 429;
+- cobrança visível nos detalhes do orçamento, da OS e na fila financeira da
+  dashboard;
+- configuração e operações de simulação restritas a administradores.
+
+O registro manual continua sendo o modo padrão. As credenciais globais da
+aplicação ficam somente no ambiente do backend e cada empresa usa apenas os
+tokens criptografados da própria autorização. Nenhuma cobrança real de produção
+é liberada nesta etapa.
+
+Antes de remover esse bloqueio ainda são obrigatórios webhooks assinados de
+Order, renovação agendada de tokens sem uso e conciliação de reembolsos e
+chargebacks. A integração atual conversa com a API do Mercado Pago, não com a
+API comercial do Mercado Livre.
+
 O fluxo completo agora é:
 
 ```text
@@ -263,7 +311,9 @@ Cliente cadastrado
        ↓
 Orçamento criado e enviado
        ↓
-Cliente aprova
+Cliente aprova e escolhe a forma de pagamento
+       ↓
+Pix é gerado quando essa forma estiver disponível
        ↓
 Ordem de serviço criada a partir do orçamento
        ↓
@@ -280,9 +330,10 @@ selecionado; após salvar o orçamento, orienta o envio do link para aprovação
 quando o cliente aprova, destaca a criação da OS como próximo passo.
 
 A dashboard funciona como central operacional. Ela mostra serviços em aberto,
-ordens aguardando peça, pagamento ou entrega, a distribuição por etapa e os
-orçamentos enviados ou aprovados que ainda exigem ação. Cada indicador e cada
-pendência levam diretamente à lista filtrada ou à ordem correspondente.
+ordens aguardando peça, pagamento ou entrega, cobranças Pix pendentes, a
+distribuição por etapa e os orçamentos enviados ou aprovados que ainda exigem
+ação. Cada indicador e cada pendência levam diretamente ao orçamento, à lista
+filtrada ou à ordem correspondente.
 
 `POST /ordens` não cria mais ordens e responde `405` com o código
 `ORDEM_EXIGE_ORCAMENTO_APROVADO`.
@@ -291,6 +342,14 @@ Toda atualização ou cancelamento recebe `statusEsperado` e `versaoEsperada`. O
 banco faz um único `UPDATE` condicionado a esses valores e incrementa `versao`.
 A linha do histórico só é criada na mesma transação depois que essa atualização
 vence, impedindo duas gravações simultâneas para a mesma versão.
+
+Cada OS também recebe um token exclusivo para `/acompanhar/:token`. A rota
+pública correspondente devolve apenas empresa, número da OS, equipamento,
+status, previsão, valor aprovado, resumo financeiro e mensagens escritas
+explicitamente para o cliente. Identificadores relacionados, nomes de
+funcionários, diagnóstico e demais informações internas permanecem fora do
+contrato. As mensagens públicas têm limite de 500 caracteres e só acompanham
+uma mudança real de status.
 
 ## 8. Rotas atuais
 
@@ -315,6 +374,9 @@ vence, impedindo duas gravações simultâneas para a mesma versão.
 | `GET` | `/publico/orcamentos/:token` | Não | Exibe orçamento pelo link público |
 | `POST` | `/publico/orcamentos/:token/aprovar` | Não | Aprova pelo link público |
 | `POST` | `/publico/orcamentos/:token/rejeitar` | Não | Rejeita pelo link público |
+| `GET` | `/publico/orcamentos/:token/cobranca` | Não | Consulta a cobrança pública mais recente |
+| `POST` | `/publico/orcamentos/:token/cobrancas` | Não | Gera Pix com `Idempotency-Key` e rate limit |
+| `GET` | `/publico/ordens/:token` | Não | Exibe o acompanhamento sanitizado da OS pelo token exclusivo |
 | `GET` | `/ordens` | Sim | Lista ordens |
 | `POST` | `/ordens` | Sim | Responde `405`; use a conversão do orçamento |
 | `GET` | `/ordens/:id` | Sim | Busca ordem |
@@ -325,6 +387,15 @@ vence, impedindo duas gravações simultâneas para a mesma versão.
 | `GET` | `/ordens/:id/pagamentos` | Sim | Lista pagamentos e resumo financeiro |
 | `POST` | `/ordens/:id/pagamentos` | Sim | Registra pagamento |
 | `POST` | `/ordens/:id/pagamentos/:pagamentoId/estorno` | Sim | Estorna pagamento |
+| `GET` | `/configuracoes/pagamentos` | ADMIN | Consulta a configuração de pagamento da empresa |
+| `PATCH` | `/configuracoes/pagamentos` | ADMIN | Atualiza configuração com `versaoEsperada` |
+| `POST` | `/configuracoes/pagamentos/mercado-pago/oauth/iniciar` | ADMIN | Inicia o OAuth da empresa e devolve a URL de autorização |
+| `DELETE` | `/configuracoes/pagamentos/mercado-pago` | ADMIN | Desconecta o Mercado Pago da empresa autenticada |
+| `GET` | `/integracoes/mercado-pago/callback` | Não | Valida `code`, `state` e PKCE e retorna às configurações |
+| `GET` | `/cobrancas` | Sim | Lista cobranças da empresa por status, orçamento ou OS |
+| `POST` | `/cobrancas` | ADMIN | Cria cobrança no gateway simulado configurado |
+| `GET` | `/cobrancas/:id` | Sim | Consulta uma cobrança da empresa |
+| `POST` | `/cobrancas/:id/simular-confirmacao` | ADMIN | Confirma uma cobrança simulada fora de produção |
 | `GET` | `/usuarios` | ADMIN | Lista usuários |
 | `POST` | `/usuarios` | ADMIN | Cria usuário |
 | `GET` | `/usuarios/:id` | ADMIN | Busca usuário |

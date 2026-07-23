@@ -83,6 +83,28 @@ describe("controllers de orcamentos", () => {
     expect(next).not.toHaveBeenCalled()
   })
 
+  it("bloqueia cancelamento de orçamento que já possui cobrança paga", async () => {
+    serviceMocks.alterarStatusOrcamentoService.mockResolvedValue({
+      sucesso: false,
+      motivo: "cobranca_paga"
+    })
+    const req = criarRequest({
+      statusEsperado: StatusOrcamento.APROVADO,
+      versaoEsperada: 4,
+      status: StatusOrcamento.CANCELADO
+    })
+    const { response, status, json } = criarResponse()
+
+    await alterarStatusOrcamento(req, response, next)
+
+    expect(status).toHaveBeenCalledWith(409)
+    expect(json).toHaveBeenCalledWith({
+      erro: expect.any(String),
+      codigo: "ORCAMENTO_POSSUI_COBRANCA_PAGA"
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
   it("retorna 200 quando a transformacao ja havia ocorrido", async () => {
     serviceMocks.transformarOrcamentoEmOrdemService.mockResolvedValue({
       sucesso: true,

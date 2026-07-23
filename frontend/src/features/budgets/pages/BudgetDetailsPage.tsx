@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import ChargePanel from '../../payments/components/ChargePanel'
 import BudgetStatusBadge from '../components/BudgetStatusBadge'
 import {
   alterarStatusOrcamento,
@@ -118,8 +119,8 @@ export default function BudgetDetailsPage() {
         replace: true,
         state: {
           mensagem: resultado.jaExistente
-            ? `Este orçamento já havia gerado a ordem #${resultado.ordem.id}.`
-            : `Ordem #${resultado.ordem.id} criada a partir do orçamento.`,
+            ? `Este orçamento já havia gerado a ordem #${resultado.ordem.numero}.`
+            : `Ordem #${resultado.ordem.numero} criada a partir do orçamento.`,
         },
       })
     } catch (error) {
@@ -199,7 +200,7 @@ export default function BudgetDetailsPage() {
           {podeEnviar && <button className="budget-action budget-action--primary" type="button" disabled={Boolean(processando)} onClick={() => void alterarStatus('ENVIADO')}><SendIcon />{processando === 'ENVIADO' ? 'Enviando...' : 'Marcar como enviado'}</button>}
           {podeReabrir && <button className="budget-action budget-action--secondary" type="button" disabled={Boolean(processando)} onClick={() => void alterarStatus('RASCUNHO')}><RefreshIcon />{processando === 'RASCUNHO' ? 'Reabrindo...' : 'Reabrir rascunho'}</button>}
           {podeConverter && <button className="budget-action budget-action--primary" type="button" disabled={Boolean(processando)} onClick={() => void transformarEmOrdem()}><ToolIcon />{processando === 'CONVERTENDO' ? 'Gerando ordem...' : 'Gerar ordem de serviço'}</button>}
-          {orcamento.ordem && <Link className="budget-action budget-action--primary" to={`/ordens/${orcamento.ordem.id}`}><ToolIcon /> Ver ordem #{orcamento.ordem.id}</Link>}
+          {orcamento.ordem && <Link className="budget-action budget-action--primary" to={`/ordens/${orcamento.ordem.id}`}><ToolIcon /> Ver ordem #{orcamento.ordem.numero}</Link>}
         </div>
       </header>
 
@@ -272,6 +273,15 @@ export default function BudgetDetailsPage() {
               <div><dt>Desconto</dt><dd>− {formatarMoeda(orcamento.desconto)}</dd></div>
               <div><dt>Total</dt><dd>{formatarMoeda(orcamento.total)}</dd></div>
             </dl>
+          </DetailsCard>
+
+          <DetailsCard
+            icon={<WalletIcon />}
+            title="Cobranças"
+            description="Solicitações de pagamento geradas pelo gateway para esta proposta."
+            variant="green"
+          >
+            <ChargePanel orcamentoId={orcamento.id} />
           </DetailsCard>
         </main>
 

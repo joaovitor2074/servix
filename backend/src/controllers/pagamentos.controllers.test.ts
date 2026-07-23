@@ -177,6 +177,28 @@ describe("controllers de pagamentos", () => {
     })
   })
 
+  it("traduz cobranca em conciliacao para conflito financeiro", async () => {
+    serviceMocks.registrarPagamentoService.mockResolvedValue({
+      sucesso: false,
+      motivo: "cobranca_em_conciliacao"
+    })
+    const req = criarRequest({
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      valor: 40,
+      formaPagamento: FormaPagamento.DINHEIRO
+    })
+    const { response, status, json } = criarResponse()
+
+    await registrarPagamentoController(req, response, next)
+
+    expect(status).toHaveBeenCalledWith(409)
+    expect(json).toHaveBeenCalledWith({
+      erro: "Existe uma cobranca do gateway aguardando conciliacao.",
+      codigo: "PAGAMENTO_COBRANCA_EM_CONCILIACAO"
+    })
+  })
+
   it("estorna o pagamento da ordem e devolve a nova versao", async () => {
     const resumoEstornado = {
       status: "ESTORNADO",
@@ -231,5 +253,29 @@ describe("controllers de pagamentos", () => {
     expect(status).toHaveBeenCalledWith(400)
     expect(json).toHaveBeenCalledWith({ erro: "ID inválido" })
     expect(serviceMocks.estornarPagamentoService).not.toHaveBeenCalled()
+  })
+
+  it("orienta estorno no provedor para pagamento de gateway", async () => {
+    serviceMocks.estornarPagamentoService.mockResolvedValue({
+      sucesso: false,
+      motivo: "pagamento_gateway_exige_estorno_gateway"
+    })
+    const req = criarRequest({
+      statusEsperado: StatusOrdem.PRONTO,
+      versaoEsperada: 7,
+      motivo: "solicitacao do cliente"
+    }, {
+      id: "17",
+      pagamentoId: "21"
+    })
+    const { response, status, json } = criarResponse()
+
+    await estornarPagamentoController(req, response, next)
+
+    expect(status).toHaveBeenCalledWith(409)
+    expect(json).toHaveBeenCalledWith({
+      erro: "Pagamentos confirmados pelo gateway devem ser estornados pelo provedor.",
+      codigo: "PAGAMENTO_GATEWAY_EXIGE_ESTORNO_NO_PROVEDOR"
+    })
   })
 })

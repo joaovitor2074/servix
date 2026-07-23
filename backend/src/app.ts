@@ -7,13 +7,18 @@ import { env } from "./config/env.js"
 import { prisma } from "./lib/prisma.js"
 import { autenticar } from "./middlewares/auth.middleware.js"
 import { errorMiddleware } from "./middlewares/error.middleware.js"
+import assinaturasRoutes from "./routes/assinaturas.routes.js"
 import authRoutes from "./routes/auth.routes.js"
 import clientesRoutes from "./routes/clientes.routes.js"
+import cobrancasRoutes from "./routes/cobrancas.routes.js"
+import configuracoesRoutes from "./routes/configuracoes.routes.js"
 import dashboardRoutes from "./routes/dashboard.routes.js"
 import ordensRoutes from "./routes/ordens.routes.js"
+import ordensPublicasRoutes from "./routes/ordens-publicas.routes.js"
 import orcamentosPublicosRoutes from "./routes/orcamentos-publicos.routes.js"
 import orcamentosRoutes from "./routes/orcamentos.routes.js"
 import empresaRouter from "./routes/empresa.routes.js"
+import integracoesPublicasRoutes from "./routes/integracoes-publicas.routes.js"
 import usuariosRouter from "./routes/usuarios.routes.js"
 
 // Este arquivo monta a aplicação Express, mas não abre a porta HTTP. Essa
@@ -60,6 +65,16 @@ const loginLimiter = rateLimit({
   message: { erro: "Muitas tentativas de login. Tente novamente mais tarde." }
 })
 
+// Cadastro e ativacao publica criam ou liberam contas. Limites menores evitam
+// automacao abusiva sem compartilhar estado com o OAuth ou com webhooks.
+const onboardingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { erro: "Muitas tentativas. Tente novamente mais tarde." }
+})
+
 app.get("/", (_req, res) => {
   res.json({
     nome: "Servix API",
@@ -72,19 +87,41 @@ app.get("/", (_req, res) => {
 app.get("/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`
-    return res.status(200).json({ status: "ok", banco: "ok" })
+    return res.status(200).json({
+      status: "ok",
+      service: "servix-api",
+      banco: "ok"
+    })
   } catch {
-    return res.status(503).json({ status: "indisponivel", banco: "erro" })
+    return res.status(503).json({
+      status: "indisponivel",
+      service: "servix-api",
+      banco: "erro"
+    })
   }
 })
 
 // O limitador específico deve ser registrado antes das rotas de autenticação.
 // Clientes, ordens e usuários recebem autenticação antes dos routers.
+// Os cabeçalhos entram antes do limiter global para também cobrirem respostas
+// 429, que não chegam ao controller do acompanhamento.
+app.use("/publico/ordens", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store")
+  res.setHeader("X-Robots-Tag", "noindex, nofollow")
+  next()
+})
 app.use(apiLimiter)
 app.use("/auth/login", loginLimiter)
+app.use("/empresa", onboardingLimiter)
+app.use("/assinaturas/checkout", onboardingLimiter)
+app.use("/integracoes", integracoesPublicasRoutes)
 app.use("/auth", authRoutes)
+app.use("/assinaturas", assinaturasRoutes)
 app.use("/publico/orcamentos", orcamentosPublicosRoutes)
+app.use("/publico/ordens", ordensPublicasRoutes)
 app.use("/clientes", autenticar, clientesRoutes)
+app.use("/cobrancas", autenticar, cobrancasRoutes)
+app.use("/configuracoes", autenticar, configuracoesRoutes)
 app.use("/dashboard", autenticar, dashboardRoutes)
 app.use("/orcamentos", autenticar, orcamentosRoutes)
 app.use("/ordens", autenticar, ordensRoutes)

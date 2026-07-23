@@ -49,6 +49,7 @@ export interface HistoricoStatusOrdem {
   status: StatusOrdem
   alteradoPorId: number | null
   criadoEm: string
+  mensagemPublica?: string | null
   alteradoPor: {
     id: number
     nome: string
@@ -115,6 +116,7 @@ export interface ResumoPagamentoOrdem {
 // JSON como strings ISO e o Decimal do Prisma chega como texto.
 export interface OrdemServico {
   id: number
+  numero: number
   empresaId: number
   clienteId: number
   orcamentoId: number
@@ -128,6 +130,7 @@ export interface OrdemServico {
   valor: string
   formaDePagamento: FormaPagamento
   status: StatusOrdem
+  tokenAcompanhamento?: string | null
   versao: number
   criadoEm: string
   atualizadoEm: string
@@ -149,4 +152,5 @@ export interface AtualizarOrdemInput {
   tecnicoResponsavel?: string | null
   previsaoDeEntrega?: string | null
   status?: StatusOrdem
+  mensagemPublica?: string
 }

@@ -1,7 +1,11 @@
-import type { StatusOrdem } from '../../../shared/types/ordem.types'
+import type {
+  FormaPagamento,
+  StatusOrdem,
+} from '../../../shared/types/ordem.types'
 
 export interface OrdemDashboard {
   id: number
+  numero: number
   equipamento: string
   status: StatusOrdem
   criadoEm: string
@@ -15,6 +19,7 @@ export interface OrdemDashboard {
 
 export interface OrdemRecente {
   id: number
+  numero: number
   equipamento: string
   status: StatusOrdem
   criadoEm: string
@@ -58,4 +63,30 @@ export interface ResumoDashboard {
     aguardandoCliente: number
     aprovadosParaOrdem: number
   }
+  cobrancas: {
+    pendentes: number
+    listaPendentes: CobrancaPendenteDashboard[]
+  }
+}
+
+export interface CobrancaPendenteDashboard {
+  id: number
+  valor: string
+  formaPagamento: FormaPagamento
+  status: 'PENDENTE'
+  criadoEm: string
+  expiraEm: string | null
+  orcamento: {
+    id: number
+    numero: number
+    equipamento: string
+    cliente: {
+      id: number
+      nome: string
+    }
+  }
+  ordem: {
+    id: number
+    status: StatusOrdem
+  } | null
 }
