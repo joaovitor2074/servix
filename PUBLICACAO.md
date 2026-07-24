@@ -1,0 +1,116 @@
+# Publicacao de homologacao do Servix
+
+Este guia prepara um ambiente de teste. Ele nao habilita cobrancas reais.
+
+## Fronteira financeira
+
+- **Empresa paga a assinatura do Servix:** dominio `AssinaturaEmpresa`, conta e
+  credenciais exclusivas do Servix. No MVP, `SERVIX_BILLING_MODE=TESTE` usa um
+  simulador e nao movimenta dinheiro.
+- **Cliente paga um orcamento:** dominio `Cobranca`/`Pagamento`. O backend resolve
+  exclusivamente o token OAuth cifrado da empresa dona do orcamento e o valor
+  segue para a conta Mercado Pago dessa empresa.
+
+Nunca reutilize `IntegracaoPagamento`, `obterCredencialMercadoPagoService` ou
+`resolverGatewayPagamento` no codigo de assinaturas. A futura integracao real de
+assinaturas deve ler apenas variaveis com prefixo `SERVIX_BILLING_` e permanecer
+server-side.
+
+## 1. Banco e backend de teste
+
+Use PostgreSQL gerenciado e um host que execute containers ou um processo Node
+persistente. O arquivo `backend/Dockerfile` compila a API, aplica migrations
+pendentes e inicia o servidor.
+
+Configure no host do backend:
+
+O mesmo modelo, pronto para copiar campo a campo, esta em
+`backend/railway.env.example`.
+
+```env
+NODE_ENV=production
+HOST=0.0.0.0
+DATABASE_URL=postgresql://...
+JWT_SECRET=<segredo-aleatorio-com-32-ou-mais-caracteres>
+TRUST_PROXY=true
+
+FRONTEND_URL=https://SEU-FRONTEND.vercel.app
+CORS_ORIGINS=https://SEU-FRONTEND.vercel.app
+
+SERVIX_BILLING_MODE=TESTE
+SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
+SERVIX_PAYMENT_SIMULATOR_ENABLED=true
+
+MERCADO_PAGO_CLIENT_ID=<app-oauth-sandbox-do-servix>
+MERCADO_PAGO_CLIENT_SECRET=<segredo-do-app-oauth-sandbox>
+MERCADO_PAGO_REDIRECT_URI=https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
+TOKEN_ENCRYPTION_KEY=<base64-de-32-bytes>
+MERCADO_PAGO_TIMEOUT_MS=8000
+```
+
+No Railway, nao defina `PORT`: a plataforma injeta a porta dinamicamente. O
+servidor le `process.env.PORT` e usa `0.0.0.0` automaticamente em
+`NODE_ENV=production`; `HOST=0.0.0.0` pode permanecer explicito para facilitar
+a auditoria da configuracao.
+
+Configure o deploy do servico com:
+
+```txt
+Build Command: npm run build
+Pre-deploy Command: npm run db:deploy
+Start Command: npm start
+Healthcheck Path: /health
+```
+
+Gere valores novos para `JWT_SECRET` e `TOKEN_ENCRYPTION_KEY` em cada ambiente.
+Nao copie segredos locais para homologacao e nunca coloque esses valores no
+frontend.
+
+Depois da publicacao, valide:
+
+1. `GET https://SEU-BACKEND.example.com/health` retorna banco e API como `ok`.
+2. As migrations aparecem como aplicadas no log de inicializacao.
+3. `GET /assinaturas/planos` informa ambiente `TESTE`.
+
+## 2. Frontend na Vercel
+
+Crie o projeto apontando o **Root Directory** para `frontend`:
+
+- Framework: Vite.
+- Comando de build: `npm run build`.
+- Diretorio de saida: `dist`.
+- Variavel: `VITE_API_URL=https://SEU-BACKEND.example.com`.
+- Canais publicos: `VITE_CONTACT_EMAIL` e `VITE_SUPPORT_EMAIL`.
+
+O `frontend/vercel.json` mantem as rotas do React Router funcionando quando uma
+URL e aberta diretamente.
+
+## 3. Callback OAuth publico
+
+Cadastre no aplicativo Mercado Pago exatamente:
+
+```txt
+https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
+```
+
+O valor deve ser HTTPS, publico e identico a `MERCADO_PAGO_REDIRECT_URI`, sem
+barra adicional. Conecte apenas usuarios de teste enquanto
+`SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE`.
+
+## 4. Roteiro de homologacao
+
+1. Abra a home, planos, contato, suporte, termos e privacidade.
+2. Cadastre uma empresa e confirme a assinatura simulada.
+3. Confirme que o login fica bloqueado antes da ativacao e e liberado depois.
+4. No dashboard da empresa, conecte uma conta Mercado Pago de teste via OAuth.
+5. Gere um orcamento e confira que a cobranca registra o `mercadoPagoUserId` da
+   empresa conectada.
+6. Repita com uma segunda empresa e confirme o isolamento entre as contas.
+
+## 5. Antes de qualquer producao real
+
+O titular responsavel deve revisar Termos e Politica de Privacidade, cadastrar
+URLs e credenciais de producao, definir webhooks assinados, validar o recebedor
+da assinatura e dos orcamentos, revisar logs/alertas/backups e executar testes de
+baixo valor. Alterar `NODE_ENV` nao habilita dinheiro real; os modos financeiros
+sao deliberadamente independentes e producao permanece bloqueada nesta etapa.

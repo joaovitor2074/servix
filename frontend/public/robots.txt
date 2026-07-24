@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /cadastro
+Disallow: /checkout/
+Disallow: /orcamento/
+Disallow: /acompanhar/

@@ -1,0 +1,84 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  color: #0a1e3d;
+  background-color: #f7f9fc;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --color-primary: #0648d8;
+  --color-primary-dark: #0039b5;
+  --color-success: #08bd62;
+
+  --color-text: #0a1e3d;
+  --color-text-muted: #6b7890;
+  --color-border: #d9e1ed;
+  --color-background: #f7f9fc;
+  --color-surface: #ffffff;
+  --color-error: #c62828;
+
+  --border-radius-small: 10px;
+  --border-radius-medium: 14px;
+  --border-radius-large: 20px;
+
+  --shadow-card: 0 24px 64px rgba(25, 49, 86, 0.13);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.route-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}

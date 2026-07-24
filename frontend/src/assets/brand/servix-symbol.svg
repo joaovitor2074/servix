@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 17 147 125" role="img" aria-labelledby="title desc">
+  <title id="title">Símbolo Servix</title>
+  <desc id="desc">Letra S azul com marca de verificação verde.</desc>
+
+  <defs>
+    <linearGradient id="servixBlue" x1="32" y1="21" x2="145" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0648C8"/>
+      <stop offset="1" stop-color="#0039B5"/>
+    </linearGradient>
+    <linearGradient id="servixGreen" x1="70" y1="118" x2="158" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#05B953"/>
+      <stop offset="1" stop-color="#08C66A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Parte superior e central do S -->
+  <path fill="url(#servixBlue)" d="
+    M146 21
+    L126 48
+    H69
+    C63.5 48 60 52.1 60 57.8
+    C60 63.7 64 68 70 68
+    H119
+    L136 75
+    L117 88
+    C111.7 91.8 105.4 94 98 94
+    H64
+    C45.8 94 32 78.9 32 59
+    C32 37.7 45.7 21 62 21
+    Z"/>
+
+  <!-- Base esquerda do S -->
+  <path fill="url(#servixBlue)" d="
+    M38 111
+    H56
+    L80 137
+    H20
+    L32 117
+    C33.8 114 35.8 112 38 111
+    Z"/>
+
+  <!-- Base direita do S -->
+  <path fill="url(#servixBlue)" d="
+    M149 90
+    L104 137
+    H123
+    C138.7 137 151 124.7 151 109
+    C151 102.2 150.4 95.8 149 90
+    Z"/>
+
+  <!-- Check -->
+  <path fill="url(#servixGreen)" d="
+    M66 110
+    L80 106
+    L92.5 116.5
+    L159 68
+    L115 98
+    L92.5 137
+    Z"/>
+</svg>

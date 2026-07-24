@@ -1,326 +1,413 @@
-import type { Request, Response } from "express"
+import type { NextFunction, Request, Response } from "express"
+
 import {
   alterarStatusOrdemService,
   atualizarOrdemService,
   buscarOrdemService,
-  criarOrdemService,
+  listarHistoricoOrdemService,
   listarOrdensService,
   removerOrdemService
-} from "../services/ordens.services.js"
-import type { DadosOrdem } from "../services/ordens.services.js"
-import type { StatusOrdem } from "../types/OrdemServico.js"
+} from "../services/ordens.service.js"
+import {
+  idEhInvalido,
+  validarAlteracaoStatus,
+  validarAtualizacaoOrdem,
+  validarCancelamentoOrdem,
+  validarQueryOrdens
+} from "../validators/ordens.validators.js"
 
-const statusPermitidos = new Set<StatusOrdem>([
-  "orcamento",
-  "aguardando_aprovacao",
-  "aprovado",
-  "em_andamento",
-  "aguardando_peca",
-  "concluido",
-  "entregue",
-  "cancelado"
-])
+// Cada controller desta camada sempre repassa `empresaId`; isso evita que um ID
+// válido de outra empresa seja usado para acessar uma ordem indevidamente.
 
-type ResultadoValidacao =
-  | { valido: true; dados: DadosOrdem }
-  | { valido: false; erro: string }
-
-function idEhInvalido(id: number): boolean {
-  return !Number.isInteger(id) || id <= 0
+function responderConflitoAtualizacao(
+  res: Response,
+  conflito: {
+    statusEsperado: string
+    statusAtual: string
+    versaoEsperada: number
+    versaoAtual: number
+  }
+) {
+  return res.status(409).json({
+    erro: "A ordem foi alterada por outro usuário. Recarregue os dados antes de continuar.",
+    codigo: "ORDEM_ATUALIZACAO_CONFLITANTE",
+    detalhes: conflito
+  })
 }
 
-function textoObrigatorioEhInvalido(valor: unknown): boolean {
-  return typeof valor !== "string" || valor.trim().length === 0
+function responderRestricaoFinanceira(
+  res: Response,
+  motivo: "pagamento_insuficiente" | "pagamento_confirmado",
+  resumo: {
+    valorTotal: string
+    totalPago: string
+    totalEstornado: string
+    saldo: string
+  }
+) {
+  if (motivo === "pagamento_insuficiente") {
+    return res.status(409).json({
+      erro: "O pagamento precisa estar quitado antes da entrega.",
+      codigo: "ORDEM_PAGAMENTO_INSUFICIENTE",
+      detalhes: resumo
+    })
+  }
+
+  return res.status(409).json({
+    erro: "Estorne os pagamentos confirmados antes de cancelar a ordem.",
+    codigo: "ORDEM_COM_PAGAMENTO_CONFIRMADO",
+    detalhes: resumo
+  })
 }
 
-function textoOpcionalEhInvalido(valor: unknown): boolean {
-  return valor !== undefined && typeof valor !== "string"
+function responderCobrancaEmConciliacao(res: Response) {
+  return res.status(409).json({
+    erro: "Existe uma cobranca do gateway aguardando conciliacao.",
+    codigo: "ORDEM_COBRANCA_EM_CONCILIACAO"
+  })
 }
 
-function statusEhValido(status: unknown): status is StatusOrdem {
-  return (
-    typeof status === "string" &&
-    statusPermitidos.has(status as StatusOrdem)
-  )
-}
-
-function validarDadosOrdem(body: unknown): ResultadoValidacao {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return {
-      valido: false,
-      erro: "Corpo da requisição inválido"
-    }
-  }
-
-  const dadosRecebidos = body as Record<string, unknown>
-
-  if (
-    typeof dadosRecebidos.clienteId !== "number" ||
-    idEhInvalido(dadosRecebidos.clienteId)
-  ) {
-    return {
-      valido: false,
-      erro: "clienteId deve ser um número inteiro positivo"
-    }
-  }
-
-  if (textoObrigatorioEhInvalido(dadosRecebidos.equipamento)) {
-    return {
-      valido: false,
-      erro: "Equipamento é obrigatório"
-    }
-  }
-
-  if (textoObrigatorioEhInvalido(dadosRecebidos.problemaRelatado)) {
-    return {
-      valido: false,
-      erro: "Problema relatado é obrigatório"
-    }
-  }
-
-  if (textoObrigatorioEhInvalido(dadosRecebidos.tecnicoResponsavel)) {
-    return {
-      valido: false,
-      erro: "Técnico responsável é obrigatório"
-    }
-  }
-
-  if (textoObrigatorioEhInvalido(dadosRecebidos.previsaoDeEntrega)) {
-    return {
-      valido: false,
-      erro: "Previsão de entrega é obrigatória"
-    }
-  }
-
-  if (
-    typeof dadosRecebidos.valor !== "number" ||
-    !Number.isFinite(dadosRecebidos.valor) ||
-    dadosRecebidos.valor < 0
-  ) {
-    return {
-      valido: false,
-      erro: "Valor deve ser um número maior ou igual a zero"
-    }
-  }
-
-  if (textoObrigatorioEhInvalido(dadosRecebidos.formaDePagamento)) {
-    return {
-      valido: false,
-      erro: "Forma de pagamento é obrigatória"
-    }
-  }
-
-  if (!statusEhValido(dadosRecebidos.status)) {
-    return {
-      valido: false,
-      erro: "Status inválido"
-    }
-  }
-
-  if (textoOpcionalEhInvalido(dadosRecebidos.diagnostico)) {
-    return {
-      valido: false,
-      erro: "Diagnóstico deve ser um texto"
-    }
-  }
-
-  if (textoOpcionalEhInvalido(dadosRecebidos.servicoRealizado)) {
-    return {
-      valido: false,
-      erro: "Serviço realizado deve ser um texto"
-    }
-  }
-
-  if (textoOpcionalEhInvalido(dadosRecebidos.pecasUtilizadas)) {
-    return {
-      valido: false,
-      erro: "Peças utilizadas devem ser um texto"
-    }
-  }
-
-  const dados: DadosOrdem = {
-    clienteId: dadosRecebidos.clienteId,
-    equipamento: (dadosRecebidos.equipamento as string).trim(),
-    problemaRelatado: (dadosRecebidos.problemaRelatado as string).trim(),
-    tecnicoResponsavel: (dadosRecebidos.tecnicoResponsavel as string).trim(),
-    previsaoDeEntrega: (dadosRecebidos.previsaoDeEntrega as string).trim(),
-    valor: dadosRecebidos.valor,
-    formaDePagamento: (dadosRecebidos.formaDePagamento as string).trim(),
-    status: dadosRecebidos.status,
-    ...(typeof dadosRecebidos.diagnostico === "string"
-      ? { diagnostico: dadosRecebidos.diagnostico.trim() }
-      : {}),
-    ...(typeof dadosRecebidos.servicoRealizado === "string"
-      ? { servicoRealizado: dadosRecebidos.servicoRealizado.trim() }
-      : {}),
-    ...(typeof dadosRecebidos.pecasUtilizadas === "string"
-      ? { pecasUtilizadas: dadosRecebidos.pecasUtilizadas.trim() }
-      : {})
-  }
-
-  return {
-    valido: true,
-    dados
-  }
-}
-
-export const listarOrdens = (
-  _req: Request,
-  res: Response
-) => {
-  const ordens = listarOrdensService()
-
-  return res.status(200).json(ordens)
-}
-
-export const buscarOrdem = (
+// Lista ordens com paginação e filtros vindos da query string.
+export async function listarOrdens(
   req: Request,
-  res: Response
-) => {
-  const idOrdem = Number(req.params.id)
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const validacao = validarQueryOrdens(req.query)
 
-  if (idEhInvalido(idOrdem)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
+      })
+    }
+
+    const resultado = await listarOrdensService(
+      req.auth.empresaId,
+      validacao.dados
+    )
+
+    return res.status(200).json(resultado)
+  } catch (error) {
+    return next(error)
   }
-
-  const ordemEncontrada = buscarOrdemService(idOrdem)
-
-  if (!ordemEncontrada) {
-    return res.status(404).json({
-      erro: "Ordem de serviço não encontrada"
-    })
-  }
-
-  return res.status(200).json(ordemEncontrada)
 }
 
-export const criarOrdem = (
+// Busca uma única ordem pelo ID composto por ordem e empresa.
+export async function buscarOrdem(
   req: Request,
-  res: Response
-) => {
-  const validacao = validarDadosOrdem(req.body)
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
 
-  if (!validacao.valido) {
-    return res.status(400).json({
-      erro: validacao.erro
-    })
-  }
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
 
-  const resultado = criarOrdemService(validacao.dados)
+    const ordem = await buscarOrdemService(id, req.auth.empresaId)
 
-  if (!resultado.sucesso) {
-    return res.status(404).json({
-      erro: "Cliente não encontrado"
-    })
-  }
-
-  return res.status(201).json(resultado.ordem)
-}
-
-export const atualizarOrdem = (
-  req: Request,
-  res: Response
-) => {
-  const idOrdem = Number(req.params.id)
-
-  if (idEhInvalido(idOrdem)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
-  }
-
-  const validacao = validarDadosOrdem(req.body)
-
-  if (!validacao.valido) {
-    return res.status(400).json({
-      erro: validacao.erro
-    })
-  }
-
-  const resultado = atualizarOrdemService(idOrdem, validacao.dados)
-
-  if (!resultado.sucesso) {
-    if (resultado.motivo === "ordem_nao_encontrada") {
+    if (!ordem) {
       return res.status(404).json({
         erro: "Ordem de serviço não encontrada"
       })
     }
 
-    return res.status(404).json({
-      erro: "Cliente não encontrado"
-    })
+    return res.status(200).json(ordem)
+  } catch (error) {
+    return next(error)
   }
-
-  return res.status(200).json({
-    mensagem: "Ordem de serviço atualizada com sucesso",
-    ordem: resultado.ordem
-  })
 }
 
-export const alterarStatusOrdem = (
+// Atualiza os campos enviados e trata separadamente ordem ausente, cliente
+// ausente e tentativa de transição de status não permitida.
+export async function atualizarOrdem(
   req: Request,
-  res: Response
-) => {
-  const idOrdem = Number(req.params.id)
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
 
-  if (idEhInvalido(idOrdem)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
-  }
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
 
-  const { status } = req.body
+    const validacao = validarAtualizacaoOrdem(req.body)
 
-  if (!statusEhValido(status)) {
-    return res.status(400).json({
-      erro: "Status inválido"
-    })
-  }
-
-  const resultado = alterarStatusOrdemService(idOrdem, status)
-
-  if (!resultado.sucesso) {
-    return res.status(404).json({
-      erro: "Ordem de serviço não encontrada"
-    })
-  }
-
-  return res.status(200).json({
-    mensagem: "Status da ordem atualizado com sucesso",
-    ordem: resultado.ordem
-  })
-}
-
-export const removerOrdem = (
-  req: Request,
-  res: Response
-) => {
-  const idOrdem = Number(req.params.id)
-
-  if (idEhInvalido(idOrdem)) {
-    return res.status(400).json({
-      erro: "ID inválido"
-    })
-  }
-
-  const resultado = removerOrdemService(idOrdem)
-
-  if (!resultado.sucesso) {
-    if (resultado.motivo === "ordem_entregue") {
-      return res.status(409).json({
-        erro: "Uma ordem entregue não pode ser removida"
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
       })
     }
 
-    return res.status(404).json({
-      erro: "Ordem de serviço não encontrada"
-    })
-  }
+    const resultado = await atualizarOrdemService(
+      id,
+      req.auth.empresaId,
+      req.auth.usuarioId,
+      validacao.dados
+    )
 
-  return res.status(200).json({
-    mensagem: "Ordem de serviço removida com sucesso",
-    ordem: resultado.ordem
-  })
+    if (!resultado.sucesso) {
+      if (resultado.motivo === "ordem_nao_encontrada") {
+        return res.status(404).json({
+          erro: "Ordem de serviço não encontrada"
+        })
+      }
+
+      if (resultado.motivo === "transicao_status_invalida") {
+        return res.status(409).json({
+          erro: "Transição de status não permitida",
+          codigo: "ORDEM_TRANSICAO_INVALIDA",
+          detalhes: {
+            statusAtual: resultado.statusAtual,
+            statusSolicitado: resultado.statusSolicitado,
+            statusPermitidos: resultado.statusPermitidos
+          }
+        })
+      }
+
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
+      }
+
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
+      }
+
+      return res.status(404).json({ erro: "Cliente não encontrado" })
+    }
+
+    return res.status(200).json(resultado.ordem)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+// Endpoint específico para mudar somente o status da ordem.
+export async function alterarStatusOrdem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
+
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
+
+    const validacao = validarAlteracaoStatus(req.body)
+
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
+      })
+    }
+
+    const resultado = await alterarStatusOrdemService(
+      id,
+      req.auth.empresaId,
+      req.auth.usuarioId,
+      validacao.dados
+    )
+
+    if (!resultado.sucesso) {
+      if (resultado.motivo === "ordem_nao_encontrada") {
+        return res.status(404).json({
+          erro: "Ordem de serviço não encontrada"
+        })
+      }
+
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
+      }
+
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
+      }
+
+      return res.status(409).json({
+        erro: "Transição de status não permitida",
+        codigo: "ORDEM_TRANSICAO_INVALIDA",
+        detalhes: {
+          statusAtual: resultado.statusAtual,
+          statusSolicitado: resultado.statusSolicitado,
+          statusPermitidos: resultado.statusPermitidos
+        }
+      })
+    }
+
+    return res.status(200).json(resultado.ordem)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+// Recupera a linha do tempo de status e quem realizou cada alteração.
+export async function listarHistoricoOrdem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
+
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
+
+    const historico = await listarHistoricoOrdemService(
+      id,
+      req.auth.empresaId
+    )
+
+    if (!historico) {
+      return res.status(404).json({
+        erro: "Ordem de serviço não encontrada"
+      })
+    }
+
+    return res.status(200).json(historico)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+// O DELETE representa cancelamento lógico: a ordem continua disponível para
+// histórico e auditoria em vez de ser apagada do banco.
+export async function removerOrdem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
+
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID inválido" })
+    }
+
+    const validacao = validarCancelamentoOrdem({
+      statusEsperado: req.body?.statusEsperado ?? req.query.statusEsperado,
+      versaoEsperada: req.body?.versaoEsperada ?? req.query.versaoEsperada,
+      mensagemPublica:
+        req.body?.mensagemPublica ?? req.query.mensagemPublica
+    })
+
+    if (!validacao.valido) {
+      return res.status(400).json({
+        erro: validacao.erro,
+        detalhes: validacao.detalhes
+      })
+    }
+
+    const resultado = await removerOrdemService(
+      id,
+      req.auth.empresaId,
+      req.auth.usuarioId,
+      validacao.dados
+    )
+
+    if (!resultado.sucesso) {
+      if (resultado.motivo === "ordem_entregue") {
+        return res.status(409).json({
+          erro: "Uma ordem entregue não pode ser cancelada",
+          codigo: "ORDEM_TRANSICAO_INVALIDA"
+        })
+      }
+
+      if (resultado.motivo === "conflito_atualizacao") {
+        return responderConflitoAtualizacao(res, {
+          statusEsperado: resultado.statusEsperado,
+          statusAtual: resultado.statusAtual,
+          versaoEsperada: resultado.versaoEsperada,
+          versaoAtual: resultado.versaoAtual
+        })
+      }
+
+      if (
+        resultado.motivo === "pagamento_insuficiente" ||
+        resultado.motivo === "pagamento_confirmado"
+      ) {
+        return responderRestricaoFinanceira(
+          res,
+          resultado.motivo,
+          resultado.resumo
+        )
+      }
+
+      if (
+        (resultado as { motivo: string }).motivo ===
+        "cobranca_em_conciliacao"
+      ) {
+        return responderCobrancaEmConciliacao(res)
+      }
+
+      if (resultado.motivo === "transicao_status_invalida") {
+        return res.status(409).json({
+          erro: "Transição de status não permitida",
+          codigo: "ORDEM_TRANSICAO_INVALIDA",
+          detalhes: {
+            statusAtual: resultado.statusAtual,
+            statusSolicitado: resultado.statusSolicitado,
+            statusPermitidos: resultado.statusPermitidos
+          }
+        })
+      }
+
+      return res.status(404).json({
+        erro: "Ordem de serviço não encontrada"
+      })
+    }
+
+    return res.status(200).json({
+      mensagem: "Ordem de serviço cancelada com sucesso",
+      ordem: resultado.ordem
+    })
+  } catch (error) {
+    return next(error)
+  }
 }

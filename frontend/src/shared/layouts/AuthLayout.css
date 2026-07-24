@@ -1,0 +1,135 @@
+.auth-layout {
+  position: relative;
+  isolation: isolate;
+
+  display: grid;
+  grid-template-rows: 1fr auto;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      rgba(220, 232, 255, 0.4),
+      transparent 450px
+    ),
+    linear-gradient(
+      145deg,
+      #ffffff 0%,
+      #f9fbff 55%,
+      #f4fbff 100%
+    );
+}
+
+.auth-layout__content {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  width: 100%;
+  padding: 32px 16px 24px;
+}
+
+.auth-layout__decoration {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auth-layout__symbol {
+  position: absolute;
+  top: 50%;
+  left: -160px;
+
+  width: 320px;
+  height: auto;
+
+  opacity: 0.05;
+  transform: translateY(-50%) rotate(-8deg);
+}
+
+.auth-layout__decoration::after {
+  content: "";
+
+  position: absolute;
+  top: -120px;
+  right: -300px;
+
+  width: 440px;
+  height: 440px;
+
+  border-radius: 50%;
+  background: rgba(6, 72, 216, 0.045);
+}
+
+.auth-layout__footer {
+  position: relative;
+  z-index: 1;
+
+  padding: 0 16px 20px;
+
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .auth-layout__content {
+    align-items: center;
+    padding: 48px 24px 32px;
+  }
+
+  .auth-layout__symbol {
+  left: -120px;
+  width: 420px;
+}
+
+  .auth-layout__decoration::after {
+    top: 8%;
+    right: -280px;
+
+    width: 520px;
+    height: 520px;
+  }
+
+  .auth-layout__footer {
+    padding: 0 24px 28px;
+    font-size: 14px;
+  }
+}
+@media (max-height: 750px) {
+  .auth-layout__content {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .login-page {
+    gap: 16px;
+  }
+
+  .login-page__logo {
+    width: 210px;
+  }
+
+  .login-page__card {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .login-form {
+    gap: 16px;
+  }
+
+  .auth-layout__footer {
+    padding-bottom: 12px;
+  }
+}

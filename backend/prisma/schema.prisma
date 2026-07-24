@@ -1,0 +1,481 @@
+// Gera o cliente tipado dentro de src/generated para ser importado pela API.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Etapas possíveis do ciclo de atendimento de uma ordem.
+enum StatusOrdem {
+  RECEBIDO
+  EM_ANALISE
+  EM_EXECUCAO
+  AGUARDANDO_PECA
+  PRONTO
+  ENTREGUE
+  CANCELADO
+}
+
+enum StatusOrcamento {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  REJEITADO
+  EXPIRADO
+  CONVERTIDO
+  CANCELADO
+}
+
+enum TipoItemOrcamento {
+  SERVICO
+  PECA
+  MATERIAL
+}
+
+enum StatusRegistroPagamento {
+  CONFIRMADO
+  ESTORNADO
+}
+
+enum OrigemPagamento {
+  MANUAL
+  MIGRACAO
+  GATEWAY
+}
+
+enum ProvedorPagamento {
+  MANUAL
+  SIMULADO
+  MERCADO_PAGO
+  ASAAS
+}
+
+enum AmbientePagamento {
+  TESTE
+  PRODUCAO
+}
+
+enum StatusConfiguracaoPagamento {
+  NAO_CONFIGURADA
+  ATIVA
+  INATIVA
+  ERRO
+}
+
+enum StatusCobranca {
+  PENDENTE
+  PAGA
+  EXPIRADA
+  CANCELADA
+  ESTORNADA
+}
+
+// A assinatura SaaS pertence ao Servix e possui ciclo financeiro proprio.
+// Estes enums nao reutilizam os tipos de cobranca dos clientes das empresas.
+enum AmbienteAssinatura {
+  TESTE
+  PRODUCAO
+}
+
+enum ProvedorAssinatura {
+  SIMULADO
+  MERCADO_PAGO_SERVIX
+}
+
+enum StatusAssinatura {
+  PENDENTE
+  ATIVA
+  CANCELADA
+}
+
+enum FormaPagamento {
+  PIX
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  BOLETO
+  NAO_INFORMADA
+  OUTRO
+}
+
+enum PapelUsuario {
+  ADMIN
+  ATENDENTE
+  TECNICO
+}
+
+enum StatusEmpresa {
+  PENDENTE_ASSINATURA
+  ATIVA
+  SUSPENSA
+}
+
+// Empresa é a raiz do isolamento multiempresa do sistema.
+model Empresa {
+  id                     Int      @id @default(autoincrement())
+  nome                   String
+  slug                   String   @unique
+  status                 StatusEmpresa @default(ATIVA)
+  telefone               String?
+  email                  String?
+  tipoNegocio            String?
+  cpfCnpj                String?  @unique
+  cidade                 String?
+  estado                 String?
+  endereco               String?
+  proximoNumeroOrcamento Int      @default(1)
+  proximoNumeroOrdem     Int      @default(1)
+  criadoEm               DateTime @default(now())
+  atualizadoEm           DateTime @updatedAt
+
+  clientes                Cliente[]
+  usuarios                Usuario[]
+  orcamentos              Orcamento[]
+  pagamentos              Pagamento[]
+  configuracaoPagamento   ConfiguracaoPagamento?
+  integracoesPagamento    IntegracaoPagamento[]
+  estadosOAuthMercadoPago EstadoOAuthMercadoPago[]
+  cobrancas               Cobranca[]
+  assinatura              AssinaturaEmpresa?
+}
+
+// Usuários pertencem a uma empresa. O e-mail é único somente dentro dela.
+model Usuario {
+  id           Int          @id @default(autoincrement())
+  empresaId    Int
+  nome         String
+  email        String
+  telefone     String?
+  senhaHash    String
+  papel        PapelUsuario @default(ATENDENTE)
+  ativo        Boolean      @default(true)
+  criadoEm     DateTime     @default(now())
+  atualizadoEm DateTime     @updatedAt
+
+  empresa                 Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  alteracoesDeStatus      HistoricoStatusOrdem[]     @relation("StatusAlteradoPor")
+  alteracoesOrcamento     HistoricoStatusOrcamento[] @relation("StatusOrcamentoAlteradoPor")
+  pagamentosRegistrados   Pagamento[]                @relation("PagamentoRegistradoPor")
+  pagamentosEstornados    Pagamento[]                @relation("PagamentoEstornadoPor")
+  estadosOAuthMercadoPago EstadoOAuthMercadoPago[]
+
+  // Índices e chaves compostas reforçam isolamento e aceleram consultas.
+  @@unique([empresaId, email])
+  @@unique([id, empresaId])
+  @@index([empresaId])
+}
+
+// Cliente também pertence a uma empresa e pode possuir várias ordens.
+model Cliente {
+  id           Int      @id @default(autoincrement())
+  empresaId    Int
+  nome         String
+  telefone     String
+  email        String?
+  cpfCnpj      String?
+  endereco     String?
+  observacoes  String?
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  empresa    Empresa        @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordens     OrdemServico[]
+  orcamentos Orcamento[]
+
+  @@unique([empresaId, telefone])
+  @@unique([id, empresaId])
+  @@index([empresaId])
+  @@index([empresaId, nome])
+  @@index([empresaId, cpfCnpj])
+}
+
+// O orçamento concentra a aprovação comercial antes de existir uma OS.
+model Orcamento {
+  id                      Int             @id @default(autoincrement())
+  empresaId               Int
+  clienteId               Int
+  numero                  Int
+  equipamento             String
+  descricaoProblema       String
+  status                  StatusOrcamento @default(RASCUNHO)
+  subtotal                Decimal         @db.Decimal(12, 2)
+  desconto                Decimal         @default(0) @db.Decimal(12, 2)
+  total                   Decimal         @db.Decimal(12, 2)
+  validade                DateTime?
+  observacoes             String?
+  formaPagamentoEscolhida FormaPagamento  @default(NAO_INFORMADA)
+  tokenPublico            String          @unique @default(uuid())
+  versao                  Int             @default(1)
+  enviadoEm               DateTime?
+  aprovadoEm              DateTime?
+  convertidoEm            DateTime?
+  criadoEm                DateTime        @default(now())
+  atualizadoEm            DateTime        @updatedAt
+
+  empresa   Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  cliente   Cliente                    @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  itens     ItemOrcamento[]
+  historico HistoricoStatusOrcamento[]
+  ordem     OrdemServico?
+  cobrancas Cobranca[]
+
+  @@unique([id, empresaId])
+  @@unique([empresaId, numero])
+  @@index([empresaId, status, criadoEm])
+  @@index([empresaId, clienteId])
+}
+
+model ItemOrcamento {
+  id            Int               @id @default(autoincrement())
+  orcamentoId   Int
+  descricao     String
+  quantidade    Int
+  valorUnitario Decimal           @db.Decimal(12, 2)
+  valorTotal    Decimal           @db.Decimal(12, 2)
+  tipo          TipoItemOrcamento
+
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@index([orcamentoId])
+}
+
+model HistoricoStatusOrcamento {
+  id               Int              @id @default(autoincrement())
+  orcamentoId      Int
+  empresaId        Int
+  statusAnterior   StatusOrcamento?
+  status           StatusOrcamento
+  versaoResultante Int
+  observacao       String?
+  alteradoPorId    Int?
+  criadoEm         DateTime         @default(now())
+
+  orcamento   Orcamento @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Cascade)
+  alteradoPor Usuario?  @relation("StatusOrcamentoAlteradoPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
+
+  @@unique([orcamentoId, versaoResultante])
+  @@index([empresaId, orcamentoId, criadoEm])
+  @@index([alteradoPorId])
+}
+
+// Registro principal do atendimento técnico realizado para um cliente.
+model OrdemServico {
+  id                  Int            @id @default(autoincrement())
+  numero              Int
+  empresaId           Int
+  clienteId           Int
+  orcamentoId         Int
+  tokenAcompanhamento String         @unique @default(uuid())
+  equipamento         String
+  problemaRelatado    String
+  diagnostico         String?
+  servicoRealizado    String?
+  pecasUtilizadas     String?
+  tecnicoResponsavel  String?
+  previsaoDeEntrega   DateTime?
+  valor               Decimal        @default(0) @db.Decimal(12, 2)
+  formaDePagamento    FormaPagamento @default(NAO_INFORMADA)
+  status              StatusOrdem    @default(RECEBIDO)
+  versao              Int            @default(1)
+  criadoEm            DateTime       @default(now())
+  atualizadoEm        DateTime       @updatedAt
+
+  cliente    Cliente                @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  orcamento  Orcamento              @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  historico  HistoricoStatusOrdem[]
+  pagamentos Pagamento[]
+  cobrancas  Cobranca[]
+
+  @@unique([id, empresaId])
+  @@unique([orcamentoId, empresaId])
+  @@unique([empresaId, numero])
+  @@index([empresaId])
+  @@index([empresaId, clienteId])
+  @@index([empresaId, status, criadoEm])
+  @@index([empresaId, criadoEm])
+}
+
+// Auditoria de todas as mudanças de status, incluindo o usuário responsável.
+model HistoricoStatusOrdem {
+  id              Int          @id @default(autoincrement())
+  ordemId         Int
+  empresaId       Int
+  statusAnterior  StatusOrdem?
+  status          StatusOrdem
+  mensagemPublica String?
+  alteradoPorId   Int?
+  criadoEm        DateTime     @default(now())
+
+  ordem       OrdemServico @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Cascade)
+  alteradoPor Usuario?     @relation("StatusAlteradoPor", fields: [alteradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([empresaId, ordemId, criadoEm])
+  @@index([alteradoPorId])
+}
+
+// Pagamentos formam um ledger: registros confirmados nunca são apagados;
+// estornos preservam autor, data e motivo para auditoria financeira.
+model Pagamento {
+  id              Int                     @id @default(autoincrement())
+  empresaId       Int
+  ordemId         Int
+  cobrancaId      Int?                    @unique
+  valor           Decimal                 @db.Decimal(12, 2)
+  formaPagamento  FormaPagamento
+  status          StatusRegistroPagamento @default(CONFIRMADO)
+  origem          OrigemPagamento         @default(MANUAL)
+  observacao      String?
+  pagoEm          DateTime                @default(now())
+  registradoPorId Int?
+  estornadoEm     DateTime?
+  estornadoPorId  Int?
+  motivoEstorno   String?
+  criadoEm        DateTime                @default(now())
+
+  empresa       Empresa      @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordem         OrdemServico @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  registradoPor Usuario?     @relation("PagamentoRegistradoPor", fields: [registradoPorId], references: [id], onDelete: SetNull)
+  estornadoPor  Usuario?     @relation("PagamentoEstornadoPor", fields: [estornadoPorId], references: [id], onDelete: SetNull)
+  cobranca      Cobranca?    @relation(fields: [cobrancaId, empresaId], references: [id, empresaId], onDelete: Restrict)
+
+  @@unique([id, empresaId])
+  @@unique([cobrancaId, empresaId])
+  @@index([empresaId, ordemId, pagoEm])
+  @@index([empresaId, cobrancaId])
+  @@index([registradoPorId])
+  @@index([estornadoPorId])
+}
+
+// Cada empresa possui uma configuracao operacional independente. Credenciais
+// ficam separadas em IntegracaoPagamento e nunca fazem parte deste registro.
+model ConfiguracaoPagamento {
+  id            Int                         @id @default(autoincrement())
+  empresaId     Int                         @unique
+  provedor      ProvedorPagamento           @default(MANUAL)
+  status        StatusConfiguracaoPagamento @default(ATIVA)
+  ambiente      AmbientePagamento           @default(TESTE)
+  ativo         Boolean                     @default(true)
+  pixHabilitado Boolean                     @default(false)
+  versao        Int                         @default(1)
+  criadoEm      DateTime                    @default(now())
+  atualizadoEm  DateTime                    @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@index([empresaId, status])
+}
+
+// Credenciais concedidas por um provedor pertencem sempre a uma unica empresa.
+// Os tokens sao cifrados pela aplicacao antes de chegarem ao banco e nunca sao
+// selecionados por controllers ou serializados em respostas HTTP.
+model IntegracaoPagamento {
+  id                        Int                         @id @default(autoincrement())
+  empresaId                 Int
+  provedor                  ProvedorPagamento
+  mercadoPagoUserId         String
+  accessTokenCriptografado  String
+  refreshTokenCriptografado String
+  tokenExpiraEm             DateTime
+  liveMode                  Boolean                     @default(false)
+  status                    StatusConfiguracaoPagamento @default(ATIVA)
+  renovacaoBloqueadaAte     DateTime?
+  conectadoEm               DateTime                    @default(now())
+  atualizadoEm              DateTime                    @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, provedor])
+  @@unique([provedor, mercadoPagoUserId])
+  @@index([provedor, status, tokenExpiraEm])
+}
+
+// O state OAuth e armazenado somente como hash. O verifier PKCE permanece
+// cifrado e a coluna consumidoEm garante uso unico mesmo entre instancias.
+model EstadoOAuthMercadoPago {
+  id                        Int       @id @default(autoincrement())
+  empresaId                 Int
+  usuarioId                 Int
+  stateHash                 String    @unique
+  codeVerifierCriptografado String
+  expiraEm                  DateTime
+  consumidoEm               DateTime?
+  canceladoEm               DateTime?
+  finalizadoEm              DateTime?
+  criadoEm                  DateTime  @default(now())
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId, empresaId], references: [id, empresaId], onDelete: Cascade)
+
+  @@index([empresaId, expiraEm])
+  @@index([consumidoEm, expiraEm])
+  @@index([empresaId, canceladoEm, finalizadoEm])
+}
+
+// Cobranca representa uma solicitacao de pagamento no gateway. Ela permanece
+// separada do ledger: Pagamento so nasce quando a confirmacao for processada.
+model Cobranca {
+  id                    Int               @id @default(autoincrement())
+  empresaId             Int
+  ordemId               Int?
+  orcamentoId           Int
+  provedor              ProvedorPagamento
+  ambiente              AmbientePagamento
+  formaPagamento        FormaPagamento    @default(PIX)
+  status                StatusCobranca    @default(PENDENTE)
+  valor                 Decimal           @db.Decimal(12, 2)
+  chaveIdempotencia     String
+  identificadorExterno  String?
+  mercadoPagoUserId     String?
+  codigoPix             String?
+  qrCodeBase64          String?
+  expiraEm              DateTime?
+  pagaEm                DateTime?
+  canceladaEm           DateTime?
+  estornadaEm           DateTime?
+  finalizadaNoGatewayEm DateTime?
+  sincronizarApos       DateTime?
+  criadoEm              DateTime          @default(now())
+  atualizadoEm          DateTime          @updatedAt
+
+  empresa   Empresa       @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordem     OrdemServico? @relation(fields: [ordemId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  orcamento Orcamento     @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Restrict)
+  pagamento Pagamento?
+
+  @@unique([id, empresaId])
+  @@unique([empresaId, chaveIdempotencia])
+  @@unique([empresaId, provedor, identificadorExterno])
+  @@index([empresaId, status, criadoEm])
+  @@index([empresaId, provedor, mercadoPagoUserId, status])
+  @@index([provedor, status, sincronizarApos])
+  @@index([empresaId, ordemId])
+  @@index([empresaId, orcamentoId])
+}
+
+// A assinatura que a empresa paga ao Servix fica em um agregado separado das
+// cobrancas de orcamentos. Ela nao possui relacao com IntegracaoPagamento nem
+// com EstadoOAuthMercadoPago, impedindo o uso acidental do OAuth da empresa.
+model AssinaturaEmpresa {
+  id                 Int                 @id @default(autoincrement())
+  empresaId          Int                 @unique
+  planoCodigo        String
+  planoNome          String
+  valorMensal        Decimal             @db.Decimal(12, 2)
+  ambiente           AmbienteAssinatura  @default(TESTE)
+  provedor           ProvedorAssinatura  @default(SIMULADO)
+  status             StatusAssinatura    @default(PENDENTE)
+  checkoutToken      String              @unique @default(uuid())
+  versaoTermos       String
+  termosAceitosEm    DateTime
+  ativadaEm          DateTime?
+  canceladaEm        DateTime?
+  criadoEm           DateTime            @default(now())
+  atualizadoEm       DateTime            @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+
+  @@index([status, ambiente, criadoEm])
+}
