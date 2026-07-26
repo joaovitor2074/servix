@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express"
 import jsonwebtoken, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "../lib/prisma.js"
 import { obterJwtSecret } from "../config/env.js"
+import { StatusEmpresa } from "../generated/prisma/enums.js"
 import type { PapelUsuario as PapelUsuarioType } from "../generated/prisma/enums.js"
 
 // Autentica a requisição em três etapas: extrai o Bearer token, valida o JWT e
@@ -62,13 +63,31 @@ export async function autenticar(
         id:true,
         empresaId:true,
         papel:true,
-        ativo:true
+        ativo:true,
+        empresa: {
+          select: {
+            status: true
+          }
+        }
       }
     })
 
     if (!usuario || !usuario.ativo) {
       return res.status(401).json({
         erro: "Usuário inativo ou não encontrado"
+      })
+    }
+
+    // A validade do JWT não substitui a situação comercial atual da empresa.
+    // Consultar o status em toda requisição encerra imediatamente o acesso de
+    // sessões emitidas antes de uma assinatura ser pausada ou cancelada.
+    if (usuario.empresa.status !== StatusEmpresa.ATIVA) {
+      return res.status(403).json({
+        erro: "Acesso suspenso porque a assinatura da empresa não está ativa.",
+        codigo: "EMPRESA_SUSPENSA",
+        detalhes: {
+          statusEmpresa: usuario.empresa.status
+        }
       })
     }
 

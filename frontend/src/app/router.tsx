@@ -31,6 +31,7 @@ const CheckoutPage = lazy(() => import('../features/site/pages/CheckoutPage'))
 const ContatoPage = lazy(() => import('../features/site/pages/ContatoPage'))
 const HomePage = lazy(() => import('../features/site/pages/HomePage'))
 const PlanosPage = lazy(() => import('../features/site/pages/PlanosPage'))
+const AssinaturaSuspensaPage = lazy(() => import('../features/site/pages/AssinaturaSuspensaPage'))
 const PoliticaPrivacidadePage = lazy(() => import('../features/site/pages/PoliticaPrivacidadePage'))
 const PublicNotFoundPage = lazy(() => import('../features/site/pages/PublicNotFoundPage'))
 const SuportePage = lazy(() => import('../features/site/pages/SuportePage'))
@@ -134,6 +135,7 @@ export default function AppRouter({
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
         <Route path="planos" element={<PlanosPage />} />
+        <Route path="assinatura-suspensa" element={<AssinaturaSuspensaPage />} />
         <Route path="cadastro" element={<CadastroEmpresaPage />} />
         <Route path="cadastro/concluido" element={<CadastroConcluidoPage />} />
         <Route

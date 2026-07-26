@@ -18,6 +18,11 @@ const PAGE_METADATA: Record<string, { title: string; description: string }> = {
     description:
       'Conheça o Plano Servix para organizar a operação da sua empresa de serviços.',
   },
+  '/assinatura-suspensa': {
+    title: 'Assinatura suspensa | Servix',
+    description:
+      'O acesso da empresa foi suspenso porque a assinatura não está ativa.',
+  },
   '/cadastro': {
     title: 'Cadastre sua empresa | Servix',
     description:

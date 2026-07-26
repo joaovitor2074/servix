@@ -1,4 +1,4 @@
-import { obterToken } from "../utils/token-storage";
+import { obterToken, removerToken } from "../utils/token-storage";
 
 const API_URL = (
     import.meta.env.VITE_API_URL ?? 'http://localhost:3005'
@@ -21,8 +21,28 @@ export async function apiFetch(
         ? caminho
         : `/${caminho}`
 
-    return fetch(`${API_URL}${caminhoNormalizado}`,{
+    const resposta = await fetch(`${API_URL}${caminhoNormalizado}`,{
         ...opcoes,
         headers,
     })
+
+    if (resposta.status === 403) {
+        const corpo = await resposta
+            .clone()
+            .json()
+            .catch(() => null) as { codigo?: unknown } | null
+
+        if (corpo?.codigo === 'EMPRESA_SUSPENSA') {
+            removerToken()
+
+            if (
+                typeof window !== 'undefined' &&
+                window.location.pathname !== '/assinatura-suspensa'
+            ) {
+                window.location.replace('/assinatura-suspensa')
+            }
+        }
+    }
+
+    return resposta
 }
