@@ -4,6 +4,7 @@ import { prisma } from "./prisma.js"
 // Namespace fixo dos advisory locks usados pelas operacoes de pagamento.
 // A segunda chave e o empresaId, portanto empresas diferentes nao se bloqueiam.
 const NAMESPACE_LOCK_PAGAMENTO = 1_397_902_416
+const NAMESPACE_LOCK_FINANCEIRO_PREVIEW = 1_397_902_417
 
 export const OPCOES_TRANSACAO_PAGAMENTO = {
   maxWait: 5_000,
@@ -22,6 +23,23 @@ export async function bloquearPagamentoDaEmpresaTx(
         CAST(${empresaId} AS integer)
       )
     ) AS "lockPagamento"
+  `
+}
+
+// Serializa as mutacoes do ledger financeiro dentro da empresa. Isso evita que
+// duas baixas simultaneas observem o mesmo saldo aberto e gerem sobrebaixa.
+export async function bloquearFinanceiroPreviewDaEmpresaTx(
+  tx: Prisma.TransactionClient,
+  empresaId: number
+): Promise<void> {
+  await tx.$queryRaw`
+    SELECT 1 AS "bloqueado"
+    FROM (
+      SELECT pg_advisory_xact_lock(
+        CAST(${NAMESPACE_LOCK_FINANCEIRO_PREVIEW} AS integer),
+        CAST(${empresaId} AS integer)
+      )
+    ) AS "lockFinanceiroPreview"
   `
 }
 

@@ -110,6 +110,24 @@
     transform 160ms ease;
 }
 
+.app-sidebar__preview-badge {
+  margin-left: auto;
+  padding: 3px 6px;
+  color: #c9d9ff;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid rgba(201, 217, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-sidebar__navigation a.active .app-sidebar__preview-badge {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
 .app-sidebar__navigation a:hover,
 .app-sidebar__logout:hover {
   color: #ffffff;

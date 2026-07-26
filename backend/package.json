@@ -13,9 +13,14 @@
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "prisma:migrate:dev": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "db:deploy": "prisma migrate deploy",
-    "admin:create": "tsx src/scripts/criar-admin.ts"
+    "prisma:migrate:deploy": "tsx src/scripts/deploy-migrations.ts",
+    "db:deploy": "tsx src/scripts/deploy-migrations.ts",
+    "prisma:migrate:deploy:raw": "prisma migrate deploy",
+    "admin:create": "tsx src/scripts/criar-admin.ts",
+    "demo:seed": "tsx src/scripts/popular-demonstracao.ts",
+    "demo:seed:railway": "tsx src/scripts/popular-demonstracao-railway.ts",
+    "finance:preview:seed": "tsx src/scripts/popular-financeiro-preview.ts",
+    "mp:criar-plano": "tsx src/scripts/criar-plano-servix.ts"
   },
   "keywords": [],
   "author": "Servix",
@@ -31,6 +36,7 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
+    "mercadopago": "^3.2.1",
     "pg": "^8.22.0",
     "zod": "^4.4.3"
   },

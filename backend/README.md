@@ -14,6 +14,7 @@ construída com Express, TypeScript, PostgreSQL e Prisma.
 npm install
 cp .env.example .env
 npm run prisma:generate
+# Exige SERVIX_FINANCEIRO_MODE=PREVIEW enquanto a migration preview estiver presente.
 npm run prisma:migrate:deploy
 ```
 
@@ -224,7 +225,10 @@ npm run typecheck
 npm test
 ```
 
-As migrations são aplicadas em produção com `npm run prisma:migrate:deploy`.
+O pipeline comum usa `npm run prisma:migrate:deploy` e falha fechado sem
+`SERVIX_FINANCEIRO_MODE=PREVIEW` enquanto a migration financeira preview fizer
+parte do artefato. `prisma:migrate:deploy:raw` é reservado a manutenção manual e
+não deve substituir essa trava no deploy.
 
 ## Mercado Pago por empresa (OAuth)
 

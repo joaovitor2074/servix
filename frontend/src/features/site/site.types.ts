@@ -40,4 +40,9 @@ export interface CheckoutData {
   assinatura: AssinaturaResumo
 }
 
+export interface CheckoutHospedadoData {
+  checkoutUrl: string
+  status: string
+}
+
 export type CadastroEmpresaResponse = CheckoutData

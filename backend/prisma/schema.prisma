@@ -88,6 +88,8 @@ enum ProvedorAssinatura {
 enum StatusAssinatura {
   PENDENTE
   ATIVA
+  PAUSADA
+  INADIMPLENTE
   CANCELADA
 }
 
@@ -113,33 +115,99 @@ enum StatusEmpresa {
   SUSPENSA
 }
 
+// O financeiro empresarial nasce isolado em PREVIEW. PRODUCAO existe apenas
+// para permitir uma migracao futura explicita; a API desta entrega nunca a usa.
+enum AmbienteFinanceiro {
+  PREVIEW
+  PRODUCAO
+}
+
+enum TipoCategoriaFinanceira {
+  RECEITA
+  DESPESA
+}
+
+enum TipoContaFinanceira {
+  CAIXA
+  CONTA_BANCARIA
+  CARTEIRA_DIGITAL
+  OUTRA
+}
+
+enum TipoLancamentoFinanceiro {
+  RECEBER
+  PAGAR
+}
+
+enum StatusLancamentoFinanceiro {
+  RASCUNHO
+  PENDENTE
+  PARCIAL
+  QUITADO
+  VENCIDO
+  CANCELADO
+}
+
+enum OrigemLancamentoFinanceiro {
+  MANUAL
+  ORDEM_SERVICO
+  ORCAMENTO
+  IMPORTACAO
+}
+
+enum TipoMovimentacaoFinanceira {
+  ENTRADA
+  SAIDA
+  TRANSFERENCIA_ENTRADA
+  TRANSFERENCIA_SAIDA
+  AJUSTE_ENTRADA
+  AJUSTE_SAIDA
+}
+
+enum StatusMovimentacaoFinanceira {
+  CONFIRMADA
+  ESTORNADA
+}
+
+enum StatusIdempotenciaFinanceira {
+  EM_PROCESSAMENTO
+  CONCLUIDA
+}
+
 // Empresa é a raiz do isolamento multiempresa do sistema.
 model Empresa {
-  id                     Int      @id @default(autoincrement())
+  id                     Int           @id @default(autoincrement())
   nome                   String
-  slug                   String   @unique
+  slug                   String        @unique
   status                 StatusEmpresa @default(ATIVA)
   telefone               String?
   email                  String?
   tipoNegocio            String?
-  cpfCnpj                String?  @unique
+  cpfCnpj                String?       @unique
   cidade                 String?
   estado                 String?
   endereco               String?
-  proximoNumeroOrcamento Int      @default(1)
-  proximoNumeroOrdem     Int      @default(1)
-  criadoEm               DateTime @default(now())
-  atualizadoEm           DateTime @updatedAt
+  proximoNumeroOrcamento Int           @default(1)
+  proximoNumeroOrdem     Int           @default(1)
+  criadoEm               DateTime      @default(now())
+  atualizadoEm           DateTime      @updatedAt
 
-  clientes                Cliente[]
-  usuarios                Usuario[]
-  orcamentos              Orcamento[]
-  pagamentos              Pagamento[]
-  configuracaoPagamento   ConfiguracaoPagamento?
-  integracoesPagamento    IntegracaoPagamento[]
-  estadosOAuthMercadoPago EstadoOAuthMercadoPago[]
-  cobrancas               Cobranca[]
-  assinatura              AssinaturaEmpresa?
+  clientes                 Cliente[]
+  usuarios                 Usuario[]
+  orcamentos               Orcamento[]
+  pagamentos               Pagamento[]
+  configuracaoPagamento    ConfiguracaoPagamento?
+  integracoesPagamento     IntegracaoPagamento[]
+  estadosOAuthMercadoPago  EstadoOAuthMercadoPago[]
+  cobrancas                Cobranca[]
+  assinatura               AssinaturaEmpresa?
+  categoriasFinanceiras    CategoriaFinanceira[]
+  centrosCustoFinanceiros  CentroCustoFinanceiro[]
+  contasFinanceiras        ContaFinanceira[]
+  lancamentosFinanceiros   LancamentoFinanceiro[]
+  movimentacoesFinanceiras MovimentacaoFinanceira[]
+  auditoriasFinanceiras    AuditoriaFinanceira[]
+  idempotenciasFinanceiras IdempotenciaFinanceira[]
 }
 
 // Usuários pertencem a uma empresa. O e-mail é único somente dentro dela.
@@ -155,12 +223,17 @@ model Usuario {
   criadoEm     DateTime     @default(now())
   atualizadoEm DateTime     @updatedAt
 
-  empresa                 Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  alteracoesDeStatus      HistoricoStatusOrdem[]     @relation("StatusAlteradoPor")
-  alteracoesOrcamento     HistoricoStatusOrcamento[] @relation("StatusOrcamentoAlteradoPor")
-  pagamentosRegistrados   Pagamento[]                @relation("PagamentoRegistradoPor")
-  pagamentosEstornados    Pagamento[]                @relation("PagamentoEstornadoPor")
-  estadosOAuthMercadoPago EstadoOAuthMercadoPago[]
+  empresa                             Empresa                    @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  alteracoesDeStatus                  HistoricoStatusOrdem[]     @relation("StatusAlteradoPor")
+  alteracoesOrcamento                 HistoricoStatusOrcamento[] @relation("StatusOrcamentoAlteradoPor")
+  pagamentosRegistrados               Pagamento[]                @relation("PagamentoRegistradoPor")
+  pagamentosEstornados                Pagamento[]                @relation("PagamentoEstornadoPor")
+  estadosOAuthMercadoPago             EstadoOAuthMercadoPago[]
+  lancamentosFinanceirosCriados       LancamentoFinanceiro[]     @relation("LancamentoFinanceiroCriadoPor")
+  movimentacoesFinanceirasRegistradas MovimentacaoFinanceira[]   @relation("MovimentacaoFinanceiraRegistradaPor")
+  movimentacoesFinanceirasEstornadas  MovimentacaoFinanceira[]   @relation("MovimentacaoFinanceiraEstornadaPor")
+  auditoriasFinanceiras               AuditoriaFinanceira[]
+  idempotenciasFinanceiras            IdempotenciaFinanceira[]
 
   // Índices e chaves compostas reforçam isolamento e aceleram consultas.
   @@unique([empresaId, email])
@@ -181,9 +254,10 @@ model Cliente {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresa    Empresa        @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  ordens     OrdemServico[]
-  orcamentos Orcamento[]
+  empresa                Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  ordens                 OrdemServico[]
+  orcamentos             Orcamento[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
 
   @@unique([empresaId, telefone])
   @@unique([id, empresaId])
@@ -458,24 +532,230 @@ model Cobranca {
 // A assinatura que a empresa paga ao Servix fica em um agregado separado das
 // cobrancas de orcamentos. Ela nao possui relacao com IntegracaoPagamento nem
 // com EstadoOAuthMercadoPago, impedindo o uso acidental do OAuth da empresa.
+// A assinatura que a empresa paga ao Servix fica em um agregado separado das
+// cobrancas de orcamentos. Ela nao possui relacao com IntegracaoPagamento nem
+// com EstadoOAuthMercadoPago, impedindo o uso acidental do OAuth da empresa.
 model AssinaturaEmpresa {
-  id                 Int                 @id @default(autoincrement())
-  empresaId          Int                 @unique
-  planoCodigo        String
-  planoNome          String
-  valorMensal        Decimal             @db.Decimal(12, 2)
-  ambiente           AmbienteAssinatura  @default(TESTE)
-  provedor           ProvedorAssinatura  @default(SIMULADO)
-  status             StatusAssinatura    @default(PENDENTE)
-  checkoutToken      String              @unique @default(uuid())
-  versaoTermos       String
-  termosAceitosEm    DateTime
-  ativadaEm          DateTime?
-  canceladaEm        DateTime?
-  criadoEm           DateTime            @default(now())
-  atualizadoEm       DateTime            @updatedAt
+  id          Int                @id @default(autoincrement())
+  empresaId   Int                @unique
+  planoCodigo String
+  planoNome   String
+  valorMensal Decimal            @db.Decimal(12, 2)
+  ambiente    AmbienteAssinatura @default(TESTE)
+  provedor    ProvedorAssinatura @default(SIMULADO)
+  status      StatusAssinatura   @default(PENDENTE)
+
+  mercadoPagoPlanoId      String?
+  mercadoPagoAssinaturaId String? @unique
+  referenciaExterna       String? @unique
+  emailPagador            String?
+  checkoutUrl             String?
+
+  checkoutToken   String   @unique @default(uuid())
+  versaoTermos    String
+  termosAceitosEm DateTime
+
+  ativadaEm             DateTime?
+  proximaCobrancaEm     DateTime?
+  ultimaSincronizacaoEm DateTime?
+  canceladaEm           DateTime?
+  versao                Int       @default(1)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
   empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict)
 
   @@index([status, ambiente, criadoEm])
+  @@index([provedor, status])
+  @@index([mercadoPagoPlanoId])
+}
+
+// Cadastros e ledger abaixo sao independentes do Pagamento/Cobranca das ordens.
+// O ambiente participa de todas as chaves compostas para impedir associacoes
+// acidentais entre PREVIEW e uma futura ativacao em producao.
+model CategoriaFinanceira {
+  id           Int                     @id @default(autoincrement())
+  empresaId    Int
+  ambiente     AmbienteFinanceiro      @default(PREVIEW)
+  nome         String
+  tipo         TipoCategoriaFinanceira
+  cor          String?
+  descricao    String?
+  ativa        Boolean                 @default(true)
+  criadoEm     DateTime                @default(now())
+  atualizadoEm DateTime                @updatedAt
+
+  empresa     Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lancamentos LancamentoFinanceiro[]
+
+  @@unique([id, empresaId, ambiente])
+  @@unique([empresaId, ambiente, tipo, nome])
+  @@index([empresaId, ambiente, ativa, tipo])
+}
+
+model CentroCustoFinanceiro {
+  id           Int                @id @default(autoincrement())
+  empresaId    Int
+  ambiente     AmbienteFinanceiro @default(PREVIEW)
+  nome         String
+  codigo       String?
+  descricao    String?
+  ativo        Boolean            @default(true)
+  criadoEm     DateTime           @default(now())
+  atualizadoEm DateTime           @updatedAt
+
+  empresa     Empresa                @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lancamentos LancamentoFinanceiro[]
+
+  @@unique([id, empresaId, ambiente])
+  @@unique([empresaId, ambiente, nome])
+  @@unique([empresaId, ambiente, codigo])
+  @@index([empresaId, ambiente, ativo])
+}
+
+model ContaFinanceira {
+  id               Int                 @id @default(autoincrement())
+  empresaId        Int
+  ambiente         AmbienteFinanceiro  @default(PREVIEW)
+  nome             String
+  tipo             TipoContaFinanceira
+  instituicao      String?
+  cor              String?
+  saldoInicial     Decimal             @default(0) @db.Decimal(12, 2)
+  dataSaldoInicial DateTime
+  descricao        String?
+  ativa            Boolean             @default(true)
+  criadoEm         DateTime            @default(now())
+  atualizadoEm     DateTime            @updatedAt
+
+  empresa               Empresa                  @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  lancamentosPreferidos LancamentoFinanceiro[]   @relation("ContaPreferidaLancamento")
+  movimentacoes         MovimentacaoFinanceira[]
+
+  @@unique([id, empresaId, ambiente])
+  @@unique([empresaId, ambiente, nome])
+  @@index([empresaId, ambiente, ativa])
+}
+
+model LancamentoFinanceiro {
+  id                 Int                        @id @default(autoincrement())
+  empresaId          Int
+  ambiente           AmbienteFinanceiro         @default(PREVIEW)
+  tipo               TipoLancamentoFinanceiro
+  status             StatusLancamentoFinanceiro @default(PENDENTE)
+  origem             OrigemLancamentoFinanceiro @default(MANUAL)
+  descricao          String
+  documento          String?
+  contraparte        String?
+  clienteId          Int?
+  categoriaId        Int
+  centroCustoId      Int?
+  contaPreferidaId   Int?
+  valorOriginal      Decimal                    @db.Decimal(12, 2)
+  desconto           Decimal                    @default(0) @db.Decimal(12, 2)
+  juros              Decimal                    @default(0) @db.Decimal(12, 2)
+  multa              Decimal                    @default(0) @db.Decimal(12, 2)
+  valorTotal         Decimal                    @db.Decimal(12, 2)
+  dataCompetencia    DateTime
+  dataVencimento     DateTime
+  observacao         String?
+  versao             Int                        @default(1)
+  criadoPorId        Int?
+  canceladoEm        DateTime?
+  motivoCancelamento String?
+  criadoEm           DateTime                   @default(now())
+  atualizadoEm       DateTime                   @updatedAt
+
+  empresa        Empresa                  @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  cliente        Cliente?                 @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+  categoria      CategoriaFinanceira      @relation(fields: [categoriaId, empresaId, ambiente], references: [id, empresaId, ambiente], onDelete: Restrict, onUpdate: NoAction)
+  centroCusto    CentroCustoFinanceiro?   @relation(fields: [centroCustoId, empresaId, ambiente], references: [id, empresaId, ambiente], onDelete: Restrict, onUpdate: NoAction)
+  contaPreferida ContaFinanceira?         @relation("ContaPreferidaLancamento", fields: [contaPreferidaId, empresaId, ambiente], references: [id, empresaId, ambiente], onDelete: Restrict, onUpdate: NoAction)
+  criadoPor      Usuario?                 @relation("LancamentoFinanceiroCriadoPor", fields: [criadoPorId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+  movimentacoes  MovimentacaoFinanceira[]
+
+  @@unique([id, empresaId, ambiente])
+  @@index([empresaId, ambiente, tipo, status, dataVencimento])
+  @@index([empresaId, ambiente, categoriaId, dataCompetencia])
+  @@index([empresaId, ambiente, centroCustoId, dataCompetencia])
+  @@index([empresaId, ambiente, clienteId])
+}
+
+// Movimentacoes confirmadas compoem o saldo. Estorno altera o status, mas
+// preserva o registro, autor, data e motivo para auditoria.
+model MovimentacaoFinanceira {
+  id                 Int                          @id @default(autoincrement())
+  empresaId          Int
+  ambiente           AmbienteFinanceiro           @default(PREVIEW)
+  contaId            Int
+  lancamentoId       Int?
+  tipo               TipoMovimentacaoFinanceira
+  status             StatusMovimentacaoFinanceira @default(CONFIRMADA)
+  valor              Decimal                      @db.Decimal(12, 2)
+  formaPagamento     FormaPagamento               @default(NAO_INFORMADA)
+  descricao          String
+  documento          String?
+  observacao         String?
+  grupoTransferencia String?
+  movimentadoEm      DateTime
+  registradoPorId    Int?
+  estornadoEm        DateTime?
+  estornadoPorId     Int?
+  motivoEstorno      String?
+  criadoEm           DateTime                     @default(now())
+
+  empresa       Empresa               @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  conta         ContaFinanceira       @relation(fields: [contaId, empresaId, ambiente], references: [id, empresaId, ambiente], onDelete: Restrict, onUpdate: NoAction)
+  lancamento    LancamentoFinanceiro? @relation(fields: [lancamentoId, empresaId, ambiente], references: [id, empresaId, ambiente], onDelete: Restrict, onUpdate: NoAction)
+  registradoPor Usuario?              @relation("MovimentacaoFinanceiraRegistradaPor", fields: [registradoPorId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+  estornadoPor  Usuario?              @relation("MovimentacaoFinanceiraEstornadaPor", fields: [estornadoPorId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([id, empresaId, ambiente])
+  @@unique([empresaId, ambiente, grupoTransferencia, tipo])
+  @@index([empresaId, ambiente, contaId, status, movimentadoEm])
+  @@index([empresaId, ambiente, lancamentoId, status])
+  @@index([empresaId, ambiente, grupoTransferencia])
+}
+
+model AuditoriaFinanceira {
+  id          Int                @id @default(autoincrement())
+  empresaId   Int
+  ambiente    AmbienteFinanceiro @default(PREVIEW)
+  usuarioId   Int?
+  acao        String
+  entidade    String
+  entidadeId  Int?
+  dadosAntes  Json?
+  dadosDepois Json?
+  criadoEm    DateTime           @default(now())
+
+  empresa Empresa  @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario? @relation(fields: [usuarioId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([empresaId, ambiente, criadoEm])
+  @@index([empresaId, ambiente, entidade, entidadeId])
+  @@index([usuarioId])
+}
+
+model IdempotenciaFinanceira {
+  id          Int                          @id @default(autoincrement())
+  empresaId   Int
+  ambiente    AmbienteFinanceiro           @default(PREVIEW)
+  usuarioId   Int
+  chave       String
+  operacao    String
+  fingerprint String
+  status      StatusIdempotenciaFinanceira @default(EM_PROCESSAMENTO)
+  codigoHttp  Int?
+  resposta    Json?
+  criadoEm    DateTime                     @default(now())
+  concluidoEm DateTime?
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  usuario Usuario @relation(fields: [usuarioId, empresaId], references: [id, empresaId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([empresaId, ambiente, chave])
+  @@index([empresaId, ambiente, status, criadoEm])
+  @@index([usuarioId])
 }

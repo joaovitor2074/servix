@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet } from 'react-router'
 import type { UsuarioAutenticado } from '../../features/auth/types/auth.types'
+import { FINANCEIRO_PREVIEW_HABILITADO } from '../../features/finance/config/finance-preview.config'
 import servixSymbol from '../../assets/brand/servix-symbol.svg'
 import './AppLayout.css'
 
@@ -113,6 +114,17 @@ export default function AppLayout({
             <span>Ordens</span>
           </NavLink>
 
+          {FINANCEIRO_PREVIEW_HABILITADO && usuario.papel === 'ADMIN' && (
+            <NavLink
+              to="/financeiro"
+              onClick={() => setMenuAberto(false)}
+            >
+              <FinanceIcon />
+              <span>Financeiro</span>
+              <small className="app-sidebar__preview-badge">Preview</small>
+            </NavLink>
+          )}
+
           {usuario.papel === 'ADMIN' && (
             <NavLink
               to="/configuracoes/pagamentos"
@@ -166,7 +178,7 @@ export default function AppLayout({
               <SearchIcon />
               <input
                 type="search"
-                placeholder="Buscar orçamentos, ordens, clientes..."
+                placeholder="Buscar ordens, clientes, financeiro..."
               />
             </label>
           </div>
@@ -291,6 +303,15 @@ function SettingsIcon() {
     <Icon>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+    </Icon>
+  )
+}
+
+function FinanceIcon() {
+  return (
+    <Icon>
+      <path d="M4 7h16v12H4V7Z" />
+      <path d="M7 7V5h10v2M8 13h8M12 10v6" />
     </Icon>
   )
 }

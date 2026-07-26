@@ -1,27 +1,55 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useSearchParams } from 'react-router'
-import { buscarCheckout } from '../site.service'
+import {
+  Link,
+  useLocation,
+  useParams,
+  useSearchParams,
+} from 'react-router'
+import { sincronizarCheckout } from '../site.service'
 import { formatarMoeda } from '../site-data'
 import type { CheckoutData } from '../site.types'
 
 export default function CadastroConcluidoPage() {
   const location = useLocation()
+  const { checkoutToken = '' } = useParams()
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('checkout') ?? ''
+  // Compatibilidade com retornos criados antes de o token passar para o path.
+  // O split também recupera URLs em que o provedor anexou `?preapproval_id`
+  // ao valor do parâmetro checkout.
+  const token = (
+    checkoutToken ||
+    searchParams.get('checkout') ||
+    ''
+  ).split(/[?&]/, 1)[0]
   const dadosIniciais = (location.state as CheckoutData | null) ?? null
   const [dados, setDados] = useState<CheckoutData | null>(dadosIniciais)
   const [carregando, setCarregando] = useState(!dadosIniciais && Boolean(token))
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    if (dadosIniciais || !token) return
+    if (dadosIniciais?.assinatura.status === 'ATIVA' || !token) return
 
     const controller = new AbortController()
+    let tentativa = 0
+    let timeoutId: number | undefined
 
     async function carregarResumo() {
       try {
-        const checkout = await buscarCheckout(token, controller.signal)
+        const checkout = await sincronizarCheckout(token, controller.signal)
         setDados(checkout)
+        setErro('')
+
+        if (
+          checkout.assinatura.status === 'PENDENTE' &&
+          tentativa < 4 &&
+          !controller.signal.aborted
+        ) {
+          tentativa += 1
+          timeoutId = window.setTimeout(() => {
+            void carregarResumo()
+          }, 2000)
+          return
+        }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return
         setErro(
@@ -35,7 +63,10 @@ export default function CadastroConcluidoPage() {
     }
 
     void carregarResumo()
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+    }
   }, [dadosIniciais, token])
 
   if (carregando) {
@@ -44,6 +75,33 @@ export default function CadastroConcluidoPage() {
         <div className="site-container checkout-loading" aria-busy="true" aria-live="polite">
           <span className="loading-spinner" aria-hidden="true" />
           <h1>Validando a confirmação...</h1>
+        </div>
+      </section>
+    )
+  }
+
+  if (dados?.assinatura.status === 'PENDENTE') {
+    return (
+      <section className="state-page">
+        <div className="site-container state-card">
+          <span className="state-card__code">Confirmação em andamento</span>
+          <h1>Estamos aguardando o Mercado Pago.</h1>
+          <p>
+            A empresa continuará protegida enquanto a assinatura não for
+            confirmada. Atualize esta página em alguns instantes.
+          </p>
+          <div className="state-card__actions">
+            <button
+              type="button"
+              className="button button--primary"
+              onClick={() => window.location.reload()}
+            >
+              Verificar novamente
+            </button>
+            <Link to="/suporte" className="button button--secondary">
+              Pedir ajuda
+            </Link>
+          </div>
         </div>
       </section>
     )

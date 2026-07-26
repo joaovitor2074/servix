@@ -7,12 +7,14 @@ import { env } from "./config/env.js"
 import { prisma } from "./lib/prisma.js"
 import { autenticar } from "./middlewares/auth.middleware.js"
 import { errorMiddleware } from "./middlewares/error.middleware.js"
-import assinaturasRoutes from "./routes/assinaturas.routes.js"
+import { exigirFinanceiroPreviewHabilitado } from "./middlewares/financeiro-preview.middleware.js"
+import {assinaturasRoutes} from "./routes/assinaturas.routes.js"
 import authRoutes from "./routes/auth.routes.js"
 import clientesRoutes from "./routes/clientes.routes.js"
 import cobrancasRoutes from "./routes/cobrancas.routes.js"
 import configuracoesRoutes from "./routes/configuracoes.routes.js"
 import dashboardRoutes from "./routes/dashboard.routes.js"
+import financeiroRoutes from "./routes/financeiro.routes.js"
 import ordensRoutes from "./routes/ordens.routes.js"
 import ordensPublicasRoutes from "./routes/ordens-publicas.routes.js"
 import orcamentosPublicosRoutes from "./routes/orcamentos-publicos.routes.js"
@@ -20,6 +22,7 @@ import orcamentosRoutes from "./routes/orcamentos.routes.js"
 import empresaRouter from "./routes/empresa.routes.js"
 import integracoesPublicasRoutes from "./routes/integracoes-publicas.routes.js"
 import usuariosRouter from "./routes/usuarios.routes.js"
+
 
 // Este arquivo monta a aplicação Express, mas não abre a porta HTTP. Essa
 // separação permite importar `app` nos testes sem iniciar um servidor real.
@@ -123,6 +126,12 @@ app.use("/clientes", autenticar, clientesRoutes)
 app.use("/cobrancas", autenticar, cobrancasRoutes)
 app.use("/configuracoes", autenticar, configuracoesRoutes)
 app.use("/dashboard", autenticar, dashboardRoutes)
+app.use(
+  "/preview/financeiro",
+  exigirFinanceiroPreviewHabilitado,
+  autenticar,
+  financeiroRoutes
+)
 app.use("/orcamentos", autenticar, orcamentosRoutes)
 app.use("/ordens", autenticar, ordensRoutes)
 app.use("/empresa",empresaRouter)

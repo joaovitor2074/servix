@@ -42,7 +42,10 @@ export default function PlanosPage() {
               ))}
             </ul>
 
-            <Link to="/cadastro" className="button button--primary button--large button--full">
+            <Link
+              to="/cadastro?redirect=/assinatura"
+              className="button button--primary button--large button--full"
+            >
               Começar no ambiente de teste
             </Link>
             <p className="plan-card__fine-print">

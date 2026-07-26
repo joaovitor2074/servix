@@ -1,11 +1,18 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import type { UsuarioAutenticado } from '../features/auth/types/auth.types'
+import { FINANCEIRO_PREVIEW_HABILITADO } from '../features/finance/config/finance-preview.config'
 
 const AppLayout = lazy(() => import('../shared/layouts/AppLayout'))
 const PublicLayout = lazy(() => import('../shared/layouts/PublicLayout'))
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage'))
 const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPage'))
+const FinanceLayout = lazy(() => import('../features/finance/layouts/FinanceLayout'))
+const FinanceCashFlowPage = lazy(() => import('../features/finance/pages/FinanceCashFlowPage'))
+const FinanceDashboardPage = lazy(() => import('../features/finance/pages/FinanceDashboardPage'))
+const FinanceEntriesPage = lazy(() => import('../features/finance/pages/FinanceEntriesPage'))
+const FinanceMovementsPage = lazy(() => import('../features/finance/pages/FinanceMovementsPage'))
+const FinanceRegistriesPage = lazy(() => import('../features/finance/pages/FinanceRegistriesPage'))
 const ClientFormPage = lazy(() => import('../features/clients/pages/ClientFormPage'))
 const ClientsPage = lazy(() => import('../features/clients/pages/ClientsPage'))
 const BudgetDetailsPage = lazy(() => import('../features/budgets/pages/BudgetDetailsPage'))
@@ -86,6 +93,23 @@ export default function AppRouter({
         <Route path="ordens/:id/editar" element={<EditOrderPage />} />
         <Route path="ordens/:id" element={<OrderDetailsPage />} />
         <Route
+          path="financeiro"
+          element={
+            FINANCEIRO_PREVIEW_HABILITADO && usuario?.papel === 'ADMIN' ? (
+              <FinanceLayout />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        >
+          <Route index element={<FinanceDashboardPage />} />
+          <Route path="contas-a-receber" element={<FinanceEntriesPage tipo="RECEITA" />} />
+          <Route path="contas-a-pagar" element={<FinanceEntriesPage tipo="DESPESA" />} />
+          <Route path="movimentacoes" element={<FinanceMovementsPage />} />
+          <Route path="fluxo-de-caixa" element={<FinanceCashFlowPage />} />
+          <Route path="cadastros" element={<FinanceRegistriesPage />} />
+        </Route>
+        <Route
           path="configuracoes"
           element={
             usuario?.papel === 'ADMIN' ? (
@@ -112,6 +136,10 @@ export default function AppRouter({
         <Route path="planos" element={<PlanosPage />} />
         <Route path="cadastro" element={<CadastroEmpresaPage />} />
         <Route path="cadastro/concluido" element={<CadastroConcluidoPage />} />
+        <Route
+          path="cadastro/concluido/:checkoutToken"
+          element={<CadastroConcluidoPage />}
+        />
         <Route path="checkout/:token" element={<CheckoutPage />} />
         <Route path="contato" element={<ContatoPage />} />
         <Route path="suporte" element={<SuportePage />} />

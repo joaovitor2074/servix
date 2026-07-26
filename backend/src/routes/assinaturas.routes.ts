@@ -1,21 +1,68 @@
 import { Router } from "express"
-
+import { PapelUsuario } from "../generated/prisma/enums.js"
 import {
+  buscarAssinaturaAtualController,
   buscarCheckoutAssinaturaController,
-  confirmarAssinaturaTesteController,
-  listarPlanosServixController
+  confirmarCheckoutAssinaturaController,
+  iniciarAssinaturaController,
+  listarPlanosAssinaturaController,
+  sincronizarCheckoutAssinaturaController,
+  sincronizarAssinaturaController,
+  webhookAssinaturasMercadoPagoController
 } from "../controllers/assinaturas.controllers.js"
+import {
+  autenticar,
+  autorizar
+} from "../middlewares/auth.middleware.js"
 
-const router = Router()
+const assinaturasRoutes = Router()
 
-router.use("/checkout", (_req, res, next) => {
-  res.setHeader("Cache-Control", "no-store")
-  res.setHeader("X-Robots-Tag", "noindex, nofollow")
-  next()
-})
+// Catálogo público; não contém credenciais nem dados de clientes.
+assinaturasRoutes.get(
+  "/planos",
+  listarPlanosAssinaturaController
+)
 
-router.get("/planos", listarPlanosServixController)
-router.get("/checkout/:token", buscarCheckoutAssinaturaController)
-router.post("/checkout/:token/confirmar", confirmarAssinaturaTesteController)
+assinaturasRoutes.post(
+  "/webhooks/mercado-pago",
+  webhookAssinaturasMercadoPagoController
+)
 
-export default router
+// Pública
+assinaturasRoutes.get(
+  "/checkout/:token",
+  buscarCheckoutAssinaturaController
+)
+
+// Pública
+assinaturasRoutes.post(
+  "/checkout/:token/confirmar",
+  confirmarCheckoutAssinaturaController
+)
+
+assinaturasRoutes.post(
+  "/checkout/:token/sincronizar",
+  sincronizarCheckoutAssinaturaController
+)
+
+// Somente abaixo daqui exige JWT
+assinaturasRoutes.use(autenticar)
+
+assinaturasRoutes.get(
+  "/atual",
+  buscarAssinaturaAtualController
+)
+
+assinaturasRoutes.post(
+  "/sincronizar",
+  autorizar(PapelUsuario.ADMIN),
+  sincronizarAssinaturaController
+)
+
+assinaturasRoutes.post(
+  "/",
+  autorizar(PapelUsuario.ADMIN),
+  iniciarAssinaturaController
+)
+
+export { assinaturasRoutes }

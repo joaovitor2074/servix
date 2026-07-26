@@ -40,6 +40,7 @@ CORS_ORIGINS=https://SEU-FRONTEND.vercel.app
 SERVIX_BILLING_MODE=TESTE
 SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
 SERVIX_PAYMENT_SIMULATOR_ENABLED=true
+SERVIX_FINANCEIRO_MODE=PREVIEW
 
 MERCADO_PAGO_CLIENT_ID=<app-oauth-sandbox-do-servix>
 MERCADO_PAGO_CLIENT_SECRET=<segredo-do-app-oauth-sandbox>
@@ -61,6 +62,11 @@ Pre-deploy Command: npm run db:deploy
 Start Command: npm start
 Healthcheck Path: /health
 ```
+
+`db:deploy` falha fechado antes de executar o Prisma se
+`SERVIX_FINANCEIRO_MODE` não for exatamente `PREVIEW`. Enquanto a migration do
+financeiro preview estiver incluída no artefato, não use o comando de escape
+`prisma:migrate:deploy:raw` no Railway nem em outro pipeline comum.
 
 Gere valores novos para `JWT_SECRET` e `TOKEN_ENCRYPTION_KEY` em cada ambiente.
 Nao copie segredos locais para homologacao e nunca coloque esses valores no

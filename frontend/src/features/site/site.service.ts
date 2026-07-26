@@ -3,7 +3,13 @@ import type {
   CadastroEmpresaInput,
   CadastroEmpresaResponse,
   CheckoutData,
+  CheckoutHospedadoData,
 } from './site.types'
+
+export interface ConfirmarCheckoutInput {
+  emailPagador: string
+  versaoTermos: string
+}
 
 export async function cadastrarEmpresa(
   dados: CadastroEmpresaInput,
@@ -25,7 +31,9 @@ export async function buscarCheckout(
 ): Promise<CheckoutData> {
   const resposta = await apiFetch(
     `/assinaturas/checkout/${encodeURIComponent(token)}`,
-    { signal },
+    {
+      signal,
+    },
   )
 
   return lerResposta<CheckoutData>(
@@ -34,39 +42,99 @@ export async function buscarCheckout(
   )
 }
 
-export async function confirmarCheckout(token: string): Promise<CheckoutData> {
+export async function confirmarCheckout(
+  checkoutToken: string,
+  dados: ConfirmarCheckoutInput,
+): Promise<CheckoutHospedadoData> {
   const resposta = await apiFetch(
-    `/assinaturas/checkout/${encodeURIComponent(token)}/confirmar`,
+    `/assinaturas/checkout/${encodeURIComponent(
+      checkoutToken,
+    )}/confirmar`,
     {
       method: 'POST',
-      body: JSON.stringify({ aceiteModoTeste: true }),
+      body: JSON.stringify({
+        emailPagador: dados.emailPagador,
+        versaoTermos: dados.versaoTermos,
+        aceiteModoTeste: true,
+      }),
+    },
+  )
+
+  return lerResposta<CheckoutHospedadoData>(
+    resposta,
+    'Não foi possível abrir o checkout seguro.',
+  )
+}
+
+export async function sincronizarCheckout(
+  checkoutToken: string,
+  signal?: AbortSignal,
+): Promise<CheckoutData> {
+  const resposta = await apiFetch(
+    `/assinaturas/checkout/${encodeURIComponent(
+      checkoutToken,
+    )}/sincronizar`,
+    {
+      method: 'POST',
+      signal,
     },
   )
 
   return lerResposta<CheckoutData>(
     resposta,
-    'Não foi possível confirmar a assinatura de teste.',
+    'Não foi possível confirmar a assinatura.',
   )
 }
-
-async function lerResposta<T>(resposta: Response, mensagemPadrao: string) {
-  const corpo: unknown = await resposta.json().catch(() => null)
+async function lerResposta<T>(
+  resposta: Response,
+  mensagemPadrao: string,
+): Promise<T> {
+  const corpo: unknown = await resposta
+    .json()
+    .catch(() => null)
 
   if (!resposta.ok) {
-    throw new Error(extrairMensagem(corpo, mensagemPadrao))
+    throw new Error(
+      extrairMensagem(corpo, mensagemPadrao),
+    )
+  }
+
+  if (corpo === null) {
+    throw new Error(
+      'O servidor respondeu sem conteúdo.',
+    )
   }
 
   return corpo as T
 }
 
-function extrairMensagem(corpo: unknown, mensagemPadrao: string) {
+function extrairMensagem(
+  corpo: unknown,
+  mensagemPadrao: string,
+) {
+  if (!corpo || typeof corpo !== 'object') {
+    return mensagemPadrao
+  }
+
   if (
-    corpo &&
-    typeof corpo === 'object' &&
     'erro' in corpo &&
     typeof corpo.erro === 'string'
   ) {
     return corpo.erro
+  }
+
+  if (
+    'message' in corpo &&
+    typeof corpo.message === 'string'
+  ) {
+    return corpo.message
+  }
+
+  if (
+    'mensagem' in corpo &&
+    typeof corpo.mensagem === 'string'
+  ) {
+    return corpo.mensagem
   }
 
   return mensagemPadrao

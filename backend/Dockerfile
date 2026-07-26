@@ -15,7 +15,7 @@ ENV NODE_ENV=production
 
 EXPOSE 3005
 
-# Em homologacao, aplicar migrations antes de abrir a API mantem o banco
-# alinhado ao artefato publicado. O comando e idempotente para migrations ja
-# executadas.
+# O comando comum de migrations falha fechado sem SERVIX_FINANCEIRO_MODE=PREVIEW.
+# Assim este artefato de homologacao nunca aplica a migration financeira por
+# acidente em um ambiente que nao declarou explicitamente a preview.
 CMD ["sh", "-c", "npm run prisma:migrate:deploy && npm start"]
