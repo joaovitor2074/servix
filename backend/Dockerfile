@@ -2,6 +2,12 @@ FROM node:24-bookworm-slim
 
 WORKDIR /app
 
+# Prisma detecta o OpenSSL no startup e conexoes HTTPS dependem dos
+# certificados raiz. Instalar ambos explicitamente evita fallback de runtime.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
