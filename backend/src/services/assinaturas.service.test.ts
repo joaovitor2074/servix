@@ -168,4 +168,76 @@ describe("sincronizacao da reativacao", () => {
       data: { status: StatusEmpresa.ATIVA }
     })
   })
+
+  it("mantem a empresa bloqueada quando o Mercado Pago ainda responde pending", async () => {
+    mocks.assinaturaFindUnique.mockResolvedValue({
+      mercadoPagoAssinaturaId: "preapproval-pendente-do-banco"
+    })
+    mocks.obterMercadoPago.mockResolvedValue({
+      id: "preapproval-pendente-do-banco",
+      status: "pending",
+      external_reference: "servix_empresa_8_reativacao_teste"
+    })
+    mocks.txAssinaturaFindUnique.mockResolvedValue({
+      id: 44,
+      status: StatusAssinatura.PENDENTE,
+      ativadaEm: null,
+      canceladaEm: null
+    })
+    mocks.txAssinaturaUpdate.mockResolvedValue({
+      empresaId: 8,
+      status: StatusAssinatura.PENDENTE
+    })
+
+    await sincronizarAssinaturaEmpresaService(8)
+
+    expect(mocks.obterMercadoPago).toHaveBeenCalledWith(
+      "preapproval-pendente-do-banco"
+    )
+    expect(mocks.txAssinaturaUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: StatusAssinatura.PENDENTE })
+      })
+    )
+    expect(mocks.txEmpresaUpdate).toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: { status: StatusEmpresa.PENDENTE_ASSINATURA }
+    })
+    expect(mocks.txEmpresaUpdate).not.toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: { status: StatusEmpresa.ATIVA }
+    })
+  })
+
+  it("mantem a empresa suspensa quando o Mercado Pago responde cancelled", async () => {
+    mocks.assinaturaFindUnique.mockResolvedValue({
+      mercadoPagoAssinaturaId: "preapproval-cancelada-do-banco"
+    })
+    mocks.obterMercadoPago.mockResolvedValue({
+      id: "preapproval-cancelada-do-banco",
+      status: "cancelled",
+      external_reference: "servix_empresa_8_reativacao_teste"
+    })
+    mocks.txAssinaturaFindUnique.mockResolvedValue({
+      id: 44,
+      status: StatusAssinatura.PENDENTE,
+      ativadaEm: null,
+      canceladaEm: null
+    })
+    mocks.txAssinaturaUpdate.mockResolvedValue({
+      empresaId: 8,
+      status: StatusAssinatura.CANCELADA
+    })
+
+    await sincronizarAssinaturaEmpresaService(8)
+
+    expect(mocks.txEmpresaUpdate).toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: { status: StatusEmpresa.SUSPENSA }
+    })
+    expect(mocks.txEmpresaUpdate).not.toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: { status: StatusEmpresa.ATIVA }
+    })
+  })
 })
