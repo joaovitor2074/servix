@@ -5,6 +5,7 @@ import type { UsuarioAutenticado } from '../../auth/types/auth.types'
 import {
   buscarPortalAssinatura,
   iniciarReativacaoAssinatura,
+  sincronizarRecuperacaoAssinatura,
   type PortalAssinatura,
 } from '../subscription-recovery.service'
 import './AssinaturaSuspensaPage.css'
@@ -111,6 +112,26 @@ export default function AssinaturaSuspensaPage({
     }
   }
 
+  async function handleSincronizar() {
+    setProcessando(true)
+    setErro('')
+    try {
+      const resultado = await sincronizarRecuperacaoAssinatura()
+      if (resultado.assinatura?.status === 'ATIVA') {
+        const atualizado = await buscarUsuarioAtual()
+        onUsuarioAtualizado(atualizado)
+        navigate('/dashboard', { replace: true })
+        return
+      }
+      await carregar()
+      setErro('O Mercado Pago ainda não confirmou a assinatura. Aguarde alguns segundos e tente novamente.')
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : 'Não foi possível verificar a assinatura.')
+    } finally {
+      setProcessando(false)
+    }
+  }
+
   const assinatura = portal?.assinatura
   const aguardando = assinatura?.status === 'PENDENTE'
   const podeReativar = assinatura?.status === 'CANCELADA'
@@ -170,6 +191,14 @@ export default function AssinaturaSuspensaPage({
                     disabled={processando}
                   >
                     {processando ? 'Gerando novo checkout...' : 'Gerar novo checkout'}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => void handleSincronizar()}
+                    disabled={processando}
+                  >
+                    {processando ? 'Verificando...' : 'Já concluí, verificar agora'}
                   </button>
                 </>
               ) : (

@@ -94,6 +94,16 @@ describe("rotas internas de assinaturas", () => {
     expect(controllerMocks.cancelar).toHaveBeenCalledOnce()
   })
 
+  it("permite sincronizar pelo portal de recuperacao sem liberar rotas operacionais", async () => {
+    const app = criarApp()
+
+    const resposta = await request(app)
+      .post("/assinaturas/recuperacao/sincronizar")
+
+    expect(resposta.status).toBe(200)
+    expect(controllerMocks.sincronizar).toHaveBeenCalledOnce()
+  })
+
   it("bloqueia o cancelamento para usuario sem papel de administrador", async () => {
     const app = criarApp()
 

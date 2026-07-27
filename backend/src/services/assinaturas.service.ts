@@ -235,7 +235,9 @@ async function persistirAssinaturaMercadoPago(
         ultimaSincronizacaoEm: agora,
         ativadaEm:
           status === StatusAssinatura.ATIVA
-            ? atual?.ativadaEm ?? agora
+            ? atual.canceladaEm
+              ? agora
+              : atual.ativadaEm ?? agora
             : atual?.ativadaEm ?? null,
         canceladaEm:
           status === StatusAssinatura.CANCELADA

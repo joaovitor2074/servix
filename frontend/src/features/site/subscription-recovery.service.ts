@@ -39,6 +39,13 @@ export async function iniciarReativacaoAssinatura(gerarNovoCheckout = false) {
   }>(resposta)
 }
 
+export async function sincronizarRecuperacaoAssinatura() {
+  const resposta = await apiFetch('/assinaturas/recuperacao/sincronizar', {
+    method: 'POST',
+  })
+  return lerResposta<{ assinatura: PortalAssinatura['assinatura'] }>(resposta)
+}
+
 async function lerResposta<T>(resposta: Response): Promise<T> {
   const corpo = await resposta.json().catch(() => null) as Record<string, unknown> | null
   if (!resposta.ok) {

@@ -39,7 +39,10 @@ vi.mock("../integrations/mercado-pago-assinaturas.client.js", () => ({
   obterRequestIdMercadoPago: vi.fn(() => "mp-request-123")
 }))
 
-import { cancelarAssinaturaEmpresaService } from "./assinaturas.service.js"
+import {
+  cancelarAssinaturaEmpresaService,
+  sincronizarAssinaturaEmpresaService
+} from "./assinaturas.service.js"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -126,5 +129,43 @@ describe("cancelamento da assinatura Servix", () => {
     })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.txEmpresaUpdate).not.toHaveBeenCalled()
+  })
+})
+
+describe("sincronizacao da reativacao", () => {
+  it("libera a empresa e registra uma nova data de ativacao quando o provedor confirma", async () => {
+    const ativacaoAnterior = new Date("2026-07-25T12:00:00.000Z")
+    mocks.assinaturaFindUnique.mockResolvedValue({
+      mercadoPagoAssinaturaId: "preapproval-reativada"
+    })
+    mocks.obterMercadoPago.mockResolvedValue({
+      id: "preapproval-reativada",
+      status: "authorized",
+      external_reference: "servix_empresa_8_reativacao_teste"
+    })
+    mocks.txAssinaturaFindUnique.mockResolvedValue({
+      id: 44,
+      status: StatusAssinatura.PENDENTE,
+      ativadaEm: ativacaoAnterior,
+      canceladaEm: new Date("2026-07-26T10:00:00.000Z")
+    })
+    mocks.txAssinaturaUpdate.mockResolvedValue({
+      empresaId: 8,
+      status: StatusAssinatura.ATIVA
+    })
+
+    await sincronizarAssinaturaEmpresaService(8)
+
+    const atualizacao = mocks.txAssinaturaUpdate.mock.calls[0]?.[0]
+    expect(atualizacao.data.status).toBe(StatusAssinatura.ATIVA)
+    expect(atualizacao.data.canceladaEm).toBeNull()
+    expect(atualizacao.data.ativadaEm).toBeInstanceOf(Date)
+    expect(atualizacao.data.ativadaEm.getTime()).toBeGreaterThan(
+      ativacaoAnterior.getTime()
+    )
+    expect(mocks.txEmpresaUpdate).toHaveBeenCalledWith({
+      where: { id: 8 },
+      data: { status: StatusEmpresa.ATIVA }
+    })
   })
 })

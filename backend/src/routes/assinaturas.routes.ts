@@ -65,6 +65,12 @@ assinaturasRoutes.post(
   reativarAssinaturaController
 )
 
+assinaturasRoutes.post(
+  "/recuperacao/sincronizar",
+  autenticarRecuperacaoAssinatura,
+  sincronizarAssinaturaController
+)
+
 // Somente abaixo daqui exige JWT
 assinaturasRoutes.use(autenticar)
 
