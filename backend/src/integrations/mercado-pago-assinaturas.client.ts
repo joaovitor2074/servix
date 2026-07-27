@@ -5,6 +5,7 @@ import {
 const MERCADO_PAGO_API_URL = "https://api.mercadopago.com"
 
 type ObjetoDesconhecido = Record<string, unknown>
+const REQUEST_ID_INTERNO = "__servixMercadoPagoRequestId"
 
 export type CriarPlanoAssinaturaInput = {
   reason: string
@@ -45,6 +46,12 @@ export type AssinaturaMercadoPago = {
     transaction_amount?: number
     currency_id?: string
   }
+}
+
+export function obterRequestIdMercadoPago(valor: unknown): string | null {
+  if (!ehObjeto(valor)) return null
+  const requestId = valor[REQUEST_ID_INTERNO]
+  return typeof requestId === "string" && requestId ? requestId : null
 }
 
 export type PagamentoAutorizadoMercadoPago = {
@@ -178,11 +185,10 @@ async function requisitarMercadoPago<T>(
 
     const texto = await resposta.text()
     const corpo = tentarLerJson(texto)
+    const requestId = resposta.headers.get("x-request-id") ?? undefined
 
     if (!resposta.ok) {
       const detalhes = extrairDetalhesErro(corpo)
-      const requestId =
-        resposta.headers.get("x-request-id") ?? undefined
       const erroInternoProvedor =
         resposta.status >= 500 &&
         detalhes.mensagem.trim().toLowerCase() === "internal server error"
@@ -198,6 +204,14 @@ async function requisitarMercadoPago<T>(
         ...(requestId && { requestId })
         }
       )
+    }
+
+    if (requestId && ehObjeto(corpo)) {
+      Object.defineProperty(corpo, REQUEST_ID_INTERNO, {
+        value: requestId,
+        enumerable: false,
+        configurable: false
+      })
     }
 
     return corpo as T
@@ -354,6 +368,32 @@ export async function obterAssinaturaMercadoPago(
   validarRespostaComId(
     resposta,
     "O Mercado Pago retornou dados inválidos para a assinatura."
+  )
+
+  return resposta as AssinaturaMercadoPago
+}
+
+export async function cancelarAssinaturaMercadoPago(
+  assinaturaId: string
+): Promise<AssinaturaMercadoPago> {
+  const id = assinaturaId.trim()
+  if (!id) throw new Error("O ID da assinatura é obrigatório.")
+
+  const resposta = await requisitarMercadoPago<unknown>(
+    `/preapproval/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      body: {
+        // A API de Preapproval aceita `cancelled` (grafia também usada pelo
+        // SDK oficial), embora a documentação pública ainda mostre `canceled`.
+        status: "cancelled"
+      }
+    }
+  )
+
+  validarRespostaComId(
+    resposta,
+    "O Mercado Pago retornou dados inválidos ao cancelar a assinatura."
   )
 
   return resposta as AssinaturaMercadoPago

@@ -126,13 +126,23 @@ export default function AppLayout({
           )}
 
           {usuario.papel === 'ADMIN' && (
-            <NavLink
-              to="/configuracoes/pagamentos"
-              onClick={() => setMenuAberto(false)}
-            >
-              <SettingsIcon />
-              <span>Configurações</span>
-            </NavLink>
+            <>
+              <NavLink
+                to="/configuracoes/assinatura"
+                onClick={() => setMenuAberto(false)}
+              >
+                <SubscriptionIcon />
+                <span>Assinatura</span>
+              </NavLink>
+
+              <NavLink
+                to="/configuracoes/pagamentos"
+                onClick={() => setMenuAberto(false)}
+              >
+                <SettingsIcon />
+                <span>Configurações</span>
+              </NavLink>
+            </>
           )}
         </nav>
 
@@ -312,6 +322,15 @@ function FinanceIcon() {
     <Icon>
       <path d="M4 7h16v12H4V7Z" />
       <path d="M7 7V5h10v2M8 13h8M12 10v6" />
+    </Icon>
+  )
+}
+
+function SubscriptionIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18M7 15h4" />
     </Icon>
   )
 }

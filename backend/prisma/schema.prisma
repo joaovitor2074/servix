@@ -93,6 +93,30 @@ enum StatusAssinatura {
   CANCELADA
 }
 
+enum TipoHistoricoAssinatura {
+  ATIVADA
+  SINCRONIZADA
+  CANCELADA
+  REATIVACAO_SOLICITADA
+  REATIVADA
+  INADIMPLENCIA_DETECTADA
+}
+
+enum OrigemHistoricoAssinatura {
+  CHECKOUT
+  WEBHOOK
+  SINCRONIZACAO_MANUAL
+  CANCELAMENTO_ADMIN
+  REATIVACAO_ADMIN
+}
+
+enum StatusProcessamentoWebhook {
+  PENDENTE
+  PROCESSANDO
+  PROCESSADO
+  FALHA
+}
+
 enum FormaPagamento {
   PIX
   DINHEIRO
@@ -201,6 +225,8 @@ model Empresa {
   estadosOAuthMercadoPago  EstadoOAuthMercadoPago[]
   cobrancas                Cobranca[]
   assinatura               AssinaturaEmpresa?
+  historicosAssinatura     HistoricoAssinaturaEmpresa[]
+  eventosWebhookAssinatura EventoWebhookAssinatura[]
   categoriasFinanceiras    CategoriaFinanceira[]
   centrosCustoFinanceiros  CentroCustoFinanceiro[]
   contasFinanceiras        ContaFinanceira[]
@@ -564,11 +590,63 @@ model AssinaturaEmpresa {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  empresa    Empresa                       @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  historicos HistoricoAssinaturaEmpresa[]
+  webhooks   EventoWebhookAssinatura[]
 
   @@index([status, ambiente, criadoEm])
   @@index([provedor, status])
   @@index([mercadoPagoPlanoId])
+}
+
+// Auditoria funcional do ciclo da assinatura. Guarda somente identificadores
+// e estados; tokens, dados de cartao e payloads do provedor nunca entram aqui.
+model HistoricoAssinaturaEmpresa {
+  id                       Int                        @id @default(autoincrement())
+  empresaId                Int
+  assinaturaEmpresaId      Int
+  tipo                     TipoHistoricoAssinatura
+  origem                   OrigemHistoricoAssinatura
+  statusAnterior           StatusAssinatura?
+  statusNovo               StatusAssinatura
+  mercadoPagoAssinaturaId  String?
+  requestIdProvedor        String?
+  criadoEm                 DateTime                   @default(now())
+
+  empresa    Empresa            @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  assinatura AssinaturaEmpresa  @relation(fields: [assinaturaEmpresaId], references: [id], onDelete: Restrict)
+
+  @@index([empresaId, criadoEm])
+  @@index([assinaturaEmpresaId, criadoEm])
+  @@index([mercadoPagoAssinaturaId])
+}
+
+// Caixa de entrada idempotente dos webhooks. O corpo completo nao e salvo:
+// apenas metadados suficientes para reprocessar consultando a API oficial.
+model EventoWebhookAssinatura {
+  id                  Int                         @id @default(autoincrement())
+  empresaId           Int?
+  assinaturaEmpresaId Int?
+  requestId           String                      @unique
+  tipo                String
+  recursoId           String
+  status              StatusProcessamentoWebhook @default(PENDENTE)
+  tentativas          Int                         @default(0)
+  ultimaTentativaEm   DateTime?
+  proximaTentativaEm  DateTime?
+  processadoEm        DateTime?
+  ultimoErro          String?
+  alertaEmitidoEm     DateTime?
+  recebidoEm          DateTime                    @default(now())
+  atualizadoEm        DateTime                    @updatedAt
+
+  empresa    Empresa?           @relation(fields: [empresaId], references: [id], onDelete: SetNull)
+  assinatura AssinaturaEmpresa? @relation(fields: [assinaturaEmpresaId], references: [id], onDelete: SetNull)
+
+  @@index([status, proximaTentativaEm])
+  @@index([empresaId, recebidoEm])
+  @@index([assinaturaEmpresaId, recebidoEm])
+  @@index([tipo, recursoId])
 }
 
 // Cadastros e ledger abaixo sao independentes do Pagamento/Cobranca das ordens.

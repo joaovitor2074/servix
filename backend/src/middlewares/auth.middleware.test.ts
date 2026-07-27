@@ -19,7 +19,10 @@ vi.mock("../lib/prisma.js", () => ({
   }
 }))
 
-import { autenticar } from "./auth.middleware.js"
+import {
+  autenticar,
+  autenticarRecuperacaoAssinatura
+} from "./auth.middleware.js"
 
 const JWT_SECRET = "segredo-de-teste-com-mais-de-32-caracteres"
 
@@ -50,11 +53,14 @@ function respostaMock() {
   return res as unknown as Response
 }
 
-function usuario(statusEmpresa: StatusEmpresa) {
+function usuario(
+  statusEmpresa: StatusEmpresa,
+  papel = PapelUsuario.ADMIN
+) {
   return {
     id: 7,
     empresaId: 11,
-    papel: PapelUsuario.ADMIN,
+    papel,
     ativo: true,
     empresa: {
       status: statusEmpresa
@@ -113,6 +119,34 @@ describe("autenticação por situação da empresa", () => {
     await autenticar(requisicaoAutenticada(), res, next)
 
     expect(res.status).toHaveBeenCalledWith(403)
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it("permite somente ao admin suspenso acessar a recuperacao", async () => {
+    prismaMock.findUnique.mockResolvedValueOnce(usuario(StatusEmpresa.SUSPENSA))
+    const req = requisicaoAutenticada()
+    const res = respostaMock()
+    const next = vi.fn() as NextFunction
+
+    await autenticarRecuperacaoAssinatura(req, res, next)
+
+    expect(next).toHaveBeenCalledOnce()
+    expect(req.auth.papel).toBe(PapelUsuario.ADMIN)
+  })
+
+  it("nega recuperacao a usuario suspenso que nao e admin", async () => {
+    prismaMock.findUnique.mockResolvedValueOnce(
+      usuario(StatusEmpresa.SUSPENSA, PapelUsuario.ATENDENTE)
+    )
+    const res = respostaMock()
+    const next = vi.fn() as NextFunction
+
+    await autenticarRecuperacaoAssinatura(requisicaoAutenticada(), res, next)
+
+    expect(res.status).toHaveBeenCalledWith(403)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      codigo: "RECUPERACAO_ASSINATURA_NAO_AUTORIZADA"
+    }))
     expect(next).not.toHaveBeenCalled()
   })
 })

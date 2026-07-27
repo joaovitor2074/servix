@@ -2,7 +2,7 @@ import { compare } from "bcryptjs"
 import jsonwebtoken from "jsonwebtoken"
 
 import { obterJwtSecret } from "../config/env.js"
-import { StatusEmpresa } from "../generated/prisma/enums.js"
+import { PapelUsuario, StatusEmpresa } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import type { LoginInput } from "../validators/auth.validators.js"
 
@@ -14,8 +14,7 @@ export async function autenticarUsuarioService(dados: LoginInput) {
       email: dados.email,
       ativo: true,
       empresa: {
-        slug: dados.empresaSlug,
-        status: StatusEmpresa.ATIVA
+        slug: dados.empresaSlug
       }
     },
     include: {
@@ -23,7 +22,8 @@ export async function autenticarUsuarioService(dados: LoginInput) {
         select: {
           id: true,
           nome: true,
-          slug: true
+          slug: true,
+          status: true
         }
       }
     }
@@ -32,6 +32,14 @@ export async function autenticarUsuarioService(dados: LoginInput) {
   // `compare` confronta a senha recebida com o hash bcrypt. A mesma resposta
   // nula para usuário ausente e senha errada evita revelar qual dado falhou.
   if (!usuario || !(await compare(dados.senha, usuario.senhaHash))) {
+    return null
+  }
+  // Uma empresa suspensa pode autenticar somente seu ADMIN para recuperar a
+  // assinatura. O token continua bloqueado em todas as APIs operacionais.
+  if (
+    usuario.empresa.status !== StatusEmpresa.ATIVA &&
+    usuario.papel !== PapelUsuario.ADMIN
+  ) {
     return null
   }
 
@@ -74,10 +82,7 @@ export function buscarUsuarioAutenticadoService(
     where: {
       id: usuarioId,
       empresaId,
-      ativo: true,
-      empresa: {
-        status: StatusEmpresa.ATIVA
-      }
+      ativo: true
     },
     select: {
       id: true,
@@ -88,7 +93,8 @@ export function buscarUsuarioAutenticadoService(
         select: {
           id: true,
           nome: true,
-          slug: true
+          slug: true,
+          status: true
         }
       }
     }

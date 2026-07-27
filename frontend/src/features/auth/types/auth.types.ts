@@ -11,6 +11,7 @@ export interface EmpresaResumo{
     id:number
     nome:string
     slug:string
+    status:'PENDENTE_ASSINATURA' | 'ATIVA' | 'SUSPENSA'
 }
 
 export interface UsuarioAutenticado{

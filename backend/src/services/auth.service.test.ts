@@ -23,7 +23,7 @@ beforeEach(() => {
 })
 
 describe("bloqueio de acesso por assinatura", () => {
-  it("nao autentica empresa que ainda nao foi ativada", async () => {
+  it("busca a empresa sem esconder o status para permitir recuperacao do admin", async () => {
     await autenticarUsuarioService({
       empresaSlug: "oficina-central",
       email: "admin@oficina.com",
@@ -33,21 +33,24 @@ describe("bloqueio de acesso por assinatura", () => {
     expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         empresa: {
-          slug: "oficina-central",
-          status: StatusEmpresa.ATIVA
+          slug: "oficina-central"
         }
       })
     }))
   })
 
-  it("revalida o status da empresa em sessoes existentes", async () => {
+  it("recarrega o status da empresa em sessoes existentes", async () => {
     await buscarUsuarioAutenticadoService(3, 8)
 
     expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         id: 3,
-        empresaId: 8,
-        empresa: { status: StatusEmpresa.ATIVA }
+        empresaId: 8
+      })
+    }))
+    expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      select: expect.objectContaining({
+        empresa: { select: expect.objectContaining({ status: true }) }
       })
     }))
   })

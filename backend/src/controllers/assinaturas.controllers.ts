@@ -8,12 +8,20 @@ import { listarPlanosServixService } from "../billing/assinaturas.service.js"
 import {
   buscarCheckoutPorTokenService,
   buscarAssinaturaEmpresaService,
+  buscarPainelAssinaturaEmpresaService,
+  buscarPortalAssinaturaEmpresaService,
+  cancelarAssinaturaEmpresaService,
   iniciarAssinaturaEmpresaService,
   iniciarAssinaturaPorCheckoutTokenService,
-  processarNotificacaoAssinaturaMercadoPagoService,
+  reativarAssinaturaEmpresaService,
   sincronizarAssinaturaPorCheckoutTokenService,
   sincronizarAssinaturaEmpresaService
 } from "../services/assinaturas.service.js"
+import {
+  processarEventoWebhookAssinaturaService,
+  registrarWebhookAssinaturaService,
+  reprocessarWebhookAssinaturaService
+} from "../services/webhooks-assinaturas.service.js"
 
 type CorpoIniciarAssinatura = {
   emailPagador?: unknown
@@ -230,6 +238,81 @@ export async function sincronizarAssinaturaController(
   }
 }
 
+export async function buscarPainelAssinaturaController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    res.json(await buscarPainelAssinaturaEmpresaService(empresaIdAutenticada(req)))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function buscarPortalAssinaturaController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    res.setHeader("Cache-Control", "no-store, max-age=0")
+    res.json(await buscarPortalAssinaturaEmpresaService(empresaIdAutenticada(req)))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function reativarAssinaturaController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const resultado = await reativarAssinaturaEmpresaService(
+      empresaIdAutenticada(req)
+    )
+    res.status(resultado.recuperada ? 200 : 201).json(resultado)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function reprocessarWebhookAssinaturaController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const eventoId = Number(req.params.id)
+    if (!Number.isInteger(eventoId) || eventoId <= 0) {
+      return res.status(400).json({ erro: "Identificador de notificacao invalido." })
+    }
+    res.json(await reprocessarWebhookAssinaturaService(
+      empresaIdAutenticada(req),
+      eventoId
+    ))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function cancelarAssinaturaController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const assinatura = await cancelarAssinaturaEmpresaService(
+      empresaIdAutenticada(req)
+    )
+
+    res.json({ assinatura })
+  } catch (error) {
+    next(error)
+  }
+}
+
 function lerQueryString(
   valor: unknown
 ): string | null {
@@ -250,7 +333,7 @@ function lerQueryString(
   return null
 }
 
-export function webhookAssinaturasMercadoPagoController(
+export async function webhookAssinaturasMercadoPagoController(
   req: Request,
   res: Response
 ) {
@@ -317,22 +400,32 @@ export function webhookAssinaturasMercadoPagoController(
   // Confirma rapidamente o recebimento.
   // A fonte de verdade será consultada na API
   // do Mercado Pago, e não no corpo do webhook.
-  res.sendStatus(200)
-
   if (
     tipo !== "subscription_preapproval" &&
     tipo !==
       "subscription_authorized_payment"
   ) {
+    res.sendStatus(200)
     return
   }
 
-  void processarNotificacaoAssinaturaMercadoPagoService(
-    tipo,
-    recursoIdBody
-  ).catch(error => {
+  try {
+    const evento = await registrarWebhookAssinaturaService({
+      requestId: xRequestId.slice(0, 200),
+      tipo,
+      recursoId: recursoIdBody.slice(0, 200)
+    })
+
+    res.sendStatus(200)
+
+    if (!evento.duplicado && evento.status !== "PROCESSADO") {
+      setImmediate(() => {
+        void processarEventoWebhookAssinaturaService(evento.id)
+      })
+    }
+  } catch (error) {
     console.error(
-      "Falha ao processar webhook de assinatura:",
+      "Falha ao registrar webhook de assinatura:",
       {
         tipo,
         recursoId: recursoIdBody,
@@ -342,5 +435,6 @@ export function webhookAssinaturasMercadoPagoController(
             : "erro desconhecido"
       }
     )
-  })
+    res.sendStatus(500)
+  }
 }

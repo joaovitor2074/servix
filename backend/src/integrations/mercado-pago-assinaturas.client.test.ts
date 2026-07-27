@@ -13,6 +13,7 @@ vi.mock("../config/env.js", () => ({
 }))
 
 import {
+  cancelarAssinaturaMercadoPago,
   criarAssinaturaMercadoPago,
   ErroMercadoPagoAssinaturas
 } from "./mercado-pago-assinaturas.client.js"
@@ -90,5 +91,26 @@ describe("cliente de assinaturas Mercado Pago", () => {
       requestId: "request-123"
     })
     expect(erro.message).not.toContain("token do cartão")
+  })
+
+  it("cancela a recorrência usando o identificador do preapproval", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: "preapproval-123",
+      status: "cancelled"
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    }))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const assinatura = await cancelarAssinaturaMercadoPago("preapproval-123")
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(
+      "https://api.mercadopago.com/preapproval/preapproval-123"
+    )
+    expect(init.method).toBe("PUT")
+    expect(JSON.parse(String(init.body))).toEqual({ status: "cancelled" })
+    expect(assinatura.status).toBe("cancelled")
   })
 })

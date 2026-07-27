@@ -1,4 +1,4 @@
-import { obterToken, removerToken } from "../utils/token-storage";
+import { obterToken } from "../utils/token-storage";
 
 const API_URL = (
     import.meta.env.VITE_API_URL ?? 'http://localhost:3005'
@@ -33,8 +33,6 @@ export async function apiFetch(
             .catch(() => null) as { codigo?: unknown } | null
 
         if (corpo?.codigo === 'EMPRESA_SUSPENSA') {
-            removerToken()
-
             if (
                 typeof window !== 'undefined' &&
                 window.location.pathname !== '/assinatura-suspensa'

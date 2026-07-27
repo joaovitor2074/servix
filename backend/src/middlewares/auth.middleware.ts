@@ -2,16 +2,18 @@ import type { NextFunction, Request, Response } from "express"
 import jsonwebtoken, { type JwtPayload } from "jsonwebtoken"
 import { prisma } from "../lib/prisma.js"
 import { obterJwtSecret } from "../config/env.js"
-import { StatusEmpresa } from "../generated/prisma/enums.js"
+import { PapelUsuario, StatusEmpresa } from "../generated/prisma/enums.js"
 import type { PapelUsuario as PapelUsuarioType } from "../generated/prisma/enums.js"
 
 // Autentica a requisição em três etapas: extrai o Bearer token, valida o JWT e
 // confirma no banco que o usuário continua ativo. A consulta ao banco impede
 // que um token antigo mantenha acesso após a desativação da conta.
-export async function autenticar(
+async function autenticarComPolitica(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
+  exigirEmpresaAtiva: boolean,
+  exigirAdministrador: boolean
 ) {
   const authorization = req.headers.authorization
 
@@ -81,13 +83,20 @@ export async function autenticar(
     // A validade do JWT não substitui a situação comercial atual da empresa.
     // Consultar o status em toda requisição encerra imediatamente o acesso de
     // sessões emitidas antes de uma assinatura ser pausada ou cancelada.
-    if (usuario.empresa.status !== StatusEmpresa.ATIVA) {
+    if (exigirEmpresaAtiva && usuario.empresa.status !== StatusEmpresa.ATIVA) {
       return res.status(403).json({
         erro: "Acesso suspenso porque a assinatura da empresa não está ativa.",
         codigo: "EMPRESA_SUSPENSA",
         detalhes: {
           statusEmpresa: usuario.empresa.status
         }
+      })
+    }
+
+    if (exigirAdministrador && usuario.papel !== PapelUsuario.ADMIN) {
+      return res.status(403).json({
+        erro: "Somente o administrador pode recuperar a assinatura.",
+        codigo: "RECUPERACAO_ASSINATURA_NAO_AUTORIZADA"
       })
     }
 
@@ -102,6 +111,30 @@ export async function autenticar(
   }catch(error){
     return next(error)
   }
+}
+
+export function autenticar(req: Request, res: Response, next: NextFunction) {
+  return autenticarComPolitica(req, res, next, true, false)
+}
+
+// Valida usuário e JWT, mas permite ler o status comercial atual. É usado por
+// /auth/me para que o frontend encaminhe uma empresa suspensa ao portal certo.
+export function autenticarSessao(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  return autenticarComPolitica(req, res, next, false, false)
+}
+
+// Esta política nunca libera as APIs internas. Ela existe somente nas rotas
+// fechadas de recuperação da assinatura e exige o papel ADMIN.
+export function autenticarRecuperacaoAssinatura(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  return autenticarComPolitica(req, res, next, false, true)
 }
 
 // Cria um middleware de autorização reutilizável. Autenticação responde "quem

@@ -25,6 +25,7 @@ const OrderDetailsPage = lazy(() => import('../features/orders/pages/OrderDetail
 const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
 const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicTrackingPage'))
 const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
+const SubscriptionSettingsPage = lazy(() => import('../features/settings/subscription/pages/SubscriptionSettingsPage'))
 const CadastroConcluidoPage = lazy(() => import('../features/site/pages/CadastroConcluidoPage'))
 const CadastroEmpresaPage = lazy(() => import('../features/site/pages/CadastroEmpresaPage'))
 const CheckoutPage = lazy(() => import('../features/site/pages/CheckoutPage'))
@@ -62,7 +63,10 @@ export default function AppRouter({
         path="/login"
         element={
           usuario ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate
+              to={usuario.empresa.status === 'ATIVA' ? '/dashboard' : '/assinatura-suspensa'}
+              replace
+            />
           ) : (
             <LoginPage onLogin={onLogin} />
           )
@@ -71,7 +75,7 @@ export default function AppRouter({
 
       <Route
         element={
-          usuario ? (
+          usuario?.empresa.status === 'ATIVA' ? (
             <AppLayout
               usuario={usuario}
               onLogout={onLogout}
@@ -130,12 +134,31 @@ export default function AppRouter({
             )
           }
         />
+        <Route
+          path="configuracoes/assinatura"
+          element={
+            usuario?.papel === 'ADMIN' ? (
+              <SubscriptionSettingsPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
       </Route>
 
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
         <Route path="planos" element={<PlanosPage />} />
-        <Route path="assinatura-suspensa" element={<AssinaturaSuspensaPage />} />
+        <Route
+          path="assinatura-suspensa"
+          element={
+            <AssinaturaSuspensaPage
+              usuario={usuario}
+              onUsuarioAtualizado={onLogin}
+              onLogout={onLogout}
+            />
+          }
+        />
         <Route path="cadastro" element={<CadastroEmpresaPage />} />
         <Route path="cadastro/concluido" element={<CadastroConcluidoPage />} />
         <Route

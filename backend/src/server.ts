@@ -7,6 +7,7 @@ import {
   obterModoPagamentosClientesMercadoPago
 } from "./config/env.js"
 import { prisma } from "./lib/prisma.js"
+import { iniciarProcessadorWebhooksAssinaturas } from "./jobs/webhooks-assinaturas.job.js"
 
 // Falha imediatamente na inicialização caso o segredo JWT esteja ausente ou
 // fraco, em vez de descobrir o problema apenas na primeira tentativa de login.
@@ -25,10 +26,12 @@ const server = app.listen(env.port, env.host, () => {
       : "DESABILITADO"
   })
 })
+const pararProcessadorWebhooks = iniciarProcessadorWebhooksAssinaturas()
 
 // Encerra o servidor de forma controlada e libera a conexão com o banco.
 async function encerrar(sinal: string) {
   console.log(`${sinal} recebido. Encerrando servidor...`)
+  pararProcessadorWebhooks()
 
   server.close(async () => {
     await prisma.$disconnect()

@@ -1,18 +1,23 @@
+import { randomUUID } from "node:crypto"
 import { Prisma } from "../generated/prisma/client.js"
 import {
   AmbienteAssinatura,
+  OrigemHistoricoAssinatura,
   ProvedorAssinatura,
   StatusAssinatura,
-  StatusEmpresa
+  StatusEmpresa,
+  TipoHistoricoAssinatura
 } from "../generated/prisma/enums.js"
 import { obterConfiguracaoAssinaturasMercadoPago } from "../config/env.js"
 import { AppError } from "../errors/app-error.js"
 import {
   buscarAssinaturaPorReferenciaMercadoPago,
+  cancelarAssinaturaMercadoPago,
   criarAssinaturaMercadoPago,
   ErroMercadoPagoAssinaturas,
   obterAssinaturaMercadoPago,
   obterPagamentoAutorizadoMercadoPago,
+  obterRequestIdMercadoPago,
   type AssinaturaMercadoPago
 } from "../integrations/mercado-pago-assinaturas.client.js"
 import { prisma } from "../lib/prisma.js"
@@ -82,6 +87,7 @@ function statusInternoMercadoPago(status: string | undefined): StatusAssinatura 
     case "paused":
       return StatusAssinatura.PAUSADA
     case "canceled":
+    case "cancelled":
       return StatusAssinatura.CANCELADA
     default:
       return StatusAssinatura.PENDENTE
@@ -116,6 +122,12 @@ function urlRetornoCheckout(
     `/cadastro/concluido/${encodeURIComponent(checkoutToken)}`,
     baseUrl
   )
+  return url.toString()
+}
+
+function urlRetornoReativacao(baseUrl: string): string {
+  const url = new URL("/assinatura-suspensa", baseUrl)
+  url.searchParams.set("retorno", "mercado-pago")
   return url.toString()
 }
 
@@ -166,9 +178,11 @@ function traduzirErroMercadoPago(error: unknown): never {
 
 async function persistirAssinaturaMercadoPago(
   empresaId: number,
-  assinaturaMercadoPago: AssinaturaMercadoPago
+  assinaturaMercadoPago: AssinaturaMercadoPago,
+  origem: OrigemHistoricoAssinatura = OrigemHistoricoAssinatura.CHECKOUT,
+  permitirAtivacao = true
 ) {
-  const status = statusInternoMercadoPago(assinaturaMercadoPago.status)
+  const statusRecebido = statusInternoMercadoPago(assinaturaMercadoPago.status)
   const agora = new Date()
   const referenciaExterna = String(
     assinaturaMercadoPago.external_reference ?? referenciaExternaDaEmpresa(empresaId)
@@ -177,8 +191,31 @@ async function persistirAssinaturaMercadoPago(
   return prisma.$transaction(async tx => {
     const atual = await tx.assinaturaEmpresa.findUnique({
       where: { empresaId },
-      select: { ativadaEm: true }
+      select: {
+        id: true,
+        status: true,
+        ativadaEm: true,
+        canceladaEm: true
+      }
     })
+
+    if (!atual) {
+      throw new AppError(
+        "A assinatura da empresa nao foi encontrada.",
+        404,
+        "ASSINATURA_NAO_ENCONTRADA"
+      )
+    }
+
+    // Na reativacao, somente o webhook pode promover para ATIVA. Se ele tiver
+    // vencido a corrida contra a resposta do checkout, preservamos a ativacao.
+    const status = !permitirAtivacao
+      ? atual.status === StatusAssinatura.ATIVA
+        ? StatusAssinatura.ATIVA
+        : statusRecebido === StatusAssinatura.ATIVA
+          ? StatusAssinatura.PENDENTE
+          : statusRecebido
+      : statusRecebido
 
     const assinatura = await tx.assinaturaEmpresa.update({
       where: { empresaId },
@@ -201,7 +238,11 @@ async function persistirAssinaturaMercadoPago(
             ? atual?.ativadaEm ?? agora
             : atual?.ativadaEm ?? null,
         canceladaEm:
-          status === StatusAssinatura.CANCELADA ? agora : null,
+          status === StatusAssinatura.CANCELADA
+            ? atual.canceladaEm ?? agora
+            : status === StatusAssinatura.ATIVA
+              ? null
+              : atual.canceladaEm,
         versao: { increment: 1 }
       },
       select: assinaturaSelect
@@ -210,6 +251,27 @@ async function persistirAssinaturaMercadoPago(
     await tx.empresa.update({
       where: { id: empresaId },
       data: { status: statusEmpresaPorAssinatura(status) }
+    })
+
+    const tipo = status === StatusAssinatura.CANCELADA
+      ? TipoHistoricoAssinatura.CANCELADA
+      : status === StatusAssinatura.ATIVA && atual.status !== StatusAssinatura.ATIVA
+        ? atual.ativadaEm
+          ? TipoHistoricoAssinatura.REATIVADA
+          : TipoHistoricoAssinatura.ATIVADA
+        : TipoHistoricoAssinatura.SINCRONIZADA
+
+    await tx.historicoAssinaturaEmpresa.create({
+      data: {
+        empresaId,
+        assinaturaEmpresaId: atual.id,
+        tipo,
+        origem,
+        statusAnterior: atual.status,
+        statusNovo: status,
+        mercadoPagoAssinaturaId: assinaturaMercadoPago.id,
+        requestIdProvedor: obterRequestIdMercadoPago(assinaturaMercadoPago)
+      }
     })
 
     return assinatura
@@ -413,7 +475,297 @@ export async function sincronizarAssinaturaEmpresaService(empresaId: number) {
     const remota = await obterAssinaturaMercadoPago(
       assinatura.mercadoPagoAssinaturaId
     )
-    return persistirAssinaturaMercadoPago(empresaId, remota)
+    return persistirAssinaturaMercadoPago(
+      empresaId,
+      remota,
+      OrigemHistoricoAssinatura.SINCRONIZACAO_MANUAL
+    )
+  } catch (error) {
+    traduzirErroMercadoPago(error)
+  }
+}
+
+function statusMercadoPagoCancelado(status: string | undefined): boolean {
+  const normalizado = status?.trim().toLowerCase()
+  return normalizado === "canceled" || normalizado === "cancelled"
+}
+
+export async function cancelarAssinaturaEmpresaService(empresaId: number) {
+  const assinatura = await prisma.assinaturaEmpresa.findUnique({
+    where: { empresaId },
+    select: {
+      status: true,
+      mercadoPagoAssinaturaId: true
+    }
+  })
+
+  if (!assinatura?.mercadoPagoAssinaturaId) {
+    throw new AppError(
+      "A empresa ainda não possui assinatura no Mercado Pago.",
+      404,
+      "ASSINATURA_MERCADO_PAGO_NAO_ENCONTRADA"
+    )
+  }
+
+  if (assinatura.status === StatusAssinatura.CANCELADA) {
+    return buscarAssinaturaEmpresaService(empresaId)
+  }
+
+  try {
+    const cancelada = await cancelarAssinaturaMercadoPago(
+      assinatura.mercadoPagoAssinaturaId
+    )
+
+    // O PUT normalmente devolve o estado completo. Caso o provedor responda
+    // sem confirmar o status, uma leitura adicional evita suspender a empresa
+    // com base em uma resposta parcial.
+    const remota = statusMercadoPagoCancelado(cancelada.status)
+      ? cancelada
+      : await obterAssinaturaMercadoPago(
+          assinatura.mercadoPagoAssinaturaId
+        )
+
+    if (!statusMercadoPagoCancelado(remota.status)) {
+      throw new AppError(
+        "O Mercado Pago não confirmou o cancelamento da assinatura.",
+        409,
+        "CANCELAMENTO_ASSINATURA_NAO_CONFIRMADO"
+      )
+    }
+
+    return persistirAssinaturaMercadoPago(
+      empresaId,
+      remota,
+      OrigemHistoricoAssinatura.CANCELAMENTO_ADMIN
+    )
+  } catch (error) {
+    traduzirErroMercadoPago(error)
+  }
+}
+
+export async function buscarPortalAssinaturaEmpresaService(empresaId: number) {
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: empresaId },
+    select: {
+      status: true,
+      assinatura: { select: assinaturaSelect }
+    }
+  })
+
+  if (!empresa) {
+    throw new AppError("Empresa nao encontrada.", 404, "EMPRESA_NAO_ENCONTRADA")
+  }
+
+  return {
+    statusEmpresa: empresa.status,
+    assinatura: empresa.assinatura
+  }
+}
+
+export async function buscarPainelAssinaturaEmpresaService(empresaId: number) {
+  const [assinatura, historico, webhooks, falhas] = await Promise.all([
+    buscarAssinaturaEmpresaService(empresaId),
+    prisma.historicoAssinaturaEmpresa.findMany({
+      where: { empresaId },
+      orderBy: { criadoEm: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        tipo: true,
+        origem: true,
+        statusAnterior: true,
+        statusNovo: true,
+        mercadoPagoAssinaturaId: true,
+        requestIdProvedor: true,
+        criadoEm: true
+      }
+    }),
+    prisma.eventoWebhookAssinatura.findMany({
+      where: { empresaId },
+      orderBy: { recebidoEm: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        requestId: true,
+        tipo: true,
+        recursoId: true,
+        status: true,
+        tentativas: true,
+        ultimaTentativaEm: true,
+        proximaTentativaEm: true,
+        processadoEm: true,
+        ultimoErro: true,
+        alertaEmitidoEm: true,
+        recebidoEm: true
+      }
+    }),
+    prisma.eventoWebhookAssinatura.count({
+      where: {
+        empresaId,
+        status: "FALHA"
+      }
+    })
+  ])
+
+  return {
+    assinatura,
+    historico,
+    webhooks,
+    monitoramento: {
+      falhasPendentes: falhas,
+      alerta: webhooks.some(evento => Boolean(evento.alertaEmitidoEm))
+    }
+  }
+}
+
+export async function reativarAssinaturaEmpresaService(empresaId: number) {
+  const configuracao = obterConfiguracaoAssinaturasMercadoPago()
+
+  if (configuracao.status !== "CONFIGURADA") {
+    throw new AppError(
+      "As assinaturas do Servix nao estao configuradas no servidor.",
+      503,
+      "ASSINATURAS_NAO_CONFIGURADAS"
+    )
+  }
+
+  let assinatura = await prisma.assinaturaEmpresa.findUnique({
+    where: { empresaId },
+    select: {
+      id: true,
+      status: true,
+      emailPagador: true,
+      referenciaExterna: true,
+      mercadoPagoAssinaturaId: true,
+      checkoutUrl: true,
+      valorMensal: true
+    }
+  })
+
+  if (!assinatura) {
+    throw new AppError(
+      "A assinatura da empresa nao foi encontrada.",
+      404,
+      "ASSINATURA_NAO_ENCONTRADA"
+    )
+  }
+
+  if (assinatura.status === StatusAssinatura.ATIVA) {
+    throw new AppError(
+      "A assinatura ja esta ativa.",
+      409,
+      "ASSINATURA_JA_ATIVA"
+    )
+  }
+
+  if (assinatura.status === StatusAssinatura.PAUSADA) {
+    throw new AppError(
+      "Uma assinatura pausada deve ser revisada pelo suporte antes da reativacao.",
+      409,
+      "ASSINATURA_PAUSADA"
+    )
+  }
+
+  const emailPagador = assinatura.emailPagador?.trim().toLowerCase()
+  if (!emailPagador) {
+    throw new AppError(
+      "A assinatura nao possui e-mail pagador para gerar um novo checkout.",
+      409,
+      "EMAIL_PAGADOR_NAO_ENCONTRADO"
+    )
+  }
+
+  const reativacaoEmAndamento =
+    assinatura.status === StatusAssinatura.PENDENTE &&
+    assinatura.referenciaExterna?.includes("_reativacao_")
+
+  if (
+    reativacaoEmAndamento &&
+    checkoutUrlMercadoPagoValida(assinatura.checkoutUrl)
+  ) {
+    return {
+      checkoutUrl: assinatura.checkoutUrl,
+      status: assinatura.status,
+      recuperada: true
+    }
+  }
+
+  if (!reativacaoEmAndamento) {
+    const referenciaExterna =
+      `servix_empresa_${empresaId}_reativacao_${randomUUID()}`
+
+    await prisma.$transaction(async tx => {
+      await tx.assinaturaEmpresa.update({
+        where: { empresaId },
+        data: {
+          status: StatusAssinatura.PENDENTE,
+          referenciaExterna,
+          mercadoPagoAssinaturaId: null,
+          checkoutUrl: null,
+          proximaCobrancaEm: null,
+          versao: { increment: 1 }
+        }
+      })
+      await tx.empresa.update({
+        where: { id: empresaId },
+        data: { status: StatusEmpresa.PENDENTE_ASSINATURA }
+      })
+      await tx.historicoAssinaturaEmpresa.create({
+        data: {
+          empresaId,
+          assinaturaEmpresaId: assinatura!.id,
+          tipo: TipoHistoricoAssinatura.REATIVACAO_SOLICITADA,
+          origem: OrigemHistoricoAssinatura.REATIVACAO_ADMIN,
+          statusAnterior: assinatura!.status,
+          statusNovo: StatusAssinatura.PENDENTE,
+          mercadoPagoAssinaturaId: assinatura!.mercadoPagoAssinaturaId
+        }
+      })
+    })
+
+    assinatura = {
+      ...assinatura,
+      status: StatusAssinatura.PENDENTE,
+      referenciaExterna,
+      mercadoPagoAssinaturaId: null,
+      checkoutUrl: null
+    }
+  }
+
+  const referenciaExterna = assinatura.referenciaExterna!
+
+  try {
+    const existente = await buscarAssinaturaPorReferenciaMercadoPago(
+      referenciaExterna
+    )
+    const remota = existente ?? await criarAssinaturaMercadoPago({
+      emailPagador,
+      referenciaExterna,
+      transactionAmount: Number(assinatura.valorMensal),
+      currencyId: "BRL",
+      backUrl: urlRetornoReativacao(configuracao.backUrl)
+    })
+
+    if (!checkoutUrlMercadoPagoValida(remota.init_point)) {
+      throw new AppError(
+        "O Mercado Pago nao retornou um checkout valido para reativacao.",
+        502,
+        "CHECKOUT_MERCADO_PAGO_INVALIDO"
+      )
+    }
+
+    const persistida = await persistirAssinaturaMercadoPago(
+      empresaId,
+      remota,
+      OrigemHistoricoAssinatura.REATIVACAO_ADMIN,
+      false
+    )
+
+    return {
+      checkoutUrl: persistida.checkoutUrl,
+      status: persistida.status,
+      recuperada: Boolean(existente)
+    }
   } catch (error) {
     traduzirErroMercadoPago(error)
   }
@@ -435,8 +787,12 @@ async function processarPreapproval(assinaturaId: string) {
 
   if (!local) return { processada: false as const, motivo: "nao_encontrada" as const }
 
-  await persistirAssinaturaMercadoPago(local.empresaId, remota)
-  return { processada: true as const }
+  await persistirAssinaturaMercadoPago(
+    local.empresaId,
+    remota,
+    OrigemHistoricoAssinatura.WEBHOOK
+  )
+  return { processada: true as const, empresaId: local.empresaId }
 }
 
 async function processarPagamentoAutorizado(pagamentoId: string) {
@@ -454,25 +810,55 @@ async function processarPagamentoAutorizado(pagamentoId: string) {
   if (!local) return { processada: false as const, motivo: "nao_encontrada" as const }
 
   if (pagamento.status?.toLowerCase() === "recycling") {
-    await prisma.assinaturaEmpresa.update({
-      where: { empresaId: local.empresaId },
-      data: {
-        status: StatusAssinatura.INADIMPLENTE,
-        ultimaSincronizacaoEm: new Date(),
-        versao: { increment: 1 }
-      }
+    await prisma.$transaction(async tx => {
+      const atual = await tx.assinaturaEmpresa.findUniqueOrThrow({
+        where: { empresaId: local.empresaId },
+        select: { id: true, status: true, mercadoPagoAssinaturaId: true }
+      })
+      await tx.assinaturaEmpresa.update({
+        where: { empresaId: local.empresaId },
+        data: {
+          status: StatusAssinatura.INADIMPLENTE,
+          ultimaSincronizacaoEm: new Date(),
+          versao: { increment: 1 }
+        }
+      })
+      await tx.historicoAssinaturaEmpresa.create({
+        data: {
+          empresaId: local.empresaId,
+          assinaturaEmpresaId: atual.id,
+          tipo: TipoHistoricoAssinatura.INADIMPLENCIA_DETECTADA,
+          origem: OrigemHistoricoAssinatura.WEBHOOK,
+          statusAnterior: atual.status,
+          statusNovo: StatusAssinatura.INADIMPLENTE,
+          mercadoPagoAssinaturaId: atual.mercadoPagoAssinaturaId,
+          requestIdProvedor: obterRequestIdMercadoPago(pagamento)
+        }
+      })
     })
 
     // O acesso permanece ativo durante a tolerância. Uma rotina posterior pode
     // suspender a empresa após o limite comercial definido pelo Servix.
-    return { processada: true as const, inadimplente: true as const }
+    return {
+      processada: true as const,
+      inadimplente: true as const,
+      empresaId: local.empresaId
+    }
   }
 
   // Para processed, waiting for gateway ou scheduled, a assinatura é a fonte
   // de verdade do vínculo. Relê o preapproval e sincroniza o estado atual.
   const remota = await obterAssinaturaMercadoPago(pagamento.preapproval_id)
-  await persistirAssinaturaMercadoPago(local.empresaId, remota)
-  return { processada: true as const, inadimplente: false as const }
+  await persistirAssinaturaMercadoPago(
+    local.empresaId,
+    remota,
+    OrigemHistoricoAssinatura.WEBHOOK
+  )
+  return {
+    processada: true as const,
+    inadimplente: false as const,
+    empresaId: local.empresaId
+  }
 }
 
 export async function processarNotificacaoAssinaturaMercadoPagoService(
