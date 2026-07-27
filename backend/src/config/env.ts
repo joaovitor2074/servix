@@ -101,34 +101,45 @@ function backUrlAssinaturasValida(valor: string): boolean {
   }
 }
 
-export type ModoPagamentosClientesMercadoPago =
+export type ModoMercadoPago =
   | "DESABILITADO"
   | "TESTE"
+  | "PRODUCAO"
+
+export type ModoPagamentosClientesMercadoPago = ModoMercadoPago
+
+function lerModoMercadoPago(valor: string | undefined): ModoMercadoPago {
+  const modo = valor?.trim().toUpperCase()
+  return modo === "TESTE" || modo === "PRODUCAO"
+    ? modo
+    : "DESABILITADO"
+}
 
 // O ambiente técnico do Node não determina se uma integração financeira pode
-// operar. Somente TESTE é reconhecido nesta etapa; valor ausente, inválido ou
-// PRODUCAO mantém o gateway fechado.
+// operar. Valor ausente ou invalido mantem o gateway fechado.
 export function obterModoPagamentosClientesMercadoPago():
   ModoPagamentosClientesMercadoPago {
-  const modo = process.env.SERVIX_CUSTOMER_PAYMENTS_MP_MODE
-    ?.trim()
-    .toUpperCase()
-
-  return modo === "TESTE" ? "TESTE" : "DESABILITADO"
+  return lerModoMercadoPago(
+    process.env.SERVIX_CUSTOMER_PAYMENTS_MP_MODE
+  )
 }
 
 export function pagamentosClientesMercadoPagoTesteHabilitados(): boolean {
   return obterModoPagamentosClientesMercadoPago() === "TESTE"
 }
 
-export type ModoAssinaturasMercadoPago =
-  | "DESABILITADO"
-  | "TESTE"
+export function ambientePagamentosClientesMercadoPago():
+  "TESTE" | "PRODUCAO" | null {
+  const modo = obterModoPagamentosClientesMercadoPago()
+  return modo === "DESABILITADO" ? null : modo
+}
+
+export type ModoAssinaturasMercadoPago = ModoMercadoPago
 
 export type ConfiguracaoAssinaturasMercadoPago =
   | {
       status: "CONFIGURADA"
-      modo: "TESTE"
+      modo: "TESTE" | "PRODUCAO"
       accessToken: string
       publicKey: string | null
       planId: string | null
@@ -141,15 +152,12 @@ export type ConfiguracaoAssinaturasMercadoPago =
       timeoutMs: number
     }
 
-// A integração de assinaturas começa fechada.
-// Somente TESTE habilita as credenciais da conta Seller Test User.
+// A integracao de assinaturas comeca fechada e seleciona credenciais por modo.
 export function obterModoAssinaturasMercadoPago():
   ModoAssinaturasMercadoPago {
-  const modo = process.env.SERVIX_SUBSCRIPTIONS_MP_MODE
-    ?.trim()
-    .toUpperCase()
-
-  return modo === "TESTE" ? "TESTE" : "DESABILITADO"
+  return lerModoMercadoPago(
+    process.env.SERVIX_SUBSCRIPTIONS_MP_MODE
+  )
 }
 
 export function assinaturasMercadoPagoTesteHabilitadas(): boolean {
@@ -174,21 +182,48 @@ export function obterConfiguracaoAssinaturasMercadoPago():
     }
   }
 
-  const accessToken = process.env
-    .MERCADO_PAGO_SUBSCRIPTIONS_ACCESS_TOKEN
+  const modoBilling = process.env.SERVIX_BILLING_MODE
     ?.trim()
+    .toUpperCase()
 
-  const publicKey = process.env
-    .MERCADO_PAGO_SUBSCRIPTIONS_PUBLIC_KEY
-    ?.trim() || null
+  if (modoBilling !== modo) {
+    return {
+      status: "ERRO",
+      motivo: "Os modos do billing e das assinaturas Mercado Pago nao coincidem.",
+      timeoutMs
+    }
+  }
 
-  const planId = process.env
-    .MERCADO_PAGO_SUBSCRIPTIONS_PLAN_ID
-    ?.trim() || null
+  const prefixo = `MERCADO_PAGO_SUBSCRIPTIONS_${modo}`
+  const legadoTeste = modo === "TESTE"
 
-  const backUrl = process.env
-    .MERCADO_PAGO_SUBSCRIPTIONS_BACK_URL
-    ?.trim()
+  const accessToken = (
+    process.env[`${prefixo}_ACCESS_TOKEN`] ??
+    (legadoTeste
+      ? process.env.MERCADO_PAGO_SUBSCRIPTIONS_ACCESS_TOKEN
+      : undefined)
+  )?.trim()
+
+  const publicKey = (
+    process.env[`${prefixo}_PUBLIC_KEY`] ??
+    (legadoTeste
+      ? process.env.MERCADO_PAGO_SUBSCRIPTIONS_PUBLIC_KEY
+      : undefined)
+  )?.trim() || null
+
+  const planId = (
+    process.env[`${prefixo}_PLAN_ID`] ??
+    (legadoTeste
+      ? process.env.MERCADO_PAGO_SUBSCRIPTIONS_PLAN_ID
+      : undefined)
+  )?.trim() || null
+
+  const backUrl = (
+    process.env[`${prefixo}_BACK_URL`] ??
+    (legadoTeste
+      ? process.env.MERCADO_PAGO_SUBSCRIPTIONS_BACK_URL
+      : undefined)
+  )?.trim()
 
   if (
     !accessToken ||
@@ -242,6 +277,8 @@ export function financeiroEmpresarialPreviewHabilitado(): boolean {
 export type ConfiguracaoOAuthMercadoPago =
   | {
       status: "CONFIGURADA"
+      modo: "TESTE" | "PRODUCAO"
+      liveModeEsperado: boolean
       clientId: string
       clientSecret: string
       redirectUri: string
@@ -258,10 +295,34 @@ export type ConfiguracaoOAuthMercadoPago =
 // ausente. Assim o GET de configurações pode orientar a UI com segurança.
 export function obterConfiguracaoOAuthMercadoPago():
   ConfiguracaoOAuthMercadoPago {
-  const clientId = process.env.MERCADO_PAGO_CLIENT_ID?.trim()
-  const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET?.trim()
-  const redirectUri = process.env.MERCADO_PAGO_REDIRECT_URI?.trim()
-  const tokenEncryptionKey = process.env.TOKEN_ENCRYPTION_KEY?.trim()
+  const modo = obterModoPagamentosClientesMercadoPago()
+
+  if (modo === "DESABILITADO") {
+    return {
+      status: "NAO_CONFIGURADA",
+      motivo: "OAuth do Mercado Pago esta desabilitado.",
+      timeoutMs: lerTimeoutMercadoPago(process.env.MERCADO_PAGO_TIMEOUT_MS)
+    }
+  }
+
+  const prefixo = `MERCADO_PAGO_OAUTH_${modo}`
+  const legadoTeste = modo === "TESTE"
+  const clientId = (
+    process.env[`${prefixo}_CLIENT_ID`] ??
+    (legadoTeste ? process.env.MERCADO_PAGO_CLIENT_ID : undefined)
+  )?.trim()
+  const clientSecret = (
+    process.env[`${prefixo}_CLIENT_SECRET`] ??
+    (legadoTeste ? process.env.MERCADO_PAGO_CLIENT_SECRET : undefined)
+  )?.trim()
+  const redirectUri = (
+    process.env[`${prefixo}_REDIRECT_URI`] ??
+    (legadoTeste ? process.env.MERCADO_PAGO_REDIRECT_URI : undefined)
+  )?.trim()
+  const tokenEncryptionKey = (
+    process.env[`${prefixo}_TOKEN_ENCRYPTION_KEY`] ??
+    (legadoTeste ? process.env.TOKEN_ENCRYPTION_KEY : undefined)
+  )?.trim()
 
   const timeoutMs = lerTimeoutMercadoPago(
     process.env.MERCADO_PAGO_TIMEOUT_MS
@@ -297,6 +358,8 @@ export function obterConfiguracaoOAuthMercadoPago():
 
   return {
     status: "CONFIGURADA",
+    modo,
+    liveModeEsperado: modo === "PRODUCAO",
     clientId,
     clientSecret,
     redirectUri,
@@ -349,13 +412,26 @@ export function obterJwtSecret(): string {
   return segredo
 }
 export function obterSegredoWebhookAssinaturasMercadoPago(): string {
-  const segredo = process.env
-    .MERCADO_PAGO_SUBSCRIPTIONS_WEBHOOK_SECRET
-    ?.trim()
+  const modo = obterModoAssinaturasMercadoPago()
+
+  if (modo === "DESABILITADO") {
+    throw new Error("Webhooks de assinaturas do Mercado Pago estao desabilitados")
+  }
+
+  if (process.env.SERVIX_BILLING_MODE?.trim().toUpperCase() !== modo) {
+    throw new Error("Os modos do billing e do webhook Mercado Pago nao coincidem")
+  }
+
+  const segredo = (
+    process.env[`MERCADO_PAGO_SUBSCRIPTIONS_${modo}_WEBHOOK_SECRET`] ??
+    (modo === "TESTE"
+      ? process.env.MERCADO_PAGO_SUBSCRIPTIONS_WEBHOOK_SECRET
+      : undefined)
+  )?.trim()
 
   if (!segredo) {
     throw new Error(
-      "MERCADO_PAGO_SUBSCRIPTIONS_WEBHOOK_SECRET não foi configurado"
+      `MERCADO_PAGO_SUBSCRIPTIONS_${modo}_WEBHOOK_SECRET nao foi configurado`
     )
   }
 

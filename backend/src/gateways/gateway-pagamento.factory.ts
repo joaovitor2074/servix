@@ -1,7 +1,7 @@
 import {
+  ambientePagamentosClientesMercadoPago,
   gatewayPagamentoSimuladoHabilitado,
-  obterConfiguracaoOAuthMercadoPago,
-  pagamentosClientesMercadoPagoTesteHabilitados
+  obterConfiguracaoOAuthMercadoPago
 } from "../config/env.js"
 import {
   AmbientePagamento,
@@ -45,8 +45,7 @@ export async function resolverGatewayPagamento(
 
   if (
     provedor !== ProvedorPagamento.MERCADO_PAGO ||
-    !pagamentosClientesMercadoPagoTesteHabilitados() ||
-    contexto?.ambiente !== AmbientePagamento.TESTE
+    contexto?.ambiente !== ambientePagamentosClientesMercadoPago()
   ) {
     return null
   }

@@ -48,7 +48,8 @@ const dependencias = vi.hoisted(() => {
   return {
     tx,
     transaction: vi.fn(),
-    configuracaoOAuth: vi.fn()
+    configuracaoOAuth: vi.fn(),
+    modoPagamentos: vi.fn()
   }
 })
 
@@ -60,7 +61,8 @@ vi.mock("../lib/prisma.js", () => ({
 }))
 
 vi.mock("../config/env.js", () => ({
-  obterConfiguracaoOAuthMercadoPago: dependencias.configuracaoOAuth
+  obterConfiguracaoOAuthMercadoPago: dependencias.configuracaoOAuth,
+  obterModoPagamentosClientesMercadoPago: dependencias.modoPagamentos
 }))
 
 import {
@@ -75,6 +77,8 @@ import {
 const chave = Buffer.alloc(32, 7).toString("base64")
 const configuracaoOAuth = {
   status: "CONFIGURADA" as const,
+  modo: "TESTE" as const,
+  liveModeEsperado: false,
   clientId: "app-123",
   clientSecret: "client-secret",
   redirectUri: "https://api.servix.test/integracoes/mercado-pago/callback",
@@ -107,6 +111,7 @@ function estadoOAuth(empresaId: number, state: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   dependencias.configuracaoOAuth.mockReturnValue(configuracaoOAuth)
+  dependencias.modoPagamentos.mockReturnValue("TESTE")
   dependencias.transaction.mockImplementation(
     async (callback: (tx: typeof dependencias.tx) => Promise<unknown>) =>
       callback(dependencias.tx)
@@ -220,6 +225,47 @@ describe("OAuth Mercado Pago por empresa", () => {
     expect(trocar).toHaveBeenCalledTimes(1)
   })
 
+  it("persiste credencial live somente quando o servidor esta em PRODUCAO", async () => {
+    const state = "state-producao-com-entropia-suficiente-1234567890"
+    dependencias.configuracaoOAuth.mockReturnValue({
+      ...configuracaoOAuth,
+      modo: "PRODUCAO",
+      liveModeEsperado: true
+    })
+    dependencias.modoPagamentos.mockReturnValue("PRODUCAO")
+    dependencias.tx.estadoOAuthMercadoPago.findUnique.mockResolvedValue(
+      estadoOAuth(8, state)
+    )
+    dependencias.tx.configuracaoPagamento.findUnique.mockResolvedValue({
+      provedor: ProvedorPagamento.MANUAL,
+      ativo: true
+    })
+    vi.spyOn(
+      MercadoPagoOAuthClient.prototype,
+      "trocarCodigoPorTokens"
+    ).mockResolvedValue({
+      accessToken: "APP_USR-access-live",
+      refreshToken: "TG-refresh-live",
+      expiresIn: 3600,
+      mercadoPagoUserId: "payer-producao",
+      liveMode: true
+    })
+
+    await expect(concluirOAuthMercadoPagoService({
+      state,
+      code: "authorization-code-live"
+    })).resolves.toEqual({
+      sucesso: true,
+      empresaId: 8,
+      liveMode: true
+    })
+    expect(dependencias.tx.integracaoPagamento.upsert)
+      .toHaveBeenCalledWith(expect.objectContaining({
+        create: expect.objectContaining({ liveMode: true }),
+        update: expect.objectContaining({ liveMode: true })
+      }))
+  })
+
   it("bloqueia a primeira conexao se houver cobranca legada sem conciliacao", async () => {
     const state = "state-legado-sem-conciliacao-1234567890"
     dependencias.tx.estadoOAuthMercadoPago.findUnique.mockResolvedValue(
@@ -312,7 +358,7 @@ describe("OAuth Mercado Pago por empresa", () => {
       code: "authorization-code"
     })).resolves.toEqual({
       sucesso: false,
-      codigo: "PRODUCAO_BLOQUEADA"
+      codigo: "AMBIENTE_INCOMPATIVEL"
     })
 
     expect(dependencias.tx.estadoOAuthMercadoPago.updateMany)

@@ -3,7 +3,11 @@ import {
   InvalidWebhookSignatureError,
   WebhookSignatureValidator
 } from "mercadopago"
-import { obterSegredoWebhookAssinaturasMercadoPago } from "../config/env.js"
+import {
+  obterModoAssinaturasMercadoPago,
+  obterSegredoWebhookAssinaturasMercadoPago
+} from "../config/env.js"
+import { AppError } from "../errors/app-error.js"
 import { listarPlanosServixService } from "../billing/assinaturas.service.js"
 import {
   buscarCheckoutPorTokenService,
@@ -50,11 +54,10 @@ function stringObrigatoria(
     typeof valor !== "string" ||
     !valor.trim()
   ) {
-    throw Object.assign(
-      new Error(`${campo} é obrigatório.`),
-      {
-        statusCode: 400
-      }
+    throw new AppError(
+      `${campo} é obrigatório.`,
+      400,
+      "CAMPO_OBRIGATORIO"
     )
   }
 
@@ -65,11 +68,10 @@ function empresaIdAutenticada(
   req: Request
 ): number {
   if (!req.auth) {
-    throw Object.assign(
-      new Error("Usuário não autenticado."),
-      {
-        statusCode: 401
-      }
+    throw new AppError(
+      "Usuário não autenticado.",
+      401,
+      "USUARIO_NAO_AUTENTICADO"
     )
   }
 
@@ -89,14 +91,14 @@ export async function confirmarCheckoutAssinaturaController(
 
     const body = req.body as CorpoIniciarAssinatura
 
-    if (body.aceiteModoTeste !== true) {
-      throw Object.assign(
-        new Error(
-          "É necessário confirmar o ambiente de teste."
-        ),
-        {
-          statusCode: 400
-        }
+    if (
+      obterModoAssinaturasMercadoPago() === "TESTE" &&
+      body.aceiteModoTeste !== true
+    ) {
+      throw new AppError(
+        "É necessário confirmar o ambiente de teste.",
+        400,
+        "ACEITE_AMBIENTE_TESTE_OBRIGATORIO"
       )
     }
 

@@ -6,7 +6,8 @@ import {
   MercadoPagoOAuthClient
 } from "../clients/mercado-pago-oauth.client.js"
 import {
-  obterConfiguracaoOAuthMercadoPago
+  obterConfiguracaoOAuthMercadoPago,
+  obterModoPagamentosClientesMercadoPago
 } from "../config/env.js"
 import {
   PapelUsuario,
@@ -309,7 +310,7 @@ export async function concluirOAuthMercadoPagoService(dados: {
 
   const agora = new Date()
 
-  if (tokens.liveMode) {
+  if (tokens.liveMode !== configuracao.liveModeEsperado) {
     const finalizacao = await prisma.estadoOAuthMercadoPago.updateMany({
       where: {
         id: estado.estadoId,
@@ -324,11 +325,10 @@ export async function concluirOAuthMercadoPagoService(dados: {
       return { sucesso: false as const, codigo: "STATE_INVALIDO" as const }
     }
 
-    // Nem mesmo a forma cifrada de uma credencial de producao e persistida
-    // enquanto a movimentacao real estiver bloqueada.
+    // Nunca persiste uma credencial de ambiente diferente do selecionado.
     return {
       sucesso: false as const,
-      codigo: "PRODUCAO_BLOQUEADA" as const
+      codigo: "AMBIENTE_INCOMPATIVEL" as const
     }
   }
 
@@ -499,7 +499,7 @@ export async function concluirOAuthMercadoPagoService(dados: {
   return {
     sucesso: true as const,
     empresaId: estado.empresaId,
-    liveMode: false as const
+    liveMode: tokens.liveMode
   }
 }
 
@@ -590,9 +590,13 @@ export async function buscarResumoIntegracaoMercadoPagoService(
       conectadoEm: true
     }
   })
+  const modo = obterModoPagamentosClientesMercadoPago()
+  const ambienteCompativel = integracao && modo !== "DESABILITADO"
+    ? integracao.liveMode === (modo === "PRODUCAO")
+    : false
   const status = !integracao
     ? "DESCONECTADA" as const
-    : integracao.liveMode
+    : !ambienteCompativel
       ? "BLOQUEADA" as const
       : integracao.status === StatusConfiguracaoPagamento.ATIVA
       ? "CONECTADA" as const
@@ -722,7 +726,7 @@ export async function obterCredencialMercadoPagoService(
   if (
     !integracao ||
     integracao.status !== StatusConfiguracaoPagamento.ATIVA ||
-    integracao.liveMode ||
+    integracao.liveMode !== configuracao.liveModeEsperado ||
     !integracao.accessTokenCriptografado
   ) {
     return null
@@ -765,7 +769,7 @@ export async function obterCredencialMercadoPagoService(
       empresaId,
       provedor: ProvedorPagamento.MERCADO_PAGO,
       status: StatusConfiguracaoPagamento.ATIVA,
-      liveMode: false,
+      liveMode: configuracao.liveModeEsperado,
       refreshTokenCriptografado: integracao.refreshTokenCriptografado,
       tokenExpiraEm: integracao.tokenExpiraEm,
       OR: [
@@ -840,7 +844,7 @@ export async function obterCredencialMercadoPagoService(
 
   if (
     renovados.mercadoPagoUserId !== integracao.mercadoPagoUserId ||
-    renovados.liveMode
+    renovados.liveMode !== configuracao.liveModeEsperado
   ) {
     await marcarIntegracaoComErroService(
       empresaId,
@@ -866,7 +870,7 @@ export async function obterCredencialMercadoPagoService(
       renovacaoBloqueadaAte,
       refreshTokenCriptografado: integracao.refreshTokenCriptografado,
       status: StatusConfiguracaoPagamento.ATIVA,
-      liveMode: false
+      liveMode: configuracao.liveModeEsperado
     },
     data: {
       accessTokenCriptografado,

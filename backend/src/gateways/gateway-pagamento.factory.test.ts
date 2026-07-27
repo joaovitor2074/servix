@@ -109,7 +109,7 @@ describe("factory de gateway de pagamento", () => {
     expect(mocks.obterCredencial).not.toHaveBeenCalled()
   })
 
-  it("nao habilita movimentacao real ao receber modo PRODUCAO", async () => {
+  it("nao usa modo PRODUCAO em uma cobranca marcada como TESTE", async () => {
     vi.stubEnv("SERVIX_CUSTOMER_PAYMENTS_MP_MODE", "PRODUCAO")
     mocks.obterCredencial.mockResolvedValue({
       accessToken: "APP_USR-token-live-que-nao-deve-ser-usado",
@@ -124,6 +124,23 @@ describe("factory de gateway de pagamento", () => {
       }
     )).resolves.toBeNull()
     expect(mocks.obterCredencial).not.toHaveBeenCalled()
+  })
+
+  it("usa credencial live somente no contexto de PRODUCAO", async () => {
+    vi.stubEnv("SERVIX_CUSTOMER_PAYMENTS_MP_MODE", "PRODUCAO")
+    mocks.obterCredencial.mockResolvedValue({
+      accessToken: "APP_USR-token-live",
+      mercadoPagoUserId: "241983636"
+    })
+
+    await expect(resolverGatewayPagamento(
+      ProvedorPagamento.MERCADO_PAGO,
+      {
+        empresaId: 8,
+        ambiente: AmbientePagamento.PRODUCAO
+      }
+    )).resolves.toBeInstanceOf(MercadoPagoGateway)
+    expect(mocks.obterCredencial).toHaveBeenCalledWith(8)
   })
 
   it("resolve o token OAuth usando somente o empresaId do contexto", async () => {

@@ -237,19 +237,20 @@ conexão OAuth independente para cada empresa. Configure as credenciais globais
 somente no ambiente do backend:
 
 ```env
-MERCADO_PAGO_CLIENT_ID=""
-MERCADO_PAGO_CLIENT_SECRET=""
-MERCADO_PAGO_REDIRECT_URI="http://localhost:3005/integracoes/mercado-pago/callback"
-TOKEN_ENCRYPTION_KEY=""
+SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
+MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID=""
+MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET=""
+MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI="http://localhost:3005/integracoes/mercado-pago/callback"
+MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY=""
 FRONTEND_URL="http://localhost:5173"
 MERCADO_PAGO_TIMEOUT_MS=8000
 ```
 
-O `MERCADO_PAGO_REDIRECT_URI` precisa coincidir exatamente com a URL cadastrada
+O `MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI` precisa coincidir exatamente com a URL cadastrada
 no provedor. `FRONTEND_URL` é a origem para a qual o callback redireciona o
 administrador após concluir ou rejeitar a conexão.
 
-`TOKEN_ENCRYPTION_KEY` não é uma senha: deve ser uma chave Base64 que represente
+`MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY` não é uma senha: deve ser uma chave Base64 que represente
 exatamente 32 bytes. Gere uma chave diferente para cada ambiente e mantenha uma
 cópia segura, pois trocá-la sem recriptografar os dados invalida as conexões já
 salvas:
@@ -282,9 +283,9 @@ por empresa. Uma cobrança pendente ou ainda não conciliada impede a troca e a
 remoção da credencial, inclusive quando o POST pode ter sido aceito mas a
 resposta do provedor não chegou ao Servix.
 
-Somente conexões de teste (`live_mode=false`) podem alimentar o gateway nesta
-etapa. Em uma autorização de produção, access token e refresh token não são
-persistidos e nenhum registro de integração é criado ou atualizado.
+O ambiente selecionado precisa coincidir com `live_mode`: `TESTE` aceita apenas
+credenciais sandbox e `PRODUCAO` aceita apenas credenciais live. Uma autorização
+de ambiente divergente não é persistida.
 
 Não registre `code`, tokens, segredo da aplicação, chave de criptografia ou
 verificador PKCE em logs. A conexão e a desconexão são exclusivas de
@@ -298,8 +299,8 @@ O teste multiempresa usa exclusivamente o OAuth com `test_token=true`. Tokens
 avulsos como `MERCADO_PAGO_ACCESS_TOKEN_TESTE` não são lidos pelo fluxo de
 cobrança: os prefixos de teste e produção podem ser iguais e não comprovam o
 ambiente com segurança. Cada empresa deve autorizar a própria conta sandbox na
-tela de pagamentos. A integração fica desativada em `NODE_ENV=production` e
-aceita somente `AmbientePagamento.TESTE` nesta etapa.
+tela de pagamentos. `NODE_ENV` não escolhe o ambiente financeiro; o modo
+explícito e o namespace das credenciais precisam coincidir.
 
 O Pix usa a Orders API do Mercado Pago. Em teste, o pagador predefinido `APRO`
 faz a order sair de `action_required/waiting_transfer` para

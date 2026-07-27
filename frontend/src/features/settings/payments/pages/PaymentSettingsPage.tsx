@@ -154,7 +154,7 @@ export default function PaymentSettingsPage() {
     try {
       const dadosEnvio =
         rascunho.provedor === 'MERCADO_PAGO' &&
-        integracaoMercadoPago?.liveMode
+        integracaoMercadoPago?.status === 'BLOQUEADA'
           ? { ...rascunho, ativo: false, pixHabilitado: false }
           : rascunho
       const resultado = await atualizarConfiguracaoPagamento(dadosEnvio)
@@ -253,7 +253,8 @@ export default function PaymentSettingsPage() {
         provedor,
         pixHabilitado:
           provedor === 'MANUAL' ||
-          (provedor === 'MERCADO_PAGO' && integracaoMercadoPago?.liveMode)
+          (provedor === 'MERCADO_PAGO' &&
+            integracaoMercadoPago?.status === 'BLOQUEADA')
             ? false
             : atual.pixHabilitado,
         ambiente: ambientes.includes(atual.ambiente)
@@ -270,7 +271,7 @@ export default function PaymentSettingsPage() {
     if (
       campo === 'pixHabilitado' &&
       rascunho?.provedor === 'MERCADO_PAGO' &&
-      integracaoMercadoPago?.liveMode
+      integracaoMercadoPago?.status === 'BLOQUEADA'
     ) {
       return
     }
@@ -310,7 +311,7 @@ export default function PaymentSettingsPage() {
       item => item.provedor === rascunho.provedor,
     )?.disponivel === true &&
     (!modoMercadoPago || integracaoMercadoPago.conectado)
-  const mercadoPagoEmModoReal = integracaoMercadoPago.liveMode === true
+  const mercadoPagoBloqueado = integracaoMercadoPago.status === 'BLOQUEADA'
   const ambientesSelecionados = obterAmbientesProvedor(
     rascunho.provedor,
     provedoresDisponiveis,
@@ -331,7 +332,7 @@ export default function PaymentSettingsPage() {
         <StatusPill
           ativo={configuracao.ativo && !(
             configuracao.provedor === 'MERCADO_PAGO' &&
-            mercadoPagoEmModoReal
+            mercadoPagoBloqueado
           )}
           status={configuracao.status}
         />
@@ -339,7 +340,7 @@ export default function PaymentSettingsPage() {
 
       <div
         className={`payment-settings-notice${
-          mercadoPagoEmModoReal ? ' payment-settings-notice--warning' : ''
+          mercadoPagoBloqueado ? ' payment-settings-notice--warning' : ''
         }`}
         role="note"
       >
@@ -518,16 +519,16 @@ export default function PaymentSettingsPage() {
                 !provedorSelecionadoDisponivel ||
                 !rascunho.ativo ||
                 modoManual ||
-                (modoMercadoPago && mercadoPagoEmModoReal)
+                (modoMercadoPago && mercadoPagoBloqueado)
               }
               label={modoSimulado ? 'Habilitar Pix simulado' : 'Habilitar Pix'}
               description={
                 modoSimulado
                   ? 'Cria somente dados de teste; nenhum QR Code poderá ser pago.'
-                  : modoMercadoPago && mercadoPagoEmModoReal
-                    ? 'A conta está conectada, mas cobranças reais permanecem bloqueadas nesta etapa.'
+                  : modoMercadoPago && mercadoPagoBloqueado
+                    ? 'A conta conectada pertence a outro ambiente e precisa ser reconectada.'
                   : modoMercadoPago
-                    ? 'Gera uma cobrança Pix de teste pelo Mercado Pago quando o orçamento for aprovado.'
+                    ? `Gera uma cobrança Pix em ${rascunho.ambiente === 'PRODUCAO' ? 'produção' : 'teste'} pelo Mercado Pago quando o orçamento for aprovado.`
                   : 'Para gerar código no link público, selecione um gateway. O Pix manual continua disponível na OS.'
               }
               onChange={valor => alterarOpcao('pixHabilitado', valor)}
@@ -672,7 +673,7 @@ function MercadoPagoConnectionCard({
         </span>
       </header>
 
-      {integracao.liveMode && (
+      {integracao.status === 'BLOQUEADA' && (
         <div className="mercado-pago-connection__live-warning" role="note">
           <WarningIcon />
           <span>
@@ -683,7 +684,7 @@ function MercadoPagoConnectionCard({
         </div>
       )}
 
-      {(integracao.conectado || integracao.liveMode) && (
+      {(integracao.conectado || integracao.status === 'BLOQUEADA') && (
         <dl className="mercado-pago-connection__details">
           <div>
             <dt>Conta autorizada</dt>
@@ -703,7 +704,7 @@ function MercadoPagoConnectionCard({
               OAuth da empresa
             </dd>
           </div>
-          {!integracao.liveMode && integracao.tokenExpiraEm && (
+          {integracao.tokenExpiraEm && (
             <div>
               <dt>Token válido até</dt>
               <dd>{formatarData(integracao.tokenExpiraEm)}</dd>
@@ -729,9 +730,7 @@ function MercadoPagoConnectionCard({
       <div className="mercado-pago-connection__footer">
         <p>
           <ShieldIcon />
-          {integracao.liveMode
-            ? 'O navegador recebe apenas o status. Tokens de produção não são armazenados.'
-            : 'O navegador recebe apenas o status da conexão. Os tokens permanecem criptografados no servidor.'}
+          O navegador recebe apenas o status da conexão. Os tokens permanecem criptografados no servidor.
         </p>
 
         <div className="mercado-pago-connection__actions">
@@ -847,13 +846,13 @@ function criarRascunho(
     ambiente: configuracao.ambiente,
     ativo:
       configuracao.provedor === 'MERCADO_PAGO' &&
-      integracaoMercadoPago?.liveMode
+      integracaoMercadoPago?.status === 'BLOQUEADA'
         ? false
         : configuracao.ativo,
     pixHabilitado:
       configuracao.provedor === 'MANUAL' ||
       (configuracao.provedor === 'MERCADO_PAGO' &&
-        integracaoMercadoPago?.liveMode)
+        integracaoMercadoPago?.status === 'BLOQUEADA')
         ? false
         : configuracao.pixHabilitado,
   }
@@ -911,8 +910,8 @@ function obterMotivoIndisponibilidade(
       'Este provedor ainda não está disponível.'
   }
 
-  if (integracaoMercadoPago.liveMode) {
-    return 'A conta está conectada, mas cobranças reais permanecem bloqueadas.'
+  if (integracaoMercadoPago.status === 'BLOQUEADA') {
+    return 'A conta conectada pertence a outro ambiente. Reconecte a conta correta.'
   }
 
   if (integracaoMercadoPago.conectado) {
@@ -964,8 +963,8 @@ function obterDescricaoConfiguracaoMercadoPago(
 }
 
 function obterTituloAvisoMercadoPago(integracao: IntegracaoMercadoPago) {
-  if (integracao.liveMode) {
-    return 'Autorização de produção bloqueada'
+  if (integracao.status === 'BLOQUEADA') {
+    return 'Autorização de outro ambiente'
   }
   if (integracao.conectado) {
     return 'Conta Mercado Pago desta empresa conectada'
@@ -975,8 +974,8 @@ function obterTituloAvisoMercadoPago(integracao: IntegracaoMercadoPago) {
 }
 
 function obterDescricaoAvisoMercadoPago(integracao: IntegracaoMercadoPago) {
-  if (integracao.liveMode) {
-    return 'A autorização foi reconhecida, mas o Pix do Mercado Pago não pode ser ativado enquanto o backend mantiver a produção bloqueada. Qualquer teste real só pode ser feito pelo titular adulto ou responsável da conta.'
+  if (integracao.status === 'BLOQUEADA') {
+    return 'A autorização reconhecida não corresponde ao ambiente configurado no servidor. Reconecte a conta correta antes de ativar o Pix.'
   }
   if (integracao.conectado) {
     return 'A autorização pertence somente a esta empresa. Os tokens ficam criptografados no backend e nunca são enviados ao navegador.'
@@ -990,7 +989,6 @@ function obterDescricaoAvisoMercadoPago(integracao: IntegracaoMercadoPago) {
 
 function obterTomIntegracaoMercadoPago(integracao: IntegracaoMercadoPago) {
   if (
-    integracao.liveMode ||
     integracao.status === 'BLOQUEADA' ||
     integracao.status === 'EXPIRADA'
   ) return 'warning'
@@ -1001,7 +999,7 @@ function obterTomIntegracaoMercadoPago(integracao: IntegracaoMercadoPago) {
 function obterRotuloIntegracaoMercadoPago(integracao: IntegracaoMercadoPago) {
   if (integracao.status === 'EXPIRADA') return 'Expirada'
   if (integracao.status === 'ERRO') return 'Requer atenção'
-  if (integracao.status === 'BLOQUEADA') return 'Produção bloqueada'
+  if (integracao.status === 'BLOQUEADA') return 'Ambiente incompatível'
   if (integracao.conectado) {
     return 'Conectada'
   }
@@ -1011,8 +1009,8 @@ function obterRotuloIntegracaoMercadoPago(integracao: IntegracaoMercadoPago) {
 function obterDescricaoIntegracaoMercadoPago(
   integracao: IntegracaoMercadoPago,
 ) {
-  if (integracao.liveMode) {
-    return 'A conta foi autorizada, mas a movimentação real continua bloqueada.'
+  if (integracao.status === 'BLOQUEADA') {
+    return 'A conta autorizada não corresponde ao ambiente configurado.'
   }
   if (integracao.status === 'EXPIRADA') {
     return 'A autorização expirou. Reconecte a conta para continuar.'

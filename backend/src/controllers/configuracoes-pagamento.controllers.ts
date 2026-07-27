@@ -69,10 +69,10 @@ export async function atualizarConfiguracaoPagamentoController(
         })
       }
 
-      if (resultado.motivo === "mercado_pago_somente_teste") {
+      if (resultado.motivo === "mercado_pago_ambiente_indisponivel") {
         return res.status(409).json({
-          erro: "O Mercado Pago esta liberado somente no ambiente de teste.",
-          codigo: "MERCADO_PAGO_SOMENTE_TESTE"
+          erro: "O ambiente selecionado nao coincide com o Mercado Pago configurado no servidor.",
+          codigo: "MERCADO_PAGO_AMBIENTE_INDISPONIVEL"
         })
       }
 

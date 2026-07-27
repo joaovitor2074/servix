@@ -38,14 +38,19 @@ FRONTEND_URL=https://SEU-FRONTEND.vercel.app
 CORS_ORIGINS=https://SEU-FRONTEND.vercel.app
 
 SERVIX_BILLING_MODE=TESTE
+SERVIX_SUBSCRIPTIONS_MP_MODE=TESTE
 SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
 SERVIX_PAYMENT_SIMULATOR_ENABLED=true
 SERVIX_FINANCEIRO_MODE=PREVIEW
 
-MERCADO_PAGO_CLIENT_ID=<app-oauth-sandbox-do-servix>
-MERCADO_PAGO_CLIENT_SECRET=<segredo-do-app-oauth-sandbox>
-MERCADO_PAGO_REDIRECT_URI=https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
-TOKEN_ENCRYPTION_KEY=<base64-de-32-bytes>
+MERCADO_PAGO_SUBSCRIPTIONS_TESTE_ACCESS_TOKEN=<token-da-conta-seller-de-teste>
+MERCADO_PAGO_SUBSCRIPTIONS_TESTE_BACK_URL=https://SEU-FRONTEND.vercel.app
+MERCADO_PAGO_SUBSCRIPTIONS_TESTE_WEBHOOK_SECRET=<segredo-exclusivo-de-teste>
+
+MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID=<app-oauth-sandbox-do-servix>
+MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET=<segredo-do-app-oauth-sandbox>
+MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI=https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
+MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY=<base64-de-32-bytes>
 MERCADO_PAGO_TIMEOUT_MS=8000
 ```
 
@@ -68,7 +73,8 @@ Healthcheck Path: /health
 financeiro preview estiver incluída no artefato, não use o comando de escape
 `prisma:migrate:deploy:raw` no Railway nem em outro pipeline comum.
 
-Gere valores novos para `JWT_SECRET` e `TOKEN_ENCRYPTION_KEY` em cada ambiente.
+Gere valores novos para `JWT_SECRET` e para cada chave
+`MERCADO_PAGO_OAUTH_*_TOKEN_ENCRYPTION_KEY` em cada ambiente.
 Nao copie segredos locais para homologacao e nunca coloque esses valores no
 frontend.
 
@@ -99,7 +105,8 @@ Cadastre no aplicativo Mercado Pago exatamente:
 https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
 ```
 
-O valor deve ser HTTPS, publico e identico a `MERCADO_PAGO_REDIRECT_URI`, sem
+O valor deve ser HTTPS, publico e identico a
+`MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI`, sem
 barra adicional. Conecte apenas usuarios de teste enquanto
 `SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE`.
 
@@ -119,4 +126,6 @@ O titular responsavel deve revisar Termos e Politica de Privacidade, cadastrar
 URLs e credenciais de producao, definir webhooks assinados, validar o recebedor
 da assinatura e dos orcamentos, revisar logs/alertas/backups e executar testes de
 baixo valor. Alterar `NODE_ENV` nao habilita dinheiro real; os modos financeiros
-sao deliberadamente independentes e producao permanece bloqueada nesta etapa.
+sao deliberadamente independentes. Use `backend/railway.production.env.example`
+como checklist: nomes com `PRODUCAO` nunca consultam segredos de `TESTE` nem os
+nomes legados temporariamente aceitos na homologacao.

@@ -1,6 +1,6 @@
 import {
+  ambientePagamentosClientesMercadoPago,
   gatewayPagamentoSimuladoHabilitado,
-  pagamentosClientesMercadoPagoTesteHabilitados
 } from "../config/env.js"
 import {
   AmbientePagamento,
@@ -32,16 +32,17 @@ const provedoresReais = new Set<ProvedorPagamento>([
 ])
 
 async function obterEstadoIntegracoesPagamento(empresaId: number) {
-  const mercadoPagoTesteHabilitado =
-    pagamentosClientesMercadoPagoTesteHabilitados()
+  const modoMercadoPago = ambientePagamentosClientesMercadoPago()
+  const ambienteMercadoPago = modoMercadoPago === "PRODUCAO"
+    ? AmbientePagamento.PRODUCAO
+    : AmbientePagamento.TESTE
   const simuladorHabilitado = gatewayPagamentoSimuladoHabilitado()
   const integracaoOAuth = await buscarResumoIntegracaoMercadoPagoService(
     empresaId
   )
   const mercadoPagoDisponivel =
-    mercadoPagoTesteHabilitado &&
+    Boolean(modoMercadoPago) &&
     integracaoOAuth.conectado &&
-    !integracaoOAuth.liveMode &&
     integracaoOAuth.oauthDisponivel
 
   const integracaoMercadoPago = integracaoOAuth
@@ -54,18 +55,18 @@ async function obterEstadoIntegracoesPagamento(empresaId: number) {
   } else if (integracaoOAuth.status === "ERRO") {
     statusMercadoPago = "ERRO"
     motivoMercadoPago = "Reconecte a conta do Mercado Pago desta empresa."
-  } else if (!mercadoPagoTesteHabilitado) {
+  } else if (!modoMercadoPago) {
     statusMercadoPago = integracaoOAuth.oauthDisponivel
       ? "CONFIGURADA"
       : "NAO_CONFIGURADA"
     motivoMercadoPago =
       "Cobrancas Mercado Pago para clientes estao desabilitadas neste ambiente."
-  } else if (integracaoOAuth.liveMode) {
+  } else if (integracaoOAuth.status === "BLOQUEADA") {
     statusMercadoPago = integracaoOAuth.oauthDisponivel
       ? "CONFIGURADA"
       : "NAO_CONFIGURADA"
     motivoMercadoPago =
-      "Cobrancas reais permanecem bloqueadas nesta etapa."
+      "A conta conectada pertence a outro ambiente do Mercado Pago. Reconecte a conta correta."
   } else {
     statusMercadoPago = integracaoOAuth.oauthDisponivel
       ? "CONFIGURADA"
@@ -100,7 +101,7 @@ async function obterEstadoIntegracoesPagamento(empresaId: number) {
       provedor: ProvedorPagamento.MERCADO_PAGO,
       nome: "Mercado Pago",
       disponivel: mercadoPagoDisponivel,
-      ambientes: [AmbientePagamento.TESTE],
+      ambientes: [ambienteMercadoPago],
       configuracaoServidor: statusMercadoPago,
       ...(motivoMercadoPago && {
         motivoIndisponibilidade: motivoMercadoPago
@@ -176,11 +177,11 @@ export async function atualizarConfiguracaoPagamentoService(
 
   if (
     provedor === ProvedorPagamento.MERCADO_PAGO &&
-    ambiente !== AmbientePagamento.TESTE
+    ambiente !== ambientePagamentosClientesMercadoPago()
   ) {
     return {
       sucesso: false as const,
-      motivo: "mercado_pago_somente_teste" as const
+      motivo: "mercado_pago_ambiente_indisponivel" as const
     }
   }
 

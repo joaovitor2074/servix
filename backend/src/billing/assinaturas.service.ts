@@ -54,9 +54,12 @@ function formatarAssinatura(assinatura: AssinaturaCheckout) {
 }
 
 export function listarPlanosServixService() {
+  const modo = obterModoBillingServix()
   return {
-    ambiente: AmbienteAssinatura.TESTE,
-    checkoutDisponivel: obterModoBillingServix() === "TESTE",
+    ambiente: modo === "PRODUCAO"
+      ? AmbienteAssinatura.PRODUCAO
+      : AmbienteAssinatura.TESTE,
+    checkoutDisponivel: modo !== "BLOQUEADO",
     planos: [PLANO_SERVIX_MENSAL]
   }
 }

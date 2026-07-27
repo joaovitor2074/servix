@@ -297,6 +297,9 @@ export async function iniciarAssinaturaEmpresaService(
 
   const emailPagador = dados.emailPagador.trim().toLowerCase()
   const versaoTermos = dados.versaoTermos.trim()
+  const ambiente = configuracao.modo === "PRODUCAO"
+    ? AmbienteAssinatura.PRODUCAO
+    : AmbienteAssinatura.TESTE
 
   if (!emailPagador || !emailPagador.includes("@")) {
     throw new AppError("Informe um e-mail válido.", 400, "EMAIL_INVALIDO")
@@ -384,7 +387,7 @@ export async function iniciarAssinaturaEmpresaService(
         planoCodigo: PLANO_CODIGO,
         planoNome: PLANO_NOME,
         valorMensal: VALOR_MENSAL,
-        ambiente: AmbienteAssinatura.TESTE,
+        ambiente,
         provedor: ProvedorAssinatura.MERCADO_PAGO_SERVIX,
         status: StatusAssinatura.PENDENTE,
         mercadoPagoPlanoId: null,
@@ -397,7 +400,7 @@ export async function iniciarAssinaturaEmpresaService(
         planoCodigo: PLANO_CODIGO,
         planoNome: PLANO_NOME,
         valorMensal: VALOR_MENSAL,
-        ambiente: AmbienteAssinatura.TESTE,
+        ambiente,
         provedor: ProvedorAssinatura.MERCADO_PAGO_SERVIX,
         status: StatusAssinatura.PENDENTE,
         mercadoPagoPlanoId: null,
@@ -937,24 +940,18 @@ export async function iniciarAssinaturaPorCheckoutTokenService(
     })
 
   if (!assinatura) {
-    throw Object.assign(
-      new Error(
-        "O checkout informado não existe ou não está mais disponível."
-      ),
-      {
-        statusCode: 404
-      }
+    throw new AppError(
+      "O checkout informado não existe ou não está mais disponível.",
+      404,
+      "CHECKOUT_ASSINATURA_NAO_ENCONTRADO"
     )
   }
 
   if (assinatura.status === "CANCELADA") {
-    throw Object.assign(
-      new Error(
-        "Esta assinatura foi cancelada e não pode ser confirmada."
-      ),
-      {
-        statusCode: 409
-      }
+    throw new AppError(
+      "Esta assinatura foi cancelada e não pode ser confirmada.",
+      409,
+      "CHECKOUT_ASSINATURA_CANCELADA"
     )
   }
 
@@ -1026,13 +1023,10 @@ export async function buscarCheckoutPorTokenService(
     })
 
   if (!assinatura) {
-    throw Object.assign(
-      new Error(
-        "Este checkout não existe ou não está mais disponível."
-      ),
-      {
-        statusCode: 404
-      }
+    throw new AppError(
+      "Este checkout não existe ou não está mais disponível.",
+      404,
+      "CHECKOUT_ASSINATURA_NAO_ENCONTRADO"
     )
   }
 

@@ -301,7 +301,7 @@ describe("configuracao de pagamento", () => {
     expect(mercadoPago).toMatchObject({
       disponivel: false,
       motivoIndisponibilidade:
-        "Cobrancas reais permanecem bloqueadas nesta etapa."
+        "A conta conectada pertence a outro ambiente do Mercado Pago. Reconecte a conta correta."
     })
   })
 })

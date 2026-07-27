@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   if (configuracao.planId) {
     console.log("O plano de assinatura já está configurado.")
     console.log(
-      `MERCADO_PAGO_SUBSCRIPTIONS_PLAN_ID="${configuracao.planId}"`
+      `MERCADO_PAGO_SUBSCRIPTIONS_${configuracao.modo}_PLAN_ID="${configuracao.planId}"`
     )
     return
   }
@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   console.log("Adicione esta variável ao seu arquivo .env:")
   console.log("")
   console.log(
-    `MERCADO_PAGO_SUBSCRIPTIONS_PLAN_ID="${plano.id}"`
+    `MERCADO_PAGO_SUBSCRIPTIONS_${configuracao.modo}_PLAN_ID="${plano.id}"`
   )
   console.log("")
   console.log(

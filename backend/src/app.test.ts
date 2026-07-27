@@ -101,6 +101,20 @@ describe("API HTTP", () => {
     expect(resposta.body.codigo).toBe("CHECKOUT_ASSINATURA_INVALIDO")
   })
 
+  it("responde 404 quando o checkout nao existe", async () => {
+    vi.spyOn(prisma.assinaturaEmpresa, "findUnique")
+      .mockResolvedValueOnce(null)
+
+    const resposta = await request(app)
+      .get("/assinaturas/checkout/123e4567-e89b-12d3-a456-426614174000")
+
+    expect(resposta.status).toBe(404)
+    expect(resposta.body).toEqual({
+      erro: "Este checkout não existe ou não está mais disponível.",
+      codigo: "CHECKOUT_ASSINATURA_NAO_ENCONTRADO"
+    })
+  })
+
   it("mantém o acompanhamento fora da autenticação interna", async () => {
     const resposta = await request(app).get("/publico/ordens/token-curto")
 

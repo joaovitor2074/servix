@@ -24,7 +24,7 @@ export default function CheckoutPage() {
     useState<CheckoutData | null>(dadosIniciais)
   const [carregando, setCarregando] = useState(!dadosIniciais)
   const [emailPagador, setEmailPagador] = useState('')
-  const [aceiteModoTeste, setAceiteModoTeste] = useState(false)
+  const [aceiteCheckout, setAceiteCheckout] = useState(false)
   const [redirecionando, setRedirecionando] = useState(false)
   const [erroCarregamento, setErroCarregamento] = useState('')
   const [erroPagamento, setErroPagamento] = useState('')
@@ -65,18 +65,28 @@ export default function CheckoutPage() {
     setErroAceite('')
 
     const emailNormalizado = emailPagador.trim().toLowerCase()
+    const modoTeste = dados?.assinatura.ambiente !== 'PRODUCAO'
     if (
       !emailValido(emailNormalizado) ||
-      emailNormalizado === 'test@testuser.com'
+      (modoTeste && (
+        !emailNormalizado.endsWith('@testuser.com') ||
+        emailNormalizado === 'test@testuser.com'
+      ))
     ) {
       setErroPagamento(
-        'Use o e-mail exato da conta Comprador exibida em Contas de teste. O endereço test@testuser.com não serve para Assinaturas.',
+        modoTeste
+          ? 'Use o e-mail exato da conta Comprador exibida em Contas de teste. O endereço test@testuser.com não serve para Assinaturas.'
+          : 'Informe um e-mail válido para o responsável pelo pagamento.',
       )
       return
     }
 
-    if (!aceiteModoTeste) {
-      setErroAceite('Confirme que entendeu o ambiente de teste.')
+    if (!aceiteCheckout) {
+      setErroAceite(
+        modoTeste
+          ? 'Confirme que entendeu o ambiente de teste.'
+          : 'Confirme a assinatura mensal antes de continuar.',
+      )
       return
     }
 
@@ -140,6 +150,8 @@ export default function CheckoutPage() {
     )
   }
 
+  const modoTeste = dados.assinatura.ambiente === 'TESTE'
+
   return (
     <section className="checkout-page">
       <div className="site-container checkout-page__header">
@@ -154,10 +166,12 @@ export default function CheckoutPage() {
       <div className="site-container checkout-layout">
         <article className="checkout-card">
           <div className="test-banner" role="status">
-            <span>TESTE</span>
+            <span>{modoTeste ? 'TESTE' : 'PRODUÇÃO'}</span>
             <div>
-              <strong>Ambiente sem cobrança real</strong>
-              <p>Use exclusivamente uma conta compradora de teste.</p>
+              <strong>{modoTeste ? 'Ambiente sem cobrança real' : 'Assinatura com cobrança real'}</strong>
+              <p>{modoTeste
+                ? 'Use exclusivamente uma conta compradora de teste.'
+                : `O Mercado Pago apresentará a cobrança recorrente de ${formatarMoeda(dados.assinatura.valorMensal)} por mês.`}</p>
             </div>
           </div>
 
@@ -185,12 +199,17 @@ export default function CheckoutPage() {
               <dt>Status atual</dt>
               <dd>{formatarStatus(dados.assinatura.status)}</dd>
             </div>
-            <div><dt>Cobrança real agora</dt><dd>R$ 0,00</dd></div>
+            <div>
+              <dt>Cobrança real</dt>
+              <dd>{modoTeste ? 'Não' : `${formatarMoeda(dados.assinatura.valorMensal)}/mês`}</dd>
+            </div>
           </dl>
 
           <form className="checkout-payment-form" onSubmit={iniciarCheckout} noValidate>
             <div className="signup-field signup-field--full">
-              <label htmlFor="emailPagador">E-mail do comprador de teste</label>
+              <label htmlFor="emailPagador">
+                {modoTeste ? 'E-mail do comprador de teste' : 'E-mail do pagador'}
+              </label>
               <input
                 id="emailPagador"
                 type="email"
@@ -201,41 +220,44 @@ export default function CheckoutPage() {
                   setEmailPagador(event.target.value)
                   setErroPagamento('')
                 }}
-                placeholder="test_user_...@testuser.com"
+                placeholder={modoTeste ? 'test_user_...@testuser.com' : 'pagador@empresa.com.br'}
                 disabled={redirecionando}
                 required
               />
-              <small>Use uma conta compradora de teste diferente do vendedor.</small>
+              <small>{modoTeste
+                ? 'Use uma conta compradora de teste diferente do vendedor.'
+                : 'Este e-mail será vinculado à assinatura no Mercado Pago.'}</small>
             </div>
 
             <div className="checkbox-field checkbox-field--boxed">
               <label>
                 <input
-                  id="aceiteModoTeste"
+                  id="aceiteCheckout"
                   type="checkbox"
-                  checked={aceiteModoTeste}
+                  checked={aceiteCheckout}
                   onChange={event => {
-                    setAceiteModoTeste(event.target.checked)
+                    setAceiteCheckout(event.target.checked)
                     setErroAceite('')
                   }}
                   disabled={redirecionando}
                   aria-invalid={Boolean(erroAceite)}
                   aria-describedby={
                     erroAceite
-                      ? 'aceiteModoTeste-error'
-                      : 'aceiteModoTeste-hint'
+                      ? 'aceiteCheckout-error'
+                      : 'aceiteCheckout-hint'
                   }
                 />
                 <span>
-                  Confirmo que este é um ambiente de teste e que não usarei
-                  dados financeiros reais.
+                  {modoTeste
+                    ? 'Confirmo que este é um ambiente de teste e que não usarei dados financeiros reais.'
+                    : `Confirmo a assinatura recorrente de ${formatarMoeda(dados.assinatura.valorMensal)} por mês e li os Termos de Uso e a Política de Privacidade.`}
                 </span>
               </label>
-              <small id="aceiteModoTeste-hint">
+              <small id="aceiteCheckout-hint">
                 Você será redirecionado ao Mercado Pago para continuar.
               </small>
               {erroAceite && (
-                <span id="aceiteModoTeste-error" className="field-error" role="alert">
+                <span id="aceiteCheckout-error" className="field-error" role="alert">
                   {erroAceite}
                 </span>
               )}
@@ -246,7 +268,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               className="button button--primary button--large button--full"
-              disabled={!aceiteModoTeste || redirecionando}
+              disabled={!aceiteCheckout || redirecionando}
               aria-busy={redirecionando}
             >
               {redirecionando
