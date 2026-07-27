@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   txEmpresaUpdate: vi.fn(),
   txHistoricoCreate: vi.fn(),
   buscarPorReferencia: vi.fn(),
-  criarMercadoPago: vi.fn()
+  criarMercadoPago: vi.fn(),
+  cancelarMercadoPago: vi.fn(),
+  obterMercadoPago: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -37,10 +39,10 @@ vi.mock("../config/env.js", () => ({
 
 vi.mock("../integrations/mercado-pago-assinaturas.client.js", () => ({
   buscarAssinaturaPorReferenciaMercadoPago: mocks.buscarPorReferencia,
-  cancelarAssinaturaMercadoPago: vi.fn(),
+  cancelarAssinaturaMercadoPago: mocks.cancelarMercadoPago,
   criarAssinaturaMercadoPago: mocks.criarMercadoPago,
   ErroMercadoPagoAssinaturas: class extends Error {},
-  obterAssinaturaMercadoPago: vi.fn(),
+  obterAssinaturaMercadoPago: mocks.obterMercadoPago,
   obterPagamentoAutorizadoMercadoPago: vi.fn(),
   obterRequestIdMercadoPago: vi.fn(() => "mp-request-reativacao")
 }))
@@ -110,9 +112,52 @@ describe("reativacao de assinatura cancelada", () => {
     expect(mocks.txAssinaturaUpdate).toHaveBeenLastCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: StatusAssinatura.PENDENTE })
     }))
+    expect(mocks.txAssinaturaUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        ativadaEm: null,
+        canceladaEm: null,
+        proximaCobrancaEm: null,
+        ultimaSincronizacaoEm: null
+      })
+    }))
     expect(resultado).toMatchObject({
       status: StatusAssinatura.PENDENTE,
       checkoutUrl: "https://www.mercadopago.com.br/subscriptions/checkout"
+    })
+  })
+
+  it("cancela a tentativa pendente e gera outro checkout quando solicitado", async () => {
+    mocks.assinaturaFindUnique.mockResolvedValue({
+      id: 44,
+      status: StatusAssinatura.PENDENTE,
+      emailPagador: "buyer@testuser.com",
+      referenciaExterna: "servix_empresa_8_reativacao_anterior",
+      mercadoPagoAssinaturaId: "preapproval-pendente",
+      checkoutUrl: "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=preapproval-pendente",
+      valorMensal: "79.90"
+    })
+    mocks.obterMercadoPago.mockResolvedValue({
+      id: "preapproval-pendente",
+      status: "pending",
+      external_reference: "servix_empresa_8_reativacao_anterior"
+    })
+    mocks.cancelarMercadoPago.mockResolvedValue({
+      id: "preapproval-pendente",
+      status: "cancelled"
+    })
+
+    await reativarAssinaturaEmpresaService(8, { gerarNovoCheckout: true })
+
+    expect(mocks.cancelarMercadoPago).toHaveBeenCalledWith("preapproval-pendente")
+    expect(mocks.criarMercadoPago).toHaveBeenCalledOnce()
+    expect(mocks.criarMercadoPago).toHaveBeenCalledWith(expect.objectContaining({
+      referenciaExterna: expect.stringMatching(/^servix_empresa_8_reativacao_/)
+    }))
+    expect(mocks.txHistoricoCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tipo: TipoHistoricoAssinatura.REATIVACAO_SOLICITADA,
+        mercadoPagoAssinaturaId: "preapproval-pendente"
+      })
     })
   })
 })

@@ -237,6 +237,9 @@ export async function sincronizarAssinaturaController(
     next(error)
   }
 }
+type CorpoReativarAssinatura = {
+  gerarNovoCheckout?: unknown
+}
 
 export async function buscarPainelAssinaturaController(
   req: Request,
@@ -269,8 +272,10 @@ export async function reativarAssinaturaController(
   next: NextFunction
 ) {
   try {
+    const body = req.body as CorpoReativarAssinatura | undefined
     const resultado = await reativarAssinaturaEmpresaService(
-      empresaIdAutenticada(req)
+      empresaIdAutenticada(req),
+      { gerarNovoCheckout: body?.gerarNovoCheckout === true }
     )
     res.status(resultado.recuperada ? 200 : 201).json(resultado)
   } catch (error) {

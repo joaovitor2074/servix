@@ -27,9 +27,10 @@ export async function buscarPortalAssinatura(signal?: AbortSignal) {
   return lerResposta<PortalAssinatura>(resposta)
 }
 
-export async function iniciarReativacaoAssinatura() {
+export async function iniciarReativacaoAssinatura(gerarNovoCheckout = false) {
   const resposta = await apiFetch('/assinaturas/recuperacao/reativar', {
     method: 'POST',
+    body: JSON.stringify({ gerarNovoCheckout }),
   })
   return lerResposta<{
     checkoutUrl: string

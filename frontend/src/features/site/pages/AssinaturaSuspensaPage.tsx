@@ -98,11 +98,11 @@ export default function AssinaturaSuspensaPage({
     )
   }
 
-  async function handleReativar() {
+  async function handleReativar(gerarNovoCheckout = false) {
     setProcessando(true)
     setErro('')
     try {
-      const resultado = await iniciarReativacaoAssinatura()
+      const resultado = await iniciarReativacaoAssinatura(gerarNovoCheckout)
       if (!resultado.checkoutUrl) throw new Error('O checkout não foi retornado.')
       window.location.assign(resultado.checkoutUrl)
     } catch (error) {
@@ -161,7 +161,17 @@ export default function AssinaturaSuspensaPage({
               </p>
 
               {aguardando && assinatura.checkoutUrl ? (
-                <a className="button button--primary" href={assinatura.checkoutUrl}>Continuar no Mercado Pago</a>
+                <>
+                  <a className="button button--primary" href={assinatura.checkoutUrl}>Continuar no Mercado Pago</a>
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    onClick={() => void handleReativar(true)}
+                    disabled={processando}
+                  >
+                    {processando ? 'Gerando novo checkout...' : 'Gerar novo checkout'}
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"

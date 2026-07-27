@@ -618,7 +618,14 @@ export async function buscarPainelAssinaturaEmpresaService(empresaId: number) {
   }
 }
 
-export async function reativarAssinaturaEmpresaService(empresaId: number) {
+type OpcoesReativacaoAssinatura = {
+  gerarNovoCheckout?: boolean
+}
+
+export async function reativarAssinaturaEmpresaService(
+  empresaId: number,
+  opcoes: OpcoesReativacaoAssinatura = {}
+) {
   const configuracao = obterConfiguracaoAssinaturasMercadoPago()
 
   if (configuracao.status !== "CONFIGURADA") {
@@ -681,7 +688,8 @@ export async function reativarAssinaturaEmpresaService(empresaId: number) {
 
   if (
     reativacaoEmAndamento &&
-    checkoutUrlMercadoPagoValida(assinatura.checkoutUrl)
+    checkoutUrlMercadoPagoValida(assinatura.checkoutUrl) &&
+    !opcoes.gerarNovoCheckout
   ) {
     return {
       checkoutUrl: assinatura.checkoutUrl,
@@ -690,7 +698,35 @@ export async function reativarAssinaturaEmpresaService(empresaId: number) {
     }
   }
 
-  if (!reativacaoEmAndamento) {
+  if (reativacaoEmAndamento && opcoes.gerarNovoCheckout) {
+    if (assinatura.mercadoPagoAssinaturaId) {
+      const remotaAtual = await obterAssinaturaMercadoPago(
+        assinatura.mercadoPagoAssinaturaId
+      )
+      const statusRemoto = statusInternoMercadoPago(remotaAtual.status)
+
+      if (statusRemoto === StatusAssinatura.ATIVA) {
+        throw new AppError(
+          "O Mercado Pago ja confirmou esta assinatura. Aguarde o webhook para liberar o acesso.",
+          409,
+          "ASSINATURA_AGUARDANDO_WEBHOOK"
+        )
+      }
+
+      if (statusRemoto === StatusAssinatura.PENDENTE) {
+        await cancelarAssinaturaMercadoPago(
+          assinatura.mercadoPagoAssinaturaId
+        )
+      }
+    }
+
+    assinatura = {
+      ...assinatura,
+      status: StatusAssinatura.CANCELADA
+    }
+  }
+
+  if (!reativacaoEmAndamento || opcoes.gerarNovoCheckout) {
     const referenciaExterna =
       `servix_empresa_${empresaId}_reativacao_${randomUUID()}`
 
@@ -703,6 +739,9 @@ export async function reativarAssinaturaEmpresaService(empresaId: number) {
           mercadoPagoAssinaturaId: null,
           checkoutUrl: null,
           proximaCobrancaEm: null,
+          ativadaEm: null,
+          canceladaEm: null,
+          ultimaSincronizacaoEm: null,
           versao: { increment: 1 }
         }
       })
