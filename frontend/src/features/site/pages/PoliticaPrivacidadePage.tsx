@@ -1,4 +1,4 @@
-import { SITE_CONTACT_EMAIL } from '../site-data'
+import { SITE_SUPPORT_EMAIL } from '../site-data'
 
 export default function PoliticaPrivacidadePage() {
   return (
@@ -7,12 +7,12 @@ export default function PoliticaPrivacidadePage() {
         <aside className="legal-page__summary">
           <p className="eyebrow">Documento informativo</p>
           <h1>Política de Privacidade</h1>
-          <p>Versão inicial de 23/07/2026</p>
+          <p>Versão revisada de 27/07/2026</p>
           <div className="legal-review-notice" role="note">
-            <strong>Revisão necessária</strong>
+            <strong>Identificação do controlador pendente</strong>
             <p>
-              Este texto é uma versão inicial informativa e deve ser revisado
-              pelo responsável jurídico antes da ativação em produção.
+              Antes da ativação comercial, inclua o nome ou a razão social,
+              CPF ou CNPJ e endereço físico do responsável pelo Servix.
             </p>
           </div>
         </aside>
@@ -21,7 +21,7 @@ export default function PoliticaPrivacidadePage() {
           <section>
             <h2>1. Objetivo e abrangência</h2>
             <p>
-              Esta Política descreve, de forma inicial, como o Servix poderá
+              Esta Política descreve como o Servix poderá
               tratar dados pessoais no site público e no sistema de gestão de
               serviços. O tratamento deve observar a legislação aplicável,
               incluindo a Lei Geral de Proteção de Dados Pessoais (LGPD).
@@ -53,21 +53,25 @@ export default function PoliticaPrivacidadePage() {
           <section>
             <h2>4. Papéis e responsabilidades</h2>
             <p>
-              A empresa usuária decide quais dados de seus clientes e
-              colaboradores serão registrados no Servix e deve possuir base
-              legal adequada para esse tratamento. Os papéis de controlador e
-              operador precisam ser formalizados na versão jurídica definitiva.
+              O Servix atua como controlador dos dados necessários à conta,
+              assinatura, suporte, segurança e administração da plataforma. A
+              empresa usuária decide quais dados de seus clientes e
+              colaboradores serão registrados e deve possuir base legal para
+              esse tratamento. Nessa relação, o Servix atua como operador ao
+              executar as instruções da empresa dentro do serviço contratado.
             </p>
           </section>
 
           <section>
             <h2>5. Compartilhamento e integrações</h2>
             <p>
-              Dados podem ser compartilhados com fornecedores necessários à
-              hospedagem, segurança, comunicação e processamento de pagamentos,
-              sempre dentro da finalidade correspondente. Quando uma empresa
-              conecta sua conta Mercado Pago, essa autorização pertence à
-              própria empresa e é usada apenas em seus pagamentos.
+              Dados podem ser tratados por fornecedores necessários à operação,
+              incluindo Vercel, Railway, PostgreSQL e Mercado Pago, conforme a
+              funcionalidade utilizada. Alguns fornecedores podem processar
+              dados fora do Brasil, com medidas contratuais e de segurança
+              compatíveis com a LGPD. Quando uma empresa conecta sua conta
+              Mercado Pago, essa autorização pertence à própria empresa e é
+              usada apenas em seus pagamentos.
             </p>
           </section>
 
@@ -85,19 +89,24 @@ export default function PoliticaPrivacidadePage() {
           <section>
             <h2>7. Segurança e conservação</h2>
             <p>
-              O Servix deve adotar medidas técnicas e administrativas adequadas
-              ao risco. Os prazos de conservação, critérios de descarte, plano
-              de resposta a incidentes e fornecedores utilizados deverão ser
-              detalhados antes da produção.
+              O Servix adota medidas técnicas e administrativas adequadas ao
+              risco, incluindo controle de acesso, proteção de credenciais,
+              registros de eventos e cópias de segurança. Os dados são mantidos
+              durante a prestação do serviço e, após seu término, pelo período
+              necessário ao cumprimento de obrigações legais, prevenção de
+              fraude e exercício regular de direitos. Depois disso, serão
+              eliminados ou anonimizados quando aplicável.
             </p>
           </section>
 
           <section>
             <h2>8. Direitos dos titulares</h2>
             <p>
-              Titulares podem solicitar informações e o exercício dos direitos
-              previstos na LGPD. A identidade do solicitante poderá precisar ser
-              confirmada para proteger os dados envolvidos.
+              Titulares podem solicitar confirmação do tratamento, acesso,
+              correção, informações sobre compartilhamento, portabilidade,
+              anonimização, bloqueio ou eliminação quando aplicável, além de
+              revogar consentimento e apresentar oposição. A identidade do
+              solicitante poderá ser confirmada para proteger os dados.
             </p>
           </section>
 
@@ -105,9 +114,9 @@ export default function PoliticaPrivacidadePage() {
             <h2>9. Contato e atualizações</h2>
             <p>
               Dúvidas sobre privacidade podem ser enviadas para{' '}
-              <a href={`mailto:${SITE_CONTACT_EMAIL}`}>{SITE_CONTACT_EMAIL}</a>.
-              Esta versão poderá ser atualizada para refletir a operação final e
-              requisitos legais aplicáveis.
+              <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>.
+              Esta versão poderá ser atualizada para refletir mudanças na
+              operação e requisitos legais aplicáveis.
             </p>
           </section>
         </article>

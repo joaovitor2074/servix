@@ -129,3 +129,7 @@ baixo valor. Alterar `NODE_ENV` nao habilita dinheiro real; os modos financeiros
 sao deliberadamente independentes. Use `backend/railway.production.env.example`
 como checklist: nomes com `PRODUCAO` nunca consultam segredos de `TESTE` nem os
 nomes legados temporariamente aceitos na homologacao.
+
+O canal publico de suporte e privacidade e `suporte.vercel@gmail.com`. Antes de
+aceitar clientes, os documentos legais ainda devem receber o nome ou razao
+social, CPF ou CNPJ e endereco fisico do fornecedor responsavel pelo Servix.

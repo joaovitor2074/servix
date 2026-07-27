@@ -15,10 +15,10 @@ export const SERVIX_PLAN = {
 } as const
 
 export const SITE_CONTACT_EMAIL =
-  import.meta.env.VITE_CONTACT_EMAIL?.trim() || 'contato@servix.com.br'
+  import.meta.env.VITE_CONTACT_EMAIL?.trim() || 'suporte.vercel@gmail.com'
 
 export const SITE_SUPPORT_EMAIL =
-  import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporte@servix.com.br'
+  import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporte.vercel@gmail.com'
 
 export function formatarMoeda(valor: number | string) {
   const valorNumerico = typeof valor === 'string' ? Number(valor) : valor

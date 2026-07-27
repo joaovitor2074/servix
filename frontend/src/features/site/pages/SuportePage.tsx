@@ -7,8 +7,8 @@ const supportTopics = [
     description: 'Confira o slug da empresa, o e-mail cadastrado e se a senha tem ao menos oito caracteres.',
   },
   {
-    title: 'Cadastro e assinatura de teste',
-    description: 'O checkout inicial apenas confirma o plano no ambiente de teste e não gera cobrança real.',
+    title: 'Assinatura e cancelamento',
+    description: 'O administrador pode cancelar nas configurações da assinatura ou pedir ajuda pelo e-mail oficial.',
   },
   {
     title: 'Mercado Pago da empresa',
@@ -90,7 +90,11 @@ export default function SuportePage() {
             </details>
             <details>
               <summary>O ambiente atual movimenta dinheiro real?</summary>
-              <p>O fluxo de assinatura inicial está em teste e não realiza cobrança real.</p>
+              <p>A tela do checkout identifica TESTE, sem cobrança real, ou PRODUÇÃO, com cobrança recorrente.</p>
+            </details>
+            <details>
+              <summary>Como cancelo a assinatura?</summary>
+              <p>O administrador pode cancelar nas configurações da assinatura. Após a confirmação, não haverá nova renovação e a empresa será suspensa.</p>
             </details>
           </div>
         </div>
