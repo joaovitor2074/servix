@@ -105,7 +105,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     status: StatusOrcamento.CONVERTIDO,
     statusOrdem: StatusOrdem.EM_ANALISE,
     criadoHaDias: 5,
-    pagamento: FormaPagamento.PIX,
+    pagamento: FormaPagamento.CARTAO_DEBITO,
     tecnico: "Lucas Ferreira",
     diagnostico: "Analise da placa principal em andamento."
   },
@@ -138,7 +138,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     status: StatusOrcamento.CONVERTIDO,
     statusOrdem: StatusOrdem.EM_EXECUCAO,
     criadoHaDias: 9,
-    pagamento: FormaPagamento.PIX,
+    pagamento: FormaPagamento.DINHEIRO,
     tecnico: "Lucas Ferreira",
     diagnostico: "Superaquecimento causado por obstrucao e pasta termica ressecada.",
     servico: "Limpeza concluida; testes de estabilidade em execucao.",
@@ -172,7 +172,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     status: StatusOrcamento.CONVERTIDO,
     statusOrdem: StatusOrdem.ENTREGUE,
     criadoHaDias: 31,
-    pagamento: FormaPagamento.PIX,
+    pagamento: FormaPagamento.CARTAO_CREDITO,
     tecnico: "Lucas Ferreira",
     diagnostico: "Fluxo de ar obstruido por acumulo de poeira.",
     servico: "Higienizacao e revisao termica realizadas; teste de carga aprovado.",
@@ -219,7 +219,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     status: StatusOrcamento.CONVERTIDO,
     statusOrdem: StatusOrdem.EM_EXECUCAO,
     criadoHaDias: 8,
-    pagamento: FormaPagamento.PIX,
+    pagamento: FormaPagamento.CARTAO_DEBITO,
     tecnico: "Lucas Ferreira",
     diagnostico: "Instabilidade no circuito de alimentacao do painel.",
     servico: "Componentes da fonte em substituicao."
@@ -235,7 +235,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     status: StatusOrcamento.CONVERTIDO,
     statusOrdem: StatusOrdem.CANCELADO,
     criadoHaDias: 18,
-    pagamento: FormaPagamento.PIX,
+    pagamento: FormaPagamento.DINHEIRO,
     tecnico: "Mariana Costa",
     diagnostico: "Falha no circuito controlador de carga."
   },
@@ -249,7 +249,7 @@ const orcamentosDemo: OrcamentoDemo[] = [
     ],
     status: StatusOrcamento.APROVADO,
     criadoHaDias: 4,
-    pagamento: FormaPagamento.PIX
+    pagamento: FormaPagamento.CARTAO_CREDITO
   },
   {
     cliente: 10,
