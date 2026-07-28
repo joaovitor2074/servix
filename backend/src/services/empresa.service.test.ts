@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { Prisma } from "../generated/prisma/client.js"
 import {
@@ -44,6 +44,7 @@ const dados = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv("SERVIX_BILLING_MODE", "TESTE")
   mocks.hash.mockResolvedValue("hash-seguro")
   mocks.criarEmpresa.mockResolvedValue({
     id: 8,
@@ -59,6 +60,10 @@ beforeEach(() => {
       status: StatusAssinatura.PENDENTE
     }
   })
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe("criacao publica da empresa", () => {
@@ -87,5 +92,62 @@ describe("criacao publica da empresa", () => {
         status: StatusAssinatura.PENDENTE
       }
     })
+  })
+
+  it("cria a assinatura inicial no Mercado Pago em producao", async () => {
+    vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
+    vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "true")
+    mocks.criarEmpresa.mockResolvedValueOnce({
+      id: 8,
+      nome: dados.nome,
+      slug: dados.slug,
+      email: dados.email,
+      assinatura: {
+        checkoutToken: "123e4567-e89b-12d3-a456-426614174000",
+        planoCodigo: "servix-mensal",
+        planoNome: "Plano Servix",
+        valorMensal: new Prisma.Decimal("79.90"),
+        ambiente: AmbienteAssinatura.PRODUCAO,
+        status: StatusAssinatura.PENDENTE
+      }
+    })
+
+    const resultado = await criarEmpresaService(dados)
+
+    expect(mocks.criarEmpresa).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        assinatura: {
+          create: expect.objectContaining({
+            ambiente: AmbienteAssinatura.PRODUCAO,
+            provedor: ProvedorAssinatura.MERCADO_PAGO_SERVIX,
+            status: StatusAssinatura.PENDENTE
+          })
+        }
+      })
+    }))
+    expect(resultado.assinatura.ambiente).toBe(AmbienteAssinatura.PRODUCAO)
+  })
+
+  it("nao cria empresa em producao enquanto a identidade legal estiver pendente", async () => {
+    vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
+    vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "false")
+
+    await expect(criarEmpresaService(dados)).rejects.toMatchObject({
+      statusCode: 503,
+      codigo: "IDENTIDADE_LEGAL_NAO_CONFIGURADA"
+    })
+    expect(mocks.hash).not.toHaveBeenCalled()
+    expect(mocks.criarEmpresa).not.toHaveBeenCalled()
+  })
+
+  it("falha sem gravar quando o billing esta bloqueado", async () => {
+    vi.stubEnv("SERVIX_BILLING_MODE", "BLOQUEADO")
+
+    await expect(criarEmpresaService(dados)).rejects.toMatchObject({
+      statusCode: 503,
+      codigo: "ASSINATURAS_NAO_CONFIGURADAS"
+    })
+    expect(mocks.hash).not.toHaveBeenCalled()
+    expect(mocks.criarEmpresa).not.toHaveBeenCalled()
   })
 })

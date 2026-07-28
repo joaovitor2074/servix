@@ -9,15 +9,19 @@ import {
   buscarCheckout,
   confirmarCheckout,
 } from '../site.service'
-import { formatarMoeda } from '../site-data'
+import {
+  formatarMoeda,
+  SITE_LEGAL_IDENTITY_PENDING_MESSAGE,
+  SITE_LEGAL_IDENTITY_READY,
+} from '../site-data'
 import type { CheckoutData } from '../site.types'
-
-const VERSAO_TERMOS = '2026-07-25'
+import { useCatalogoAssinaturas } from '../use-catalogo-assinaturas'
 
 export default function CheckoutPage() {
   const { token = '' } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+  const { catalogo, erroCatalogo, carregandoCatalogo } = useCatalogoAssinaturas()
   const dadosIniciais =
     (location.state as CheckoutData | null) ?? null
   const [dados, setDados] =
@@ -66,6 +70,19 @@ export default function CheckoutPage() {
 
     const emailNormalizado = emailPagador.trim().toLowerCase()
     const modoTeste = dados?.assinatura.ambiente !== 'PRODUCAO'
+
+    if (!modoTeste && !SITE_LEGAL_IDENTITY_READY) {
+      setErroPagamento(SITE_LEGAL_IDENTITY_PENDING_MESSAGE)
+      return
+    }
+
+    if (!catalogo?.checkoutDisponivel || !catalogo.versaoTermos) {
+      setErroPagamento(
+        erroCatalogo ||
+          'Não foi possível confirmar a versão atual dos Termos. Recarregue a página.',
+      )
+      return
+    }
     if (
       !emailValido(emailNormalizado) ||
       (modoTeste && (
@@ -95,7 +112,8 @@ export default function CheckoutPage() {
     try {
       const resultado = await confirmarCheckout(token, {
         emailPagador: emailNormalizado,
-        versaoTermos: VERSAO_TERMOS,
+        versaoTermos: catalogo.versaoTermos,
+        aceiteModoTeste: modoTeste,
       })
 
       if (resultado.status === 'ATIVA') {
@@ -134,7 +152,7 @@ export default function CheckoutPage() {
           aria-live="polite"
         >
           <span className="loading-spinner" aria-hidden="true" />
-          <h1>Preparando seu checkout de teste...</h1>
+          <h1>Preparando seu checkout seguro...</h1>
         </div>
       </section>
     )
@@ -151,6 +169,8 @@ export default function CheckoutPage() {
   }
 
   const modoTeste = dados.assinatura.ambiente === 'TESTE'
+  const identidadeLegalBloqueiaProducao =
+    !modoTeste && !SITE_LEGAL_IDENTITY_READY
 
   return (
     <section className="checkout-page">
@@ -264,11 +284,23 @@ export default function CheckoutPage() {
             </div>
 
             {erroPagamento && <p className="form-alert" role="alert">{erroPagamento}</p>}
+            {erroCatalogo && <p className="form-alert" role="alert">{erroCatalogo}</p>}
+            {identidadeLegalBloqueiaProducao && (
+              <p className="form-alert" role="alert">
+                {SITE_LEGAL_IDENTITY_PENDING_MESSAGE}
+              </p>
+            )}
 
             <button
               type="submit"
               className="button button--primary button--large button--full"
-              disabled={!aceiteCheckout || redirecionando}
+              disabled={
+                !aceiteCheckout ||
+                redirecionando ||
+                carregandoCatalogo ||
+                !catalogo?.checkoutDisponivel ||
+                identidadeLegalBloqueiaProducao
+              }
               aria-busy={redirecionando}
             >
               {redirecionando

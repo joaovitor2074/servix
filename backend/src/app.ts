@@ -1,5 +1,5 @@
 import cors from "cors"
-import express from "express"
+import express, { type Request } from "express"
 import rateLimit from "express-rate-limit"
 import helmet from "helmet"
 
@@ -50,13 +50,39 @@ app.use(
 )
 app.use(express.json({ limit: "100kb" }))
 
+const CAMINHO_WEBHOOK_ASSINATURAS =
+  "/assinaturas/webhooks/mercado-pago"
+
+function ehWebhookAssinaturas(req: Request): boolean {
+  return (
+    req.method === "POST" &&
+    req.path.replace(/\/+$/, "") === CAMINHO_WEBHOOK_ASSINATURAS
+  )
+}
+
 // Limite geral para reduzir abuso da API sem prejudicar o uso normal.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
   standardHeaders: "draft-8",
   legacyHeaders: false,
+  // O Mercado Pago pode entregar rajadas de notificacoes para varias empresas
+  // usando o mesmo IP. Esse endpoint possui um limite proprio logo abaixo.
+  skip: ehWebhookAssinaturas,
   message: { erro: "Muitas requisições. Tente novamente mais tarde." }
+})
+
+// Mil notificacoes por minuto e por IP absorvem rajadas legitimas sem deixar o
+// endpoint publico ilimitado. A assinatura criptografica ainda e validada pelo
+// controller antes de qualquer evento ser persistido.
+const webhookAssinaturasLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 1_000,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    erro: "Muitas notificacoes de assinatura. Tente novamente mais tarde."
+  }
 })
 
 // O login recebe um limite menor para dificultar tentativas repetidas de senha.
@@ -113,6 +139,7 @@ app.use("/publico/ordens", (_req, res, next) => {
   res.setHeader("X-Robots-Tag", "noindex, nofollow")
   next()
 })
+app.post(CAMINHO_WEBHOOK_ASSINATURAS, webhookAssinaturasLimiter)
 app.use(apiLimiter)
 app.use("/auth/login", loginLimiter)
 app.use("/empresa", onboardingLimiter)

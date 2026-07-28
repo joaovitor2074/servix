@@ -1,4 +1,4 @@
-export const VERSAO_TERMOS_SERVIX = "2026-07-23"
+export const VERSAO_TERMOS_SERVIX = "2026-07-28"
 
 export const PLANO_SERVIX_MENSAL = {
   codigo: "servix-mensal",

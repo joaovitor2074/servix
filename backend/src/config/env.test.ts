@@ -41,6 +41,7 @@ describe("separacao de ambientes do Mercado Pago", () => {
   it("seleciona apenas o namespace de PRODUCAO das assinaturas", () => {
     vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
     vi.stubEnv("SERVIX_SUBSCRIPTIONS_MP_MODE", "PRODUCAO")
+    vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "true")
     vi.stubEnv("MERCADO_PAGO_SUBSCRIPTIONS_PRODUCAO_ACCESS_TOKEN", "token-producao")
     vi.stubEnv("MERCADO_PAGO_SUBSCRIPTIONS_PRODUCAO_BACK_URL", "https://app.servix.test")
 

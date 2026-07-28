@@ -145,4 +145,24 @@ describe("API HTTP", () => {
     expect(resposta.status).toBe(400)
     expect(resposta.body.erro).toBe("JSON inválido")
   })
+
+  it("isola rajadas do webhook do limite global sem remover a protecao", async () => {
+    const respostas = await Promise.all(
+      Array.from({ length: 305 }, () =>
+        request(app)
+          .post("/assinaturas/webhooks/mercado-pago")
+          .send({})
+      )
+    )
+
+    expect(respostas.every(resposta => resposta.status === 400)).toBe(true)
+    expect(String(respostas[0]?.headers["ratelimit-policy"]))
+      .toContain("1000")
+
+    const respostaGeral = await request(app).get("/rota-inexistente")
+
+    expect(respostaGeral.status).toBe(404)
+    expect(String(respostaGeral.headers["ratelimit-policy"]))
+      .toContain("300")
+  })
 })

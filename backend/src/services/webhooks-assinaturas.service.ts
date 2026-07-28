@@ -6,6 +6,7 @@ import { processarNotificacaoAssinaturaMercadoPagoService } from "./assinaturas.
 const MAX_TENTATIVAS = 8
 const TENTATIVAS_PARA_ALERTA = 3
 const ATRASOS_MS = [60_000, 5 * 60_000, 15 * 60_000, 60 * 60_000, 6 * 60 * 60_000]
+const LEASE_PROCESSAMENTO_MS = 5 * 60_000
 
 type TipoWebhookAssinatura =
   | "subscription_preapproval"
@@ -45,21 +46,40 @@ function proximaTentativa(tentativas: number): Date | null {
   return new Date(Date.now() + atraso)
 }
 
+function limiteLeaseExpirada(agora: Date) {
+  return new Date(agora.getTime() - LEASE_PROCESSAMENTO_MS)
+}
+
 export async function processarEventoWebhookAssinaturaService(eventoId: number) {
   const agora = new Date()
+  const leaseExpiradaEm = limiteLeaseExpirada(agora)
   const reivindicado = await prisma.eventoWebhookAssinatura.updateMany({
     where: {
       id: eventoId,
-      status: {
-        in: [
-          StatusProcessamentoWebhook.PENDENTE,
-          StatusProcessamentoWebhook.FALHA
-        ]
-      },
-      tentativas: { lt: MAX_TENTATIVAS },
       OR: [
-        { proximaTentativaEm: null },
-        { proximaTentativaEm: { lte: agora } }
+        {
+          status: {
+            in: [
+              StatusProcessamentoWebhook.PENDENTE,
+              StatusProcessamentoWebhook.FALHA
+            ]
+          },
+          tentativas: { lt: MAX_TENTATIVAS },
+          OR: [
+            { proximaTentativaEm: null },
+            { proximaTentativaEm: { lte: agora } }
+          ]
+        },
+        {
+          // Se a instancia morrer depois da reivindicacao, outra pode assumir
+          // o evento ao fim do lease. A ultimaTentativaEm tambem atua como o
+          // token da reivindicacao e impede o worker antigo de finalizar depois.
+          status: StatusProcessamentoWebhook.PROCESSANDO,
+          OR: [
+            { ultimaTentativaEm: null },
+            { ultimaTentativaEm: { lte: leaseExpiradaEm } }
+          ]
+        }
       ]
     },
     data: {
@@ -83,7 +103,19 @@ export async function processarEventoWebhookAssinaturaService(eventoId: number) 
     }
   })
 
+  let associacaoLocal: { id: number, empresaId: number } | null = null
+
   try {
+    // Para preapproval o recurso assinado e o proprio identificador da
+    // assinatura. Associar antes da chamada externa torna falhas consultaveis
+    // pela empresa sem confiar em nenhum campo do corpo do webhook.
+    if (evento.tipo === "subscription_preapproval") {
+      associacaoLocal = await prisma.assinaturaEmpresa.findUnique({
+        where: { mercadoPagoAssinaturaId: evento.recursoId },
+        select: { id: true, empresaId: true }
+      })
+    }
+
     const resultado = await processarNotificacaoAssinaturaMercadoPagoService(
       evento.tipo as TipoWebhookAssinatura,
       evento.recursoId
@@ -93,13 +125,19 @@ export async function processarEventoWebhookAssinaturaService(eventoId: number) 
       throw new Error("A notificacao ainda nao corresponde a uma assinatura local.")
     }
 
-    const assinatura = await prisma.assinaturaEmpresa.findUnique({
-      where: { empresaId: resultado.empresaId },
-      select: { id: true }
-    })
+    const assinatura = associacaoLocal?.empresaId === resultado.empresaId
+      ? associacaoLocal
+      : await prisma.assinaturaEmpresa.findUnique({
+          where: { empresaId: resultado.empresaId },
+          select: { id: true, empresaId: true }
+        })
 
-    await prisma.eventoWebhookAssinatura.update({
-      where: { id: evento.id },
+    const finalizado = await prisma.eventoWebhookAssinatura.updateMany({
+      where: {
+        id: evento.id,
+        status: StatusProcessamentoWebhook.PROCESSANDO,
+        ultimaTentativaEm: agora
+      },
       data: {
         empresaId: resultado.empresaId,
         assinaturaEmpresaId: assinatura?.id ?? null,
@@ -110,15 +148,27 @@ export async function processarEventoWebhookAssinaturaService(eventoId: number) 
       }
     })
 
+    if (finalizado.count !== 1) {
+      return { processado: false as const, leasePerdida: true as const }
+    }
+
     return { processado: true as const, empresaId: resultado.empresaId }
   } catch (error) {
     const mensagem = erroSeguro(error)
     const alertar =
       evento.tentativas >= TENTATIVAS_PARA_ALERTA && !evento.alertaEmitidoEm
 
-    await prisma.eventoWebhookAssinatura.update({
-      where: { id: evento.id },
+    const falhaRegistrada = await prisma.eventoWebhookAssinatura.updateMany({
+      where: {
+        id: evento.id,
+        status: StatusProcessamentoWebhook.PROCESSANDO,
+        ultimaTentativaEm: agora
+      },
       data: {
+        ...(associacaoLocal && {
+          empresaId: associacaoLocal.empresaId,
+          assinaturaEmpresaId: associacaoLocal.id
+        }),
         status: StatusProcessamentoWebhook.FALHA,
         ultimoErro: mensagem,
         proximaTentativaEm: proximaTentativa(evento.tentativas),
@@ -126,9 +176,14 @@ export async function processarEventoWebhookAssinaturaService(eventoId: number) 
       }
     })
 
+    if (falhaRegistrada.count !== 1) {
+      return { processado: false as const, leasePerdida: true as const }
+    }
+
     if (alertar) {
       console.error("ALERTA_WEBHOOK_ASSINATURA_FALHANDO", {
         eventoId: evento.id,
+        empresaId: associacaoLocal?.empresaId ?? null,
         tipo: evento.tipo,
         recursoId: evento.recursoId,
         tentativas: evento.tentativas,
@@ -142,18 +197,30 @@ export async function processarEventoWebhookAssinaturaService(eventoId: number) 
 
 export async function processarWebhooksAssinaturaPendentesService() {
   const agora = new Date()
+  const leaseExpiradaEm = limiteLeaseExpirada(agora)
   const pendentes = await prisma.eventoWebhookAssinatura.findMany({
     where: {
-      status: {
-        in: [
-          StatusProcessamentoWebhook.PENDENTE,
-          StatusProcessamentoWebhook.FALHA
-        ]
-      },
-      tentativas: { lt: MAX_TENTATIVAS },
       OR: [
-        { proximaTentativaEm: null },
-        { proximaTentativaEm: { lte: agora } }
+        {
+          status: {
+            in: [
+              StatusProcessamentoWebhook.PENDENTE,
+              StatusProcessamentoWebhook.FALHA
+            ]
+          },
+          tentativas: { lt: MAX_TENTATIVAS },
+          OR: [
+            { proximaTentativaEm: null },
+            { proximaTentativaEm: { lte: agora } }
+          ]
+        },
+        {
+          status: StatusProcessamentoWebhook.PROCESSANDO,
+          OR: [
+            { ultimaTentativaEm: null },
+            { ultimaTentativaEm: { lte: leaseExpiradaEm } }
+          ]
+        }
       ]
     },
     orderBy: { recebidoEm: "asc" },
@@ -173,11 +240,45 @@ export async function reprocessarWebhookAssinaturaService(
   eventoId: number
 ) {
   const evento = await prisma.eventoWebhookAssinatura.findFirst({
-    where: { id: eventoId, empresaId },
-    select: { id: true, status: true }
+    where: { id: eventoId },
+    select: {
+      id: true,
+      empresaId: true,
+      tipo: true,
+      recursoId: true,
+      status: true,
+      ultimaTentativaEm: true
+    }
   })
 
-  if (!evento) {
+  let pertenceAEmpresa = evento?.empresaId === empresaId
+
+  if (
+    evento &&
+    evento.empresaId === null &&
+    evento.tipo === "subscription_preapproval"
+  ) {
+    const assinatura = await prisma.assinaturaEmpresa.findFirst({
+      where: {
+        empresaId,
+        mercadoPagoAssinaturaId: evento.recursoId
+      },
+      select: { id: true }
+    })
+
+    if (assinatura) {
+      pertenceAEmpresa = true
+      await prisma.eventoWebhookAssinatura.updateMany({
+        where: { id: evento.id, empresaId: null },
+        data: {
+          empresaId,
+          assinaturaEmpresaId: assinatura.id
+        }
+      })
+    }
+  }
+
+  if (!evento || !pertenceAEmpresa) {
     throw new AppError(
       "Notificacao nao encontrada para esta empresa.",
       404,
@@ -185,7 +286,14 @@ export async function reprocessarWebhookAssinaturaService(
     )
   }
 
-  if (evento.status === StatusProcessamentoWebhook.PROCESSANDO) {
+  const agora = new Date()
+  const leaseExpiradaEm = limiteLeaseExpirada(agora)
+  const processamentoAtivo =
+    evento.status === StatusProcessamentoWebhook.PROCESSANDO &&
+    evento.ultimaTentativaEm !== null &&
+    evento.ultimaTentativaEm > leaseExpiradaEm
+
+  if (processamentoAtivo) {
     throw new AppError(
       "A notificacao ja esta sendo processada.",
       409,
@@ -193,8 +301,12 @@ export async function reprocessarWebhookAssinaturaService(
     )
   }
 
-  await prisma.eventoWebhookAssinatura.update({
-    where: { id: evento.id },
+  const liberado = await prisma.eventoWebhookAssinatura.updateMany({
+    where: {
+      id: evento.id,
+      status: evento.status,
+      ultimaTentativaEm: evento.ultimaTentativaEm
+    },
     data: {
       status: StatusProcessamentoWebhook.PENDENTE,
       tentativas: 0,
@@ -204,6 +316,14 @@ export async function reprocessarWebhookAssinaturaService(
       alertaEmitidoEm: null
     }
   })
+
+  if (liberado.count !== 1) {
+    throw new AppError(
+      "O estado da notificacao mudou durante o reprocessamento.",
+      409,
+      "WEBHOOK_ESTADO_ALTERADO"
+    )
+  }
 
   return processarEventoWebhookAssinaturaService(evento.id)
 }

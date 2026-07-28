@@ -1,4 +1,11 @@
-import { SITE_SUPPORT_EMAIL } from '../site-data'
+import {
+  SITE_DATA_CONTROLLER_NAME,
+  SITE_LEGAL_ADDRESS,
+  SITE_LEGAL_DOCUMENT,
+  SITE_LEGAL_IDENTITY_READY,
+  SITE_LEGAL_NAME,
+  SITE_SUPPORT_EMAIL,
+} from '../site-data'
 
 export default function PoliticaPrivacidadePage() {
   return (
@@ -7,14 +14,28 @@ export default function PoliticaPrivacidadePage() {
         <aside className="legal-page__summary">
           <p className="eyebrow">Documento informativo</p>
           <h1>Política de Privacidade</h1>
-          <p>Versão revisada de 27/07/2026</p>
-          <div className="legal-review-notice" role="note">
-            <strong>Identificação do controlador pendente</strong>
-            <p>
-              Antes da ativação comercial, inclua o nome ou a razão social,
-              CPF ou CNPJ e endereço físico do responsável pelo Servix.
-            </p>
-          </div>
+          <p>Versão revisada de 28/07/2026</p>
+          {SITE_LEGAL_IDENTITY_READY ? (
+            <div className="legal-review-notice" role="note">
+              <strong>Controlador dos dados</strong>
+              <p>
+                {SITE_DATA_CONTROLLER_NAME}<br />
+                Responsável pelo serviço: {SITE_LEGAL_NAME}<br />
+                CPF/CNPJ: {SITE_LEGAL_DOCUMENT}<br />
+                Endereço: {SITE_LEGAL_ADDRESS}<br />
+                Contato: <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
+              </p>
+            </div>
+          ) : (
+            <div className="legal-review-notice" role="note">
+              <strong>Identificação do controlador pendente</strong>
+              <p>
+                A contratação em produção permanecerá bloqueada até a inclusão
+                da identificação e do endereço público do responsável pelo
+                tratamento de dados do Servix.
+              </p>
+            </div>
+          )}
         </aside>
 
         <article className="legal-content">
@@ -53,7 +74,9 @@ export default function PoliticaPrivacidadePage() {
           <section>
             <h2>4. Papéis e responsabilidades</h2>
             <p>
-              O Servix atua como controlador dos dados necessários à conta,
+              {SITE_LEGAL_IDENTITY_READY
+                ? SITE_DATA_CONTROLLER_NAME
+                : 'O Servix'} atua como controlador dos dados necessários à conta,
               assinatura, suporte, segurança e administração da plataforma. A
               empresa usuária decide quais dados de seus clientes e
               colaboradores serão registrados e deve possuir base legal para

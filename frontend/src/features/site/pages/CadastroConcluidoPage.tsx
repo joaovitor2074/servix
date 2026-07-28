@@ -125,6 +125,8 @@ export default function CadastroConcluidoPage() {
     )
   }
 
+  const modoTeste = dados.assinatura.ambiente === 'TESTE'
+
   return (
     <section className="completion-page">
       <div className="site-container completion-card">
@@ -132,20 +134,30 @@ export default function CadastroConcluidoPage() {
         <p className="eyebrow">Cadastro concluído</p>
         <h1>Sua empresa foi criada com sucesso.</h1>
         <p className="completion-card__lead">
-          A assinatura foi confirmada no ambiente de teste. Agora você já pode
-          acessar o Servix com o slug, e-mail e senha cadastrados.
+          {modoTeste
+            ? 'A assinatura foi confirmada no ambiente de teste.'
+            : 'A assinatura mensal foi confirmada pelo Mercado Pago.'}{' '}
+          Agora você já pode acessar o Servix com o slug, e-mail e senha cadastrados.
         </p>
 
         <dl className="completion-summary">
           <div><dt>Empresa</dt><dd>{dados.empresa.nome}</dd></div>
           <div><dt>Plano</dt><dd>{dados.assinatura.planoNome}</dd></div>
-          <div><dt>Valor de referência</dt><dd>{formatarMoeda(dados.assinatura.valorMensal)}/mês</dd></div>
+          <div><dt>{modoTeste ? 'Valor de referência' : 'Mensalidade'}</dt><dd>{formatarMoeda(dados.assinatura.valorMensal)}/mês</dd></div>
           <div><dt>Ambiente</dt><dd>{dados.assinatura.ambiente}</dd></div>
         </dl>
 
         <div className="completion-card__notice">
-          <strong>Nenhuma cobrança real foi realizada.</strong>
-          <p>A ativação em produção dependerá de validação e ação do responsável titular.</p>
+          <strong>
+            {modoTeste
+              ? 'Nenhuma cobrança real foi realizada.'
+              : 'Assinatura recorrente ativada com sucesso.'}
+          </strong>
+          <p>
+            {modoTeste
+              ? 'Use somente dados de teste enquanto este ambiente estiver ativo.'
+              : 'As próximas cobranças seguirão a periodicidade mensal informada no checkout.'}
+          </p>
         </div>
 
         <div className="completion-card__actions">

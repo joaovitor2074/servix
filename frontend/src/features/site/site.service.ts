@@ -2,6 +2,7 @@ import { apiFetch } from '../../shared/services/api'
 import type {
   CadastroEmpresaInput,
   CadastroEmpresaResponse,
+  CatalogoAssinaturasData,
   CheckoutData,
   CheckoutHospedadoData,
 } from './site.types'
@@ -9,6 +10,18 @@ import type {
 export interface ConfirmarCheckoutInput {
   emailPagador: string
   versaoTermos: string
+  aceiteModoTeste: boolean
+}
+
+export async function buscarCatalogoAssinaturas(
+  signal?: AbortSignal,
+): Promise<CatalogoAssinaturasData> {
+  const resposta = await apiFetch('/assinaturas/planos', { signal })
+
+  return lerResposta<CatalogoAssinaturasData>(
+    resposta,
+    'Não foi possível consultar o ambiente da assinatura.',
+  )
 }
 
 export async function cadastrarEmpresa(
@@ -55,7 +68,7 @@ export async function confirmarCheckout(
       body: JSON.stringify({
         emailPagador: dados.emailPagador,
         versaoTermos: dados.versaoTermos,
-        aceiteModoTeste: true,
+        aceiteModoTeste: dados.aceiteModoTeste,
       }),
     },
   )

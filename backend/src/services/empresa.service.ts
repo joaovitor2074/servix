@@ -1,9 +1,12 @@
 import { hash } from "bcryptjs"
 
+import { obterModoBillingServix } from "../billing/billing-servix.config.js"
+import { identidadeLegalProducaoConfirmada } from "../config/legal-readiness.js"
 import {
   buscarPlanoServix,
   VERSAO_TERMOS_SERVIX
 } from "../billing/planos-servix.js"
+import { AppError } from "../errors/app-error.js"
 import {
   AmbienteAssinatura,
   PapelUsuario,
@@ -23,6 +26,34 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
   if (!plano) {
     throw new Error("Plano Servix invalido")
   }
+
+  const modoBilling = obterModoBillingServix()
+
+  if (modoBilling === "BLOQUEADO") {
+    throw new AppError(
+      "As assinaturas do Servix nao estao configuradas no servidor.",
+      503,
+      "ASSINATURAS_NAO_CONFIGURADAS"
+    )
+  }
+
+  if (
+    modoBilling === "PRODUCAO" &&
+    !identidadeLegalProducaoConfirmada()
+  ) {
+    throw new AppError(
+      "A contratacao em producao ainda nao foi liberada.",
+      503,
+      "IDENTIDADE_LEGAL_NAO_CONFIGURADA"
+    )
+  }
+
+  const ambienteAssinatura = modoBilling === "PRODUCAO"
+    ? AmbienteAssinatura.PRODUCAO
+    : AmbienteAssinatura.TESTE
+  const provedorAssinatura = modoBilling === "PRODUCAO"
+    ? ProvedorAssinatura.MERCADO_PAGO_SERVIX
+    : ProvedorAssinatura.SIMULADO
 
   const administradorSenha = await hash(dados.administrador.senha, 12)
   const empresa = await prisma.empresa.create({
@@ -58,8 +89,8 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
           planoCodigo: plano.codigo,
           planoNome: plano.nome,
           valorMensal: plano.valorMensal,
-          ambiente: AmbienteAssinatura.TESTE,
-          provedor: ProvedorAssinatura.SIMULADO,
+          ambiente: ambienteAssinatura,
+          provedor: provedorAssinatura,
           status: StatusAssinatura.PENDENTE,
           versaoTermos: VERSAO_TERMOS_SERVIX,
           termosAceitosEm: new Date()

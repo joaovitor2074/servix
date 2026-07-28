@@ -15,7 +15,8 @@ vi.mock("../config/env.js", () => ({
 import {
   cancelarAssinaturaMercadoPago,
   criarAssinaturaMercadoPago,
-  ErroMercadoPagoAssinaturas
+  ErroMercadoPagoAssinaturas,
+  obterPagamentoAutorizadoMercadoPago
 } from "./mercado-pago-assinaturas.client.js"
 
 afterEach(() => {
@@ -45,9 +46,11 @@ describe("cliente de assinaturas Mercado Pago", () => {
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     const body = JSON.parse(String(init.body)) as Record<string, unknown>
+    const headers = new Headers(init.headers)
 
     expect(url).toBe("https://api.mercadopago.com/preapproval")
     expect(init.method).toBe("POST")
+    expect(headers.get("X-Idempotency-Key")).toMatch(/^[0-9a-f]{64}$/)
     expect(body).toMatchObject({
       reason: "Servix - Plano mensal",
       external_reference: "servix_empresa_42",
@@ -62,6 +65,41 @@ describe("cliente de assinaturas Mercado Pago", () => {
     })
     expect(body).not.toHaveProperty("card_token_id")
     expect(body).not.toHaveProperty("preapproval_plan_id")
+  })
+
+  it("repete a chave idempotente para a mesma referencia externa", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(
+      JSON.stringify({
+        id: "preapproval-123",
+        status: "pending",
+        external_reference: "servix_empresa_42",
+        init_point: "https://www.mercadopago.com.br/subscriptions/checkout?id=123"
+      }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" }
+      }
+    ))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const dados = {
+      emailPagador: "comprador@testuser.com",
+      referenciaExterna: "servix_empresa_42",
+      transactionAmount: 79.9,
+      currencyId: "BRL" as const,
+      backUrl: "https://servix.test/cadastro/concluido?checkout=uuid"
+    }
+
+    await criarAssinaturaMercadoPago(dados)
+    await criarAssinaturaMercadoPago(dados)
+
+    const primeira = new Headers(fetchMock.mock.calls[0]?.[1]?.headers)
+      .get("X-Idempotency-Key")
+    const segunda = new Headers(fetchMock.mock.calls[1]?.[1]?.headers)
+      .get("X-Idempotency-Key")
+
+    expect(primeira).toBeTruthy()
+    expect(segunda).toBe(primeira)
   })
 
   it("preserva o request id de uma falha do provedor", async () => {
@@ -112,5 +150,30 @@ describe("cliente de assinaturas Mercado Pago", () => {
     expect(init.method).toBe("PUT")
     expect(JSON.parse(String(init.body))).toEqual({ status: "cancelled" })
     expect(assinatura.status).toBe("cancelled")
+  })
+
+  it("preserva o resultado tipado do pagamento da fatura recorrente", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 6114264375,
+      preapproval_id: "preapproval-123",
+      status: "processed",
+      retry_attempt: 4,
+      payment: {
+        id: 19951521071,
+        status: "rejected",
+        status_detail: "cc_rejected_other_reason"
+      }
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })))
+
+    const fatura = await obterPagamentoAutorizadoMercadoPago("6114264375")
+
+    expect(fatura.payment).toEqual({
+      id: 19951521071,
+      status: "rejected",
+      status_detail: "cc_rejected_other_reason"
+    })
   })
 })

@@ -1,7 +1,20 @@
 import { Link } from 'react-router'
-import { formatarMoeda, SERVIX_PLAN } from '../site-data'
+import {
+  formatarMoeda,
+  SERVIX_PLAN,
+  SITE_LEGAL_IDENTITY_PENDING_MESSAGE,
+  SITE_LEGAL_IDENTITY_READY,
+} from '../site-data'
+import { useCatalogoAssinaturas } from '../use-catalogo-assinaturas'
 
 export default function PlanosPage() {
+  const { catalogo, erroCatalogo, carregandoCatalogo } = useCatalogoAssinaturas()
+  const modoProducao = catalogo?.ambiente === 'PRODUCAO'
+  const identidadeLegalBloqueiaProducao =
+    modoProducao && !SITE_LEGAL_IDENTITY_READY
+  const checkoutDisponivel =
+    catalogo?.checkoutDisponivel === true && !identidadeLegalBloqueiaProducao
+
   return (
     <>
       <section className="page-hero page-hero--centered">
@@ -42,31 +55,66 @@ export default function PlanosPage() {
               ))}
             </ul>
 
-            <Link
-              to="/cadastro?redirect=/assinatura"
-              className="button button--primary button--large button--full"
-            >
-              Começar no ambiente de teste
-            </Link>
+            {checkoutDisponivel ? (
+              <Link
+                to="/cadastro?redirect=/assinatura"
+                className="button button--primary button--large button--full"
+              >
+                {modoProducao ? 'Assinar o Servix' : 'Começar no ambiente de teste'}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="button button--primary button--large button--full"
+                disabled
+              >
+                {carregandoCatalogo ? 'Consultando checkout...' : 'Checkout indisponível'}
+              </button>
+            )}
             <p className="plan-card__fine-print">
-              A ativação inicial não gera cobrança real.
+              {modoProducao
+                ? `Assinatura recorrente de ${formatarMoeda(SERVIX_PLAN.valorMensal)} por mês.`
+                : 'No ambiente de teste não há cobrança real.'}
             </p>
+            {(identidadeLegalBloqueiaProducao || erroCatalogo) && (
+              <p className="form-alert" role="alert">
+                {identidadeLegalBloqueiaProducao
+                  ? SITE_LEGAL_IDENTITY_PENDING_MESSAGE
+                  : erroCatalogo}
+              </p>
+            )}
           </article>
 
           <aside className="test-environment-card" aria-labelledby="test-environment-title">
-            <span className="test-environment-card__badge">TESTE</span>
-            <h2 id="test-environment-title">Comece sem cobrança real</h2>
+            <span className="test-environment-card__badge">
+              {modoProducao ? 'PRODUÇÃO' : 'TESTE'}
+            </span>
+            <h2 id="test-environment-title">
+              {modoProducao ? 'Assinatura mensal transparente' : 'Comece sem cobrança real'}
+            </h2>
             <p>
-              Nesta fase, a assinatura é confirmada em ambiente de teste para
-              validar cadastro, acesso e fluxo do sistema.
+              {modoProducao
+                ? 'A cobrança recorrente é apresentada e confirmada no ambiente seguro do Mercado Pago.'
+                : 'A assinatura é confirmada em ambiente de teste para validar cadastro, acesso e fluxo do sistema.'}
             </p>
             <ul>
-              <li>Nenhum cartão ou PIX real será solicitado.</li>
-              <li>Nenhuma renovação automática será iniciada.</li>
-              <li>A produção só será ativada pelo responsável titular.</li>
+              {modoProducao ? (
+                <>
+                  <li>Mensalidade de {formatarMoeda(SERVIX_PLAN.valorMensal)}.</li>
+                  <li>Renovação mensal automática.</li>
+                  <li>Cancelamento disponível no portal da assinatura.</li>
+                </>
+              ) : (
+                <>
+                  <li>Nenhum cartão ou PIX real será solicitado.</li>
+                  <li>Nenhuma renovação automática será iniciada.</li>
+                  <li>Use exclusivamente uma conta compradora de teste.</li>
+                </>
+              )}
             </ul>
-            <Link to="/suporte" className="text-link">
-              Entender o ambiente de teste <span aria-hidden="true">→</span>
+            <Link to={modoProducao ? '/termos-de-uso' : '/suporte'} className="text-link">
+              {modoProducao ? 'Consultar condições da assinatura' : 'Entender o ambiente de teste'}{' '}
+              <span aria-hidden="true">→</span>
             </Link>
           </aside>
         </div>
@@ -100,15 +148,23 @@ export default function PlanosPage() {
           <div className="faq-list">
             <details>
               <summary>Já serei cobrado ao criar a conta?</summary>
-              <p>Não. O checkout atual confirma apenas uma assinatura de teste, sem transação real.</p>
+              <p>
+                {modoProducao
+                  ? `A cobrança recorrente de ${formatarMoeda(SERVIX_PLAN.valorMensal)} é confirmada no checkout do Mercado Pago antes da ativação da empresa.`
+                  : 'Não. O checkout atual confirma apenas uma assinatura de teste, sem transação real.'}
+              </p>
             </details>
             <details>
               <summary>O Servix recebe o dinheiro dos meus clientes?</summary>
               <p>Não. Quando a empresa conecta o Mercado Pago, os pagamentos dos clientes seguem diretamente para essa conta.</p>
             </details>
             <details>
-              <summary>Quando a cobrança real será ativada?</summary>
-              <p>A ativação em produção será comunicada e dependerá de ação do responsável titular, após os testes necessários.</p>
+              <summary>{modoProducao ? 'Como cancelo a assinatura?' : 'Quando a cobrança real será ativada?'}</summary>
+              <p>
+                {modoProducao
+                  ? 'O administrador pode cancelar a recorrência no portal de assinatura. Novas cobranças são interrompidas e o acesso é suspenso conforme os Termos de Uso.'
+                  : 'A produção será ativada somente depois da validação técnica e comercial.'}
+              </p>
             </details>
           </div>
         </div>

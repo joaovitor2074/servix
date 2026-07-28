@@ -9,6 +9,7 @@ import {
 } from "../config/env.js"
 import { AppError } from "../errors/app-error.js"
 import { listarPlanosServixService } from "../billing/assinaturas.service.js"
+import { VERSAO_TERMOS_SERVIX } from "../billing/planos-servix.js"
 import {
   buscarCheckoutPorTokenService,
   buscarAssinaturaEmpresaService,
@@ -34,9 +35,6 @@ type CorpoIniciarAssinatura = {
 }
 type CorpoWebhook = {
   type?: unknown
-  data?: {
-    id?: unknown
-  }
 }
 
 export function listarPlanosAssinaturaController(
@@ -62,6 +60,20 @@ function stringObrigatoria(
   }
 
   return valor.trim()
+}
+
+function versaoTermosAtual(valor: unknown): string {
+  const versao = stringObrigatoria(valor, "versaoTermos")
+
+  if (versao !== VERSAO_TERMOS_SERVIX) {
+    throw new AppError(
+      "Os Termos de Uso foram atualizados. Recarregue a página e confirme novamente.",
+      409,
+      "VERSAO_TERMOS_DESATUALIZADA"
+    )
+  }
+
+  return versao
 }
 
 function empresaIdAutenticada(
@@ -110,10 +122,7 @@ export async function confirmarCheckoutAssinaturaController(
             body.emailPagador,
             "emailPagador"
           ),
-          versaoTermos: stringObrigatoria(
-            body.versaoTermos,
-            "versaoTermos"
-          )
+          versaoTermos: versaoTermosAtual(body.versaoTermos)
         }
       )
 
@@ -143,10 +152,7 @@ export async function iniciarAssinaturaController(
             body.emailPagador,
             "emailPagador"
           ),
-          versaoTermos: stringObrigatoria(
-            body.versaoTermos,
-            "versaoTermos"
-          )
+          versaoTermos: versaoTermosAtual(body.versaoTermos)
         }
       )
 
@@ -398,15 +404,9 @@ export async function webhookAssinaturasMercadoPagoController(
       ? body.type
       : ""
 
-  const recursoIdBody =
-    typeof body.data?.id === "string" ||
-    typeof body.data?.id === "number"
-      ? String(body.data.id)
-      : dataIdQuery
-
   // Confirma rapidamente o recebimento.
-  // A fonte de verdade será consultada na API
-  // do Mercado Pago, e não no corpo do webhook.
+  // A fonte de verdade será consultada na API do Mercado Pago usando o
+  // data.id validado na assinatura, nunca um identificador divergente do corpo.
   if (
     tipo !== "subscription_preapproval" &&
     tipo !==
@@ -420,7 +420,7 @@ export async function webhookAssinaturasMercadoPagoController(
     const evento = await registrarWebhookAssinaturaService({
       requestId: xRequestId.slice(0, 200),
       tipo,
-      recursoId: recursoIdBody.slice(0, 200)
+      recursoId: dataIdQuery.slice(0, 200)
     })
 
     res.sendStatus(200)
@@ -435,7 +435,7 @@ export async function webhookAssinaturasMercadoPagoController(
       "Falha ao registrar webhook de assinatura:",
       {
         tipo,
-        recursoId: recursoIdBody,
+        recursoId: dataIdQuery,
         erro:
           error instanceof Error
             ? error.message

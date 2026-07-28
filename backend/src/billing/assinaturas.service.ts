@@ -1,5 +1,8 @@
 import { obterModoBillingServix } from "./billing-servix.config.js"
-import { PLANO_SERVIX_MENSAL } from "./planos-servix.js"
+import {
+  PLANO_SERVIX_MENSAL,
+  VERSAO_TERMOS_SERVIX
+} from "./planos-servix.js"
 import { Prisma } from "../generated/prisma/client.js"
 import {
   AmbienteAssinatura,
@@ -8,6 +11,7 @@ import {
   StatusEmpresa
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
+import { identidadeLegalProducaoConfirmada } from "../config/legal-readiness.js"
 
 const assinaturaCheckoutSelect = {
   checkoutToken: true,
@@ -55,11 +59,14 @@ function formatarAssinatura(assinatura: AssinaturaCheckout) {
 
 export function listarPlanosServixService() {
   const modo = obterModoBillingServix()
+  const identidadeLegalPronta =
+    modo !== "PRODUCAO" || identidadeLegalProducaoConfirmada()
   return {
     ambiente: modo === "PRODUCAO"
       ? AmbienteAssinatura.PRODUCAO
       : AmbienteAssinatura.TESTE,
-    checkoutDisponivel: modo !== "BLOQUEADO",
+    checkoutDisponivel: modo !== "BLOQUEADO" && identidadeLegalPronta,
+    versaoTermos: VERSAO_TERMOS_SERVIX,
     planos: [PLANO_SERVIX_MENSAL]
   }
 }

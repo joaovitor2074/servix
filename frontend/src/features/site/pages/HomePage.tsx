@@ -60,7 +60,7 @@ export default function HomePage() {
 
             <ul className="site-hero__assurances" aria-label="Destaques do Servix">
               <li><span aria-hidden="true">✓</span> Implantação simples</li>
-              <li><span aria-hidden="true">✓</span> Ambiente de teste disponível</li>
+              <li><span aria-hidden="true">✓</span> Checkout seguro pelo Mercado Pago</li>
               <li><span aria-hidden="true">✓</span> Conta separada por empresa</li>
             </ul>
           </div>
@@ -176,8 +176,8 @@ export default function HomePage() {
             <p className="eyebrow eyebrow--light">Um plano para começar</p>
             <h2 id="plan-home-title">A operação inteira por um valor simples.</h2>
             <p>
-              Comece no ambiente de teste, organize a equipe e prepare sua
-              empresa para a ativação em produção.
+              Organize a equipe e centralize a operação em uma assinatura
+              mensal clara, processada com segurança pelo Mercado Pago.
             </p>
             <Link to="/planos" className="text-link text-link--light">
               Ver detalhes do plano <span aria-hidden="true">→</span>
@@ -196,7 +196,7 @@ export default function HomePage() {
               ))}
             </ul>
             <Link to="/cadastro" className="button button--primary button--full">
-              Criar conta de teste
+              Criar conta
             </Link>
           </article>
         </div>

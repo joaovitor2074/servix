@@ -1,4 +1,10 @@
-import { SITE_SUPPORT_EMAIL } from '../site-data'
+import {
+  SITE_LEGAL_ADDRESS,
+  SITE_LEGAL_DOCUMENT,
+  SITE_LEGAL_IDENTITY_READY,
+  SITE_LEGAL_NAME,
+  SITE_SUPPORT_EMAIL,
+} from '../site-data'
 
 export default function TermosUsoPage() {
   return (
@@ -7,14 +13,27 @@ export default function TermosUsoPage() {
         <aside className="legal-page__summary">
           <p className="eyebrow">Documento informativo</p>
           <h1>Termos de Uso</h1>
-          <p>Versão revisada de 27/07/2026</p>
-          <div className="legal-review-notice" role="note">
-            <strong>Identificação do fornecedor pendente</strong>
-            <p>
-              Antes da ativação comercial, inclua o nome ou a razão social,
-              CPF ou CNPJ e endereço físico do responsável pelo Servix.
-            </p>
-          </div>
+          <p>Versão revisada de 28/07/2026</p>
+          {SITE_LEGAL_IDENTITY_READY ? (
+            <div className="legal-review-notice" role="note">
+              <strong>Fornecedor responsável</strong>
+              <p>
+                {SITE_LEGAL_NAME}<br />
+                CPF/CNPJ: {SITE_LEGAL_DOCUMENT}<br />
+                Endereço: {SITE_LEGAL_ADDRESS}<br />
+                Contato: <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
+              </p>
+            </div>
+          ) : (
+            <div className="legal-review-notice" role="note">
+              <strong>Identificação do fornecedor pendente</strong>
+              <p>
+                A contratação em produção permanecerá bloqueada até a inclusão
+                do nome ou razão social, CPF ou CNPJ e endereço público do
+                responsável pelo Servix.
+              </p>
+            </div>
+          )}
         </aside>
 
         <article className="legal-content">
@@ -22,8 +41,10 @@ export default function TermosUsoPage() {
             <h2>1. Aceitação</h2>
             <p>
               Ao criar uma conta ou utilizar o Servix, a empresa e seus usuários
-              declaram ter lido e aceito estes Termos. O fornecedor do serviço
-              será identificado nesta página antes da ativação comercial.
+              declaram ter lido e aceito estes Termos.{' '}
+              {SITE_LEGAL_IDENTITY_READY
+                ? `O serviço é fornecido por ${SITE_LEGAL_NAME}, CPF/CNPJ ${SITE_LEGAL_DOCUMENT}, com endereço de contato em ${SITE_LEGAL_ADDRESS}.`
+                : 'A identificação pública do fornecedor será concluída antes da ativação comercial.'}
             </p>
           </section>
 
@@ -74,6 +95,13 @@ export default function TermosUsoPage() {
               <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
               {' '}e serão analisados conforme a legislação e o histórico da
               cobrança.
+            </p>
+            <p>
+              Se uma renovação for recusada, o Mercado Pago poderá realizar
+              novas tentativas dentro da janela informada pelo provedor. O
+              acesso poderá permanecer ativo durante essas tentativas. Se a
+              cobrança for encerrada sem aprovação, o acesso será suspenso até
+              a regularização confirmada pelo Mercado Pago.
             </p>
           </section>
 

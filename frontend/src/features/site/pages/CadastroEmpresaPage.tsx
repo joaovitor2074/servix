@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { cadastrarEmpresa } from '../site.service'
-import { formatarMoeda, SERVIX_PLAN } from '../site-data'
+import {
+  formatarMoeda,
+  SERVIX_PLAN,
+  SITE_LEGAL_IDENTITY_PENDING_MESSAGE,
+  SITE_LEGAL_IDENTITY_READY,
+} from '../site-data'
+import { useCatalogoAssinaturas } from '../use-catalogo-assinaturas'
 
 type EtapaCadastro = 1 | 2 | 3
 
@@ -53,6 +59,12 @@ const estados = [
 
 export default function CadastroEmpresaPage() {
   const navigate = useNavigate()
+  const { catalogo, erroCatalogo, carregandoCatalogo } = useCatalogoAssinaturas()
+  const modoProducao = catalogo?.ambiente === 'PRODUCAO'
+  const identidadeLegalBloqueiaProducao =
+    modoProducao && !SITE_LEGAL_IDENTITY_READY
+  const checkoutDisponivel =
+    catalogo?.checkoutDisponivel === true && !identidadeLegalBloqueiaProducao
   const [etapa, setEtapa] = useState<EtapaCadastro>(1)
   const [dados, setDados] = useState(initialFormData)
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -149,7 +161,9 @@ export default function CadastroEmpresaPage() {
         novosErros.aceitouPrivacidade = 'Confirme a leitura da Política de Privacidade.'
       }
       if (!dados.aceitouAmbienteTeste) {
-        novosErros.aceitouAmbienteTeste = 'Confirme que entendeu o ambiente de teste.'
+        novosErros.aceitouAmbienteTeste = modoProducao
+          ? 'Confirme que entendeu a cobrança recorrente.'
+          : 'Confirme que entendeu o ambiente de teste.'
       }
     }
 
@@ -175,6 +189,16 @@ export default function CadastroEmpresaPage() {
       requestAnimationFrame(() => {
         document.getElementById(`cadastro-etapa-${etapa + 1}`)?.focus()
       })
+      return
+    }
+
+    if (!checkoutDisponivel) {
+      setErroApi(
+        (identidadeLegalBloqueiaProducao
+          ? SITE_LEGAL_IDENTITY_PENDING_MESSAGE
+          : erroCatalogo) ||
+          'O checkout está temporariamente indisponível. Tente novamente em instantes.',
+      )
       return
     }
 
@@ -229,9 +253,15 @@ export default function CadastroEmpresaPage() {
   return (
     <section className="signup-page">
       <div className="site-container signup-page__header">
-        <p className="eyebrow">Comece pelo ambiente de teste</p>
+        <p className="eyebrow">
+          {modoProducao ? 'Comece sua assinatura' : 'Comece pelo ambiente de teste'}
+        </p>
         <h1>Crie a conta da sua empresa.</h1>
-        <p>São três etapas rápidas. Nenhuma cobrança real será feita agora.</p>
+        <p>
+          {modoProducao
+            ? `São três etapas rápidas. A assinatura de ${formatarMoeda(SERVIX_PLAN.valorMensal)} por mês será confirmada no checkout.`
+            : 'São três etapas rápidas. Nenhuma cobrança real será feita agora.'}
+        </p>
       </div>
 
       <div className="site-container signup-layout">
@@ -474,11 +504,17 @@ export default function CadastroEmpresaPage() {
             {etapa === 3 && (
               <fieldset>
                 <legend id="cadastro-etapa-3" tabIndex={-1}>Plano e confirmações</legend>
-                <p className="signup-form__intro">Revise o plano e confirme as condições desta etapa de teste.</p>
+                <p className="signup-form__intro">
+                  {modoProducao
+                    ? 'Revise o plano e confirme as condições da assinatura mensal.'
+                    : 'Revise o plano e confirme as condições desta etapa de teste.'}
+                </p>
 
                 <article className="signup-plan-summary">
                   <div>
-                    <span className="status-pill">Ambiente de teste</span>
+                    <span className="status-pill">
+                      {modoProducao ? 'Assinatura em produção' : 'Ambiente de teste'}
+                    </span>
                     <h2>{SERVIX_PLAN.nome}</h2>
                     <p>Todos os recursos essenciais para começar.</p>
                   </div>
@@ -516,12 +552,21 @@ export default function CadastroEmpresaPage() {
                     error={erros.aceitouAmbienteTeste}
                     onChange={checked => atualizarCampo('aceitouAmbienteTeste', checked)}
                   >
-                    Entendo que esta assinatura é apenas de teste, sem cobrança ou renovação real.
+                    {modoProducao
+                      ? `Entendo que esta é uma assinatura recorrente de ${formatarMoeda(SERVIX_PLAN.valorMensal)} por mês, cobrada pelo Mercado Pago até o cancelamento.`
+                      : 'Entendo que esta assinatura é apenas de teste, sem cobrança ou renovação real.'}
                   </CheckboxField>
                 </div>
               </fieldset>
             )}
 
+            {(identidadeLegalBloqueiaProducao || erroCatalogo) && etapa === 3 && (
+              <p className="form-alert" role="alert">
+                {identidadeLegalBloqueiaProducao
+                  ? SITE_LEGAL_IDENTITY_PENDING_MESSAGE
+                  : erroCatalogo}
+              </p>
+            )}
             {erroApi && <p className="form-alert" role="alert">{erroApi}</p>}
 
             <div className="signup-form__actions">
@@ -533,7 +578,10 @@ export default function CadastroEmpresaPage() {
               <button
                 type="submit"
                 className="button button--primary"
-                disabled={enviando}
+                disabled={
+                  enviando ||
+                  (etapa === 3 && (carregandoCatalogo || !checkoutDisponivel))
+                }
                 aria-busy={enviando}
               >
                 {etapa < 3

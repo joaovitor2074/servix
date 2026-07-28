@@ -88,7 +88,28 @@ describe("assinaturas do Servix", () => {
     expect(catalogo).toMatchObject({
       ambiente: AmbienteAssinatura.TESTE,
       checkoutDisponivel: true,
+      versaoTermos: "2026-07-28",
       planos: [{ codigo: "servix-mensal", valorMensal: "79.90" }]
+    })
+  })
+
+  it("publica PRODUCAO sem liberar checkout antes da confirmacao legal", () => {
+    vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
+    vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "false")
+
+    expect(listarPlanosServixService()).toMatchObject({
+      ambiente: AmbienteAssinatura.PRODUCAO,
+      checkoutDisponivel: false
+    })
+  })
+
+  it("libera o catalogo de PRODUCAO depois da confirmacao legal", () => {
+    vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
+    vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "true")
+
+    expect(listarPlanosServixService()).toMatchObject({
+      ambiente: AmbienteAssinatura.PRODUCAO,
+      checkoutDisponivel: true
     })
   })
 

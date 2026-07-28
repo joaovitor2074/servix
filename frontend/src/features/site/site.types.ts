@@ -45,4 +45,19 @@ export interface CheckoutHospedadoData {
   status: string
 }
 
+export interface PlanoAssinaturaPublico {
+  codigo: string
+  nome: string
+  valorMensal: number | string
+  periodicidade: string
+  recursos: string[]
+}
+
+export interface CatalogoAssinaturasData {
+  ambiente: 'TESTE' | 'PRODUCAO'
+  checkoutDisponivel: boolean
+  versaoTermos: string
+  planos: PlanoAssinaturaPublico[]
+}
+
 export type CadastroEmpresaResponse = CheckoutData

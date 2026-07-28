@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import {
   obterConfiguracaoAssinaturasMercadoPago
 } from "../config/env.js"
@@ -64,6 +65,11 @@ export type PagamentoAutorizadoMercadoPago = {
   debit_date?: string
   date_created?: string
   last_modified?: string
+  payment?: {
+    id?: number | string
+    status?: string
+    status_detail?: string
+  } | null
 }
 
 type BuscaAssinaturasMercadoPago = {
@@ -161,6 +167,7 @@ async function requisitarMercadoPago<T>(
   opcoes: {
     method: "POST" | "GET" | "PUT"
     body?: unknown
+    chaveIdempotencia?: string
   }
 ): Promise<T> {
   const configuracao = obterConfiguracaoObrigatoria()
@@ -175,6 +182,9 @@ async function requisitarMercadoPago<T>(
         Authorization: `Bearer ${configuracao.accessToken}`,
         ...(opcoes.body !== undefined && {
           "Content-Type": "application/json"
+        }),
+        ...(opcoes.chaveIdempotencia && {
+          "X-Idempotency-Key": opcoes.chaveIdempotencia
         })
       },
       ...(opcoes.body !== undefined && {
@@ -232,6 +242,18 @@ async function requisitarMercadoPago<T>(
   } finally {
     clearTimeout(timeout)
   }
+}
+
+function chaveIdempotenciaPreapproval(referenciaExterna: string): string {
+  // A mesma referencia representa a mesma tentativa logica. O hash evita
+  // expor o identificador local no header. O modo separa uma eventual chave
+  // de teste da chave de producao mesmo quando a referencia local coincide.
+  // Os 64 caracteres respeitam o limite conservador das APIs idempotentes.
+  const configuracao = obterConfiguracaoObrigatoria()
+
+  return createHash("sha256")
+    .update(`servix:preapproval:${configuracao.modo}:${referenciaExterna}`)
+    .digest("hex")
 }
 
 function validarRespostaComId(
@@ -331,6 +353,7 @@ export async function criarAssinaturaMercadoPago(
 
   const resposta = await requisitarMercadoPago<unknown>("/preapproval", {
     method: "POST",
+    chaveIdempotencia: chaveIdempotenciaPreapproval(referenciaExterna),
     body: {
       reason: "Servix - Plano mensal",
       external_reference: referenciaExterna,

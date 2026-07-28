@@ -20,6 +20,27 @@ export const SITE_CONTACT_EMAIL =
 export const SITE_SUPPORT_EMAIL =
   import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporte.vercel@gmail.com'
 
+export const SITE_LEGAL_NAME = import.meta.env.VITE_LEGAL_NAME?.trim() || ''
+
+export const SITE_LEGAL_DOCUMENT =
+  import.meta.env.VITE_LEGAL_DOCUMENT?.trim() || ''
+
+export const SITE_LEGAL_ADDRESS =
+  import.meta.env.VITE_LEGAL_ADDRESS?.trim() || ''
+
+export const SITE_DATA_CONTROLLER_NAME =
+  import.meta.env.VITE_DATA_CONTROLLER_NAME?.trim() || SITE_LEGAL_NAME
+
+export const SITE_LEGAL_IDENTITY_READY = Boolean(
+  SITE_LEGAL_NAME &&
+  SITE_LEGAL_DOCUMENT &&
+  SITE_LEGAL_ADDRESS &&
+  SITE_DATA_CONTROLLER_NAME,
+)
+
+export const SITE_LEGAL_IDENTITY_PENDING_MESSAGE =
+  'A contratação em produção está temporariamente indisponível enquanto a identificação pública do fornecedor é concluída.'
+
 export function formatarMoeda(valor: number | string) {
   const valorNumerico = typeof valor === 'string' ? Number(valor) : valor
 
