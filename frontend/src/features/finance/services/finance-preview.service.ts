@@ -1306,7 +1306,7 @@ function criarMovimentacoesDemonstracao(
         tipo: item.tipo === 'RECEITA' ? 'ENTRADA' : 'SAIDA',
         status: 'CONFIRMADA',
         valor: item.valorPago,
-        formaPagamento: item.tipo === 'RECEITA' ? 'PIX' : 'OUTRO',
+        formaPagamento: 'OUTRO',
         descricao: `Baixa de ${item.descricao}`,
         movimentadoEm: item.pagoEm ?? item.vencimento,
       }

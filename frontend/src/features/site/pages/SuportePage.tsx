@@ -11,8 +11,8 @@ const supportTopics = [
     description: 'O administrador pode cancelar nas configurações da assinatura ou pedir ajuda pelo e-mail oficial.',
   },
   {
-    title: 'Mercado Pago da empresa',
-    description: 'A conexão é feita pelo administrador e pertence somente à empresa que autorizou o acesso.',
+    title: 'Pagamentos dos clientes',
+    description: 'O recebimento é feito diretamente pela assistência e registrado manualmente na ordem.',
   },
 ]
 
@@ -86,7 +86,7 @@ export default function SuportePage() {
             </details>
             <details>
               <summary>Para onde vai o pagamento do meu cliente?</summary>
-              <p>Para a conta Mercado Pago conectada pela sua empresa, sem passar pela conta do Servix.</p>
+              <p>Diretamente para a assistência, fora do Servix. A integração online está em desenvolvimento.</p>
             </details>
             <details>
               <summary>O ambiente atual movimenta dinheiro real?</summary>

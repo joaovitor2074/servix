@@ -1016,31 +1016,14 @@ async function executarAcaoPublicaOrcamento(
       }
     }
 
-    if (proximoStatus === StatusOrcamento.APROVADO) {
-      const formaPagamento = (dados as AprovacaoPublicaOrcamentoInput)
-        .formaPagamento
-
-      if (formaPagamento === FormaPagamento.PIX) {
-        const configuracao = await tx.configuracaoPagamento.findUnique({
-          where: { empresaId: atual.empresaId },
-          select: {
-            provedor: true,
-            ambiente: true,
-            status: true,
-            ativo: true,
-            pixHabilitado: true
-          }
-        })
-
-        if (!configuracaoPagamentoAceitaPix(
-          configuracao,
-          atual.empresaId
-        )) {
-          return {
-            sucesso: false as const,
-            motivo: "pix_indisponivel" as const
-          }
-        }
+    if (
+      proximoStatus === StatusOrcamento.APROVADO &&
+      (dados as { formaPagamento: FormaPagamento }).formaPagamento ===
+        FormaPagamento.PIX
+    ) {
+      return {
+        sucesso: false as const,
+        motivo: "pix_indisponivel" as const
       }
     }
 

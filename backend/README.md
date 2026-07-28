@@ -233,11 +233,12 @@ não deve substituir essa trava no deploy.
 ## Mercado Pago por empresa (OAuth)
 
 O Servix usa uma única aplicação cadastrada no Mercado Pago, mas mantém uma
-conexão OAuth independente para cada empresa. Configure as credenciais globais
-somente no ambiente do backend:
+conexão OAuth independente para cada empresa. As credenciais globais podem
+ficar armazenadas somente no backend, mas o modo deve permanecer desabilitado
+até a homologação da integração:
 
 ```env
-SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
+SERVIX_CUSTOMER_PAYMENTS_MP_MODE=DESABILITADO
 MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID=""
 MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET=""
 MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI="http://localhost:3005/integracoes/mercado-pago/callback"

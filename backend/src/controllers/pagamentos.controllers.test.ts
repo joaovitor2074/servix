@@ -96,7 +96,7 @@ describe("controllers de pagamentos", () => {
       statusEsperado: StatusOrdem.PRONTO,
       versaoEsperada: 7,
       valor: 40,
-      formaPagamento: FormaPagamento.PIX
+      formaPagamento: FormaPagamento.DINHEIRO
     }
     const req = criarRequest(body)
     const { response, status, json } = criarResponse()
@@ -128,7 +128,7 @@ describe("controllers de pagamentos", () => {
       statusEsperado: StatusOrdem.PRONTO,
       versaoEsperada: 7,
       valor: 70,
-      formaPagamento: FormaPagamento.PIX
+      formaPagamento: FormaPagamento.DINHEIRO
     })
     const { response, status, json } = criarResponse()
 
@@ -158,7 +158,7 @@ describe("controllers de pagamentos", () => {
       statusEsperado: StatusOrdem.PRONTO,
       versaoEsperada: 7,
       valor: 40,
-      formaPagamento: FormaPagamento.PIX
+      formaPagamento: FormaPagamento.DINHEIRO
     })
     const { response, status, json } = criarResponse()
 

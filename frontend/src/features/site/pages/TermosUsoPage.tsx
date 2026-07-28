@@ -109,9 +109,10 @@ export default function TermosUsoPage() {
             <h2>6. Pagamentos dos clientes da empresa</h2>
             <p>
               Pagamentos relacionados a orçamentos ou serviços são independentes
-              da assinatura. Quando a empresa conecta o Mercado Pago, o dinheiro
-              segue para sua própria conta. O Servix não deve usar essa conexão
-              OAuth para receber mensalidades da assinatura.
+              da assinatura. No funcionamento atual, o pagamento é combinado e
+              recebido diretamente pela assistência, que registra o recebimento
+              no Servix. Uma futura conexão OAuth não deverá ser usada para
+              receber mensalidades da assinatura.
             </p>
           </section>
 

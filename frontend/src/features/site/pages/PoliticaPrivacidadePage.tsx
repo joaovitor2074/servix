@@ -92,9 +92,9 @@ export default function PoliticaPrivacidadePage() {
               incluindo Vercel, Railway, PostgreSQL e Mercado Pago, conforme a
               funcionalidade utilizada. Alguns fornecedores podem processar
               dados fora do Brasil, com medidas contratuais e de segurança
-              compatíveis com a LGPD. Quando uma empresa conecta sua conta
-              Mercado Pago, essa autorização pertence à própria empresa e é
-              usada apenas em seus pagamentos.
+              compatíveis com a LGPD. Caso a integração com a conta Mercado Pago
+              seja disponibilizada, a autorização pertencerá à própria empresa
+              e será usada apenas em seus pagamentos.
             </p>
           </section>
 
@@ -103,9 +103,9 @@ export default function PoliticaPrivacidadePage() {
             <p>
               A assinatura paga pela empresa é destinada à conta do Servix. O
               pagamento feito pelo cliente de uma empresa, relacionado a um
-              orçamento ou serviço, é destinado à conta Mercado Pago conectada
-              por essa empresa. O token OAuth da empresa não deve ser usado para
-              cobrar a assinatura do Servix.
+              orçamento ou serviço, é recebido diretamente pela assistência e
+              registrado no sistema. Se a conexão OAuth for disponibilizada, ela
+              não deverá ser usada para cobrar a assinatura do Servix.
             </p>
           </section>
 

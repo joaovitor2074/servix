@@ -156,14 +156,14 @@ export default function HomePage() {
             </article>
 
             <article className="payment-flow-card payment-flow-card--company">
-              <span className="status-pill status-pill--green">Pagamento do serviço</span>
-              <h3>Cliente paga o orçamento</h3>
-              <div className="payment-flow-card__route" aria-label="Cliente paga orçamento para a conta Mercado Pago da empresa">
-                <span>Cliente</span><b aria-hidden="true">→</b><span>Mercado Pago da empresa</span>
+              <span className="status-pill status-pill--green">Recebimento da assistência</span>
+              <h3>Empresa recebe diretamente</h3>
+              <div className="payment-flow-card__route" aria-label="Cliente paga diretamente para a assistência">
+                <span>Cliente</span><b aria-hidden="true">→</b><span>Assistência</span>
               </div>
               <p>
-                Cada empresa conecta sua própria conta. O pagamento vai
-                diretamente para a empresa responsável pelo serviço.
+                O pagamento é combinado fora do Servix e a equipe registra o
+                recebimento na ordem de serviço. A integração online está em desenvolvimento.
               </p>
             </article>
           </div>

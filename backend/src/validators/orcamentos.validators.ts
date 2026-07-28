@@ -120,7 +120,6 @@ export const transformarOrcamentoSchema = z
   .strict()
 
 const formaPagamentoPublicaSchema = z.enum([
-  FormaPagamento.PIX,
   FormaPagamento.DINHEIRO,
   FormaPagamento.CARTAO_CREDITO,
   FormaPagamento.CARTAO_DEBITO,

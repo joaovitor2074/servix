@@ -39,8 +39,8 @@ CORS_ORIGINS=https://SEU-FRONTEND.vercel.app
 
 SERVIX_BILLING_MODE=TESTE
 SERVIX_SUBSCRIPTIONS_MP_MODE=TESTE
-SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE
-SERVIX_PAYMENT_SIMULATOR_ENABLED=true
+SERVIX_CUSTOMER_PAYMENTS_MP_MODE=DESABILITADO
+SERVIX_PAYMENT_SIMULATOR_ENABLED=false
 SERVIX_FINANCEIRO_MODE=PREVIEW
 
 MERCADO_PAGO_SUBSCRIPTIONS_TESTE_ACCESS_TOKEN=<token-da-conta-seller-de-teste>
@@ -107,8 +107,8 @@ https://SEU-BACKEND.example.com/integracoes/mercado-pago/callback
 
 O valor deve ser HTTPS, publico e identico a
 `MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI`, sem
-barra adicional. Conecte apenas usuarios de teste enquanto
-`SERVIX_CUSTOMER_PAYMENTS_MP_MODE=TESTE`.
+barra adicional. Enquanto o OAuth estiver em desenvolvimento, mantenha
+`SERVIX_CUSTOMER_PAYMENTS_MP_MODE=DESABILITADO` e não inicie conexões.
 
 ## 4. Roteiro de homologacao
 

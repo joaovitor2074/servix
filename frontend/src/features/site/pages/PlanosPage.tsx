@@ -133,7 +133,7 @@ export default function PlanosPage() {
             </article>
             <article>
               <span>2</span>
-              <div><h3>Pagamento do orçamento</h3><p>O cliente paga diretamente a conta Mercado Pago conectada pela empresa.</p></div>
+              <div><h3>Pagamento do orçamento</h3><p>O cliente paga diretamente à assistência, que registra o recebimento na ordem.</p></div>
             </article>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function PlanosPage() {
             </details>
             <details>
               <summary>O Servix recebe o dinheiro dos meus clientes?</summary>
-              <p>Não. Quando a empresa conecta o Mercado Pago, os pagamentos dos clientes seguem diretamente para essa conta.</p>
+              <p>Não. O pagamento é combinado diretamente com a assistência. A integração online ainda está em desenvolvimento.</p>
             </details>
             <details>
               <summary>{modoProducao ? 'Como cancelo a assinatura?' : 'Quando a cobrança real será ativada?'}</summary>

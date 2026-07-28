@@ -16,7 +16,7 @@ describe("validarRegistroPagamento", () => {
       statusEsperado: StatusOrdem.PRONTO,
       versaoEsperada: 7,
       valor: 125.5,
-      formaPagamento: FormaPagamento.PIX,
+      formaPagamento: FormaPagamento.DINHEIRO,
       pagoEm: "2026-07-22T12:30:00.000-03:00",
       observacao: "  primeira parcela  "
     })
@@ -28,16 +28,19 @@ describe("validarRegistroPagamento", () => {
     }
   })
 
-  it("recusa NAO_INFORMADA porque o pagamento ja ocorreu", () => {
-    const resultado = validarRegistroPagamento({
-      statusEsperado: StatusOrdem.PRONTO,
-      versaoEsperada: 7,
-      valor: 50,
-      formaPagamento: FormaPagamento.NAO_INFORMADA
-    })
+  it.each([FormaPagamento.NAO_INFORMADA, FormaPagamento.PIX])(
+    "recusa forma de pagamento indisponivel: %s",
+    formaPagamento => {
+      const resultado = validarRegistroPagamento({
+        statusEsperado: StatusOrdem.PRONTO,
+        versaoEsperada: 7,
+        valor: 50,
+        formaPagamento
+      })
 
-    expect(resultado.valido).toBe(false)
-  })
+      expect(resultado.valido).toBe(false)
+    }
+  )
 
   it.each([0, -1, 10.999])(
     "recusa valor invalido: %s",
@@ -56,7 +59,7 @@ describe("validarRegistroPagamento", () => {
   it("exige status e versao esperados e rejeita campos desconhecidos", () => {
     const resultado = validarRegistroPagamento({
       valor: 50,
-      formaPagamento: FormaPagamento.PIX,
+      formaPagamento: FormaPagamento.DINHEIRO,
       campoExtra: true
     })
 

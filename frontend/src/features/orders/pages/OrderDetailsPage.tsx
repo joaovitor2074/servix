@@ -4,7 +4,6 @@ import {
   type ReactNode,
 } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
-import ChargePanel from '../../payments/components/ChargePanel'
 import PaymentPanel from '../../payments/components/PaymentPanel'
 import {
   STATUS_ORDEM_LABELS,
@@ -375,15 +374,6 @@ export default function OrderDetailsPage() {
                 placeholder="Nenhuma peça foi registrada."
               />
             </div>
-          </DetailsCard>
-
-          <DetailsCard
-            icon={<WalletIcon />}
-            title="Cobranças online"
-            description="Pix e outras solicitações geradas pelo gateway deste orçamento."
-            variant="green"
-          >
-            <ChargePanel orcamentoId={ordemAtual.orcamentoId} />
           </DetailsCard>
 
           <DetailsCard

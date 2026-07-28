@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
-import ChargePanel from '../../payments/components/ChargePanel'
 import BudgetStatusBadge from '../components/BudgetStatusBadge'
 import {
   alterarStatusOrcamento,
@@ -275,14 +274,6 @@ export default function BudgetDetailsPage() {
             </dl>
           </DetailsCard>
 
-          <DetailsCard
-            icon={<WalletIcon />}
-            title="Cobranças"
-            description="Solicitações de pagamento geradas pelo gateway para esta proposta."
-            variant="green"
-          >
-            <ChargePanel orcamentoId={orcamento.id} />
-          </DetailsCard>
         </main>
 
         <aside className="budget-details-layout__aside">

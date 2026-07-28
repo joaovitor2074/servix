@@ -19,7 +19,6 @@ const statusOrdemSchema = z.enum([
 // Um pagamento efetivamente registrado precisa informar a forma utilizada.
 // NAO_INFORMADA continua disponivel para dados legados, mas nao para a API.
 const formaPagamentoRegistradaSchema = z.enum([
-  FormaPagamento.PIX,
   FormaPagamento.DINHEIRO,
   FormaPagamento.CARTAO_CREDITO,
   FormaPagamento.CARTAO_DEBITO,

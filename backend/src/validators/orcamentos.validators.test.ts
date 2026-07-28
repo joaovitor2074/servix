@@ -134,6 +134,12 @@ describe("validadores de orcamento", () => {
         versaoEsperada: 2,
         formaPagamento: FormaPagamento.PIX
       }).valido
+    ).toBe(false)
+    expect(
+      validarAprovacaoPublicaOrcamento({
+        versaoEsperada: 2,
+        formaPagamento: FormaPagamento.DINHEIRO
+      }).valido
     ).toBe(true)
   })
 })

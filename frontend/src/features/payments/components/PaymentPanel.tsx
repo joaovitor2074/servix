@@ -14,7 +14,6 @@ import type { ListaPagamentosResposta } from '../types/payment.types'
 import './PaymentPanel.css'
 
 const FORMAS_REGISTRO = [
-  'PIX',
   'DINHEIRO',
   'CARTAO_CREDITO',
   'CARTAO_DEBITO',
@@ -197,6 +196,10 @@ export default function PaymentPanel({ ordem, onChanged }: PaymentPanelProps) {
           onSubmit={handleRegistrar}
         >
           <h3>Registrar pagamento</h3>
+          <p>
+            Use este formulário somente depois que o valor tiver sido recebido
+            diretamente pela assistência.
+          </p>
           <div className="payment-panel__form-grid">
             <label>
               <span>Valor</span>
@@ -212,7 +215,7 @@ export default function PaymentPanel({ ordem, onChanged }: PaymentPanelProps) {
             </label>
             <label>
               <span>Forma</span>
-              <select name="formaPagamento" defaultValue="PIX" required>
+              <select name="formaPagamento" defaultValue="DINHEIRO" required>
                 {FORMAS_REGISTRO.map(forma => (
                   <option key={forma} value={forma}>
                     {FORMA_PAGAMENTO_LABELS[forma]}
