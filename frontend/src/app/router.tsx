@@ -24,6 +24,7 @@ const NewOrderPage = lazy(() => import('../features/orders/pages/NewOrderPage'))
 const OrderDetailsPage = lazy(() => import('../features/orders/pages/OrderDetailsPage'))
 const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
 const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicTrackingPage'))
+const DemoPage = lazy(() => import('../features/demo/pages/DemoPage'))
 const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
 const SubscriptionSettingsPage = lazy(() => import('../features/settings/subscription/pages/SubscriptionSettingsPage'))
 const CadastroConcluidoPage = lazy(() => import('../features/site/pages/CadastroConcluidoPage'))
@@ -56,6 +57,7 @@ export default function AppRouter({
   return (
     <Suspense fallback={<div className="route-loading" role="status">Carregando...</div>}>
       <Routes>
+      <Route path="/demonstracao" element={<DemoPage />} />
       <Route path="/orcamento/:token" element={<PublicBudgetPage />} />
       <Route path="/acompanhar/:token" element={<PublicTrackingPage />} />
 

@@ -20,6 +20,11 @@ function App() {
 
   useEffect(()=>{
     async function restaurarSessao(){
+      if (window.location.pathname.replace(/\/+$/, '') === '/demonstracao') {
+        setCarregando(false)
+        return
+      }
+
       const token = obterToken()
 
       if(!token){
