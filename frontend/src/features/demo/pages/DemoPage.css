@@ -1172,6 +1172,185 @@
   background: var(--color-primary);
 }
 
+.demo-order-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.demo-security-card,
+.demo-document-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 40, 77, .05);
+}
+
+.demo-security-card > span,
+.demo-document-card > span {
+  color: var(--color-primary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.demo-security-card h2,
+.demo-document-card h2 {
+  font-size: 18px;
+  letter-spacing: -.03em;
+}
+
+.demo-security-card > p,
+.demo-document-card > p,
+.demo-receipt-note p {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.demo-credential-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 13px;
+  border: 1px solid #d8e4f4;
+  border-radius: 10px;
+  background: #f7faff;
+}
+
+.demo-credential-box > div {
+  display: grid;
+  gap: 3px;
+}
+
+.demo-credential-box small {
+  color: var(--color-text-muted);
+  font-size: 9px;
+}
+
+.demo-credential-box strong {
+  font-size: 16px;
+  letter-spacing: .12em;
+}
+
+.demo-credential-box button,
+.demo-document-card button {
+  min-height: 38px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-primary);
+}
+
+.demo-credential-box button:disabled {
+  cursor: default;
+  background: #168357;
+}
+
+.demo-document-preview {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  color: #182943;
+  border: 1px solid #bdc9d8;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(15, 40, 77, .08);
+}
+
+.demo-document-preview > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #182943;
+}
+
+.demo-document-preview > header div {
+  display: grid;
+  gap: 4px;
+}
+
+.demo-document-preview > header span,
+.demo-document-preview > header small {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.demo-document-preview > header strong {
+  font-size: 16px;
+}
+
+.demo-document-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.demo-document-grid p {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #e0e5eb;
+}
+
+.demo-document-grid span {
+  color: var(--color-text-muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.demo-document-grid strong {
+  font-size: 10px;
+}
+
+.demo-document-signatures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  padding-top: 22px;
+}
+
+.demo-document-signatures span {
+  padding-top: 7px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  text-align: center;
+  border-top: 1px solid #66758a;
+}
+
+.demo-legal-note {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #d9e1ea;
+  background: #f8fafc;
+}
+
+.demo-legal-note strong { font-size: 10px; }
+
+.demo-legal-note p,
+.demo-legal-note small {
+  margin: 0;
+  color: #536277;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
 .demo-finance-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -1198,6 +1377,17 @@
   font-size: 11px;
   line-height: 1.55;
 }
+
+.demo-receipt-note {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  color: #183c65;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.demo-receipt-note strong { font-size: 10px; }
 
 .demo-balance-box {
   display: grid;
@@ -1493,6 +1683,7 @@
     grid-template-columns: 1fr;
   }
   .demo-tracking-copy { position: static; }
+  .demo-order-tools { grid-template-columns: 1fr; }
   .demo-benefit-card,
   .demo-message-card,
   .demo-tracking-copy { padding: 20px; }
@@ -1586,6 +1777,10 @@
   }
   .demo-order-timeline li > div { min-height: 58px; padding-top: 7px; }
   .demo-detail-list > div { grid-template-columns: 1fr; gap: 5px; }
+  .demo-credential-box { align-items: stretch; flex-direction: column; }
+  .demo-document-preview { padding: 16px; }
+  .demo-document-preview > header { flex-direction: column; }
+  .demo-document-grid { grid-template-columns: 1fr 1fr; }
   .demo-payment-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }

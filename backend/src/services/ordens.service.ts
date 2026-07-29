@@ -5,6 +5,10 @@ import {
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import {
+  protegerCredencialAparelho,
+  revelarCredencialAparelho
+} from "../lib/credenciais-aparelho.js"
+import {
   abortarTransacaoComResultado,
   executarTransacaoComRollback
 } from "../lib/transacao.js"
@@ -46,6 +50,40 @@ const orcamentoResumo = {
     total: true
   }
 } as const
+
+function ocultarCredencialAcesso<
+  T extends {
+    credencialAcessoCifrada: string | null
+    credencialAcessoAtualizadaEm: Date | null
+  }
+>(ordem: T) {
+  const {
+    credencialAcessoCifrada,
+    credencialAcessoAtualizadaEm,
+    ...dados
+  } = ordem
+
+  return {
+    ...dados,
+    possuiCredencialAcesso: Boolean(credencialAcessoCifrada),
+    credencialAcessoAtualizadaEm
+  }
+}
+
+function removerCredencialDaResposta<
+  T extends {
+    credencialAcessoCifrada?: string | null
+    credencialAcessoAtualizadaEm?: Date | null
+  }
+>(ordem: T) {
+  const {
+    credencialAcessoCifrada: _credencial,
+    credencialAcessoAtualizadaEm: _atualizadaEm,
+    ...dados
+  } = ordem
+
+  return dados
+}
 
 async function validarRestricaoFinanceira(
   tx: Prisma.TransactionClient,
@@ -240,7 +278,9 @@ export async function listarOrdensService(
   return {
     // O bearer token só é necessário no detalhe da OS para copiar o link.
     // A listagem não o distribui em massa para o navegador autenticado.
-    dados: dados.map(({ tokenAcompanhamento: _token, ...ordem }) => ordem),
+    dados: dados.map(({ tokenAcompanhamento: _token, ...ordem }) =>
+      ocultarCredencialAcesso(ordem)
+    ),
     paginacao: {
       pagina: filtros.pagina,
       limite: filtros.limite,
@@ -279,6 +319,19 @@ export async function buscarOrdemService(id: number, empresaId: number) {
 
   if (!ordem) return null
 
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: empresaId },
+    select: {
+      nome: true,
+      telefone: true,
+      email: true,
+      cpfCnpj: true,
+      endereco: true,
+      cidade: true,
+      estado: true
+    }
+  })
+
   let totalPago = new Prisma.Decimal(0)
   let totalEstornado = new Prisma.Decimal(0)
 
@@ -293,7 +346,8 @@ export async function buscarOrdemService(id: number, empresaId: number) {
   const { pagamentos: _pagamentos, ...dadosOrdem } = ordem
 
   return {
-    ...dadosOrdem,
+    ...ocultarCredencialAcesso(dadosOrdem),
+    empresa,
     pagamentoResumo: calcularResumoPagamento(
       ordem.valor,
       totalPago,
@@ -376,7 +430,7 @@ export async function atualizarOrdemService(
     if (dados.status === ordemAtual.status && !possuiOutroCampo) {
       return {
         sucesso: true as const,
-        ordem: ordemAtual
+        ordem: removerCredencialDaResposta(ordemAtual)
       }
     }
 
@@ -398,6 +452,14 @@ export async function atualizarOrdemService(
       }),
       ...(dados.pecasUtilizadas !== undefined && {
         pecasUtilizadas: dados.pecasUtilizadas
+      }),
+      ...(dados.credencialAcesso !== undefined && {
+        credencialAcessoCifrada: dados.credencialAcesso === null
+          ? null
+          : protegerCredencialAparelho(dados.credencialAcesso, empresaId, id),
+        credencialAcessoAtualizadaEm: dados.credencialAcesso === null
+          ? null
+          : new Date()
       }),
       ...(dados.tecnicoResponsavel !== undefined && {
         tecnicoResponsavel: dados.tecnicoResponsavel
@@ -461,9 +523,37 @@ export async function atualizarOrdemService(
 
     return {
       sucesso: true as const,
-      ordem: ordem!
+      ordem: removerCredencialDaResposta(ordem!)
     }
   })
+}
+
+export async function buscarCredencialAcessoOrdemService(
+  id: number,
+  empresaId: number
+) {
+  const ordem = await prisma.ordemServico.findUnique({
+    where: {
+      id_empresaId: { id, empresaId }
+    },
+    select: {
+      credencialAcessoCifrada: true,
+      credencialAcessoAtualizadaEm: true
+    }
+  })
+
+  if (!ordem) return null
+
+  return {
+    credencial: ordem.credencialAcessoCifrada
+      ? revelarCredencialAparelho(
+          ordem.credencialAcessoCifrada,
+          empresaId,
+          id
+        )
+      : null,
+    atualizadaEm: ordem.credencialAcessoAtualizadaEm
+  }
 }
 
 // Versão especializada para telas ou ações que alteram apenas o status.

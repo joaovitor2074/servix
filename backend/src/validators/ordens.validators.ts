@@ -21,6 +21,11 @@ const textoOpcional = (limite: number) =>
     z.string().trim().max(limite).nullable().optional()
   )
 
+const credencialAcessoSchema = z.preprocess(
+  valor => valor === "" ? null : valor,
+  z.string().min(1).max(120).nullable().optional()
+)
+
 // A mensagem pública é separada dos campos técnicos. Texto vazio vira nulo e
 // uma mensagem real só pode acompanhar uma mudança efetiva de status.
 const mensagemPublicaSchema = z.preprocess(
@@ -87,6 +92,7 @@ export const atualizarOrdemSchema = z
     diagnostico: camposEditaveis.diagnostico,
     servicoRealizado: camposEditaveis.servicoRealizado,
     pecasUtilizadas: camposEditaveis.pecasUtilizadas,
+    credencialAcesso: credencialAcessoSchema,
     tecnicoResponsavel: camposEditaveis.tecnicoResponsavel,
     previsaoDeEntrega: camposEditaveis.previsaoDeEntrega,
     status: camposEditaveis.status.optional(),

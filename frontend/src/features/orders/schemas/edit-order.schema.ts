@@ -27,6 +27,8 @@ export const editarOrdemSchema = z.object({
   diagnostico: textoOpcional(4000),
   servicoRealizado: textoOpcional(4000),
   pecasUtilizadas: textoOpcional(4000),
+  credencialAcesso: z.string().max(120),
+  removerCredencialAcesso: z.boolean(),
   tecnicoResponsavel: textoOpcional(120),
   previsaoDeEntrega: previsaoSchema,
   status: z.enum(STATUS_ORDEM),

@@ -112,6 +112,16 @@ export interface ResumoPagamentoOrdem {
   saldo: string
 }
 
+export interface EmpresaDaOrdem {
+  nome: string
+  telefone: string | null
+  email: string | null
+  cpfCnpj: string | null
+  endereco: string | null
+  cidade: string | null
+  estado: string | null
+}
+
 // Representa exatamente uma ordem devolvida por GET /ordens. Datas chegam em
 // JSON como strings ISO e o Decimal do Prisma chega como texto.
 export interface OrdemServico {
@@ -122,6 +132,9 @@ export interface OrdemServico {
   orcamentoId: number
   equipamento: string
   problemaRelatado: string
+  possuiCredencialAcesso: boolean
+  podeRevelarCredencial?: boolean
+  credencialAcessoAtualizadaEm: string | null
   diagnostico: string | null
   servicoRealizado: string | null
   pecasUtilizadas: string | null
@@ -137,6 +150,7 @@ export interface OrdemServico {
   cliente: ClienteResumoOrdem
   orcamento: OrcamentoDaOrdem
   pagamentoResumo?: ResumoPagamentoOrdem
+  empresa?: EmpresaDaOrdem | null
 }
 
 // Corpo aceito pelo POST /ordens. Campos de diagnóstico e execução não
@@ -149,6 +163,7 @@ export interface AtualizarOrdemInput {
   diagnostico?: string | null
   servicoRealizado?: string | null
   pecasUtilizadas?: string | null
+  credencialAcesso?: string | null
   tecnicoResponsavel?: string | null
   previsaoDeEntrega?: string | null
   status?: StatusOrdem

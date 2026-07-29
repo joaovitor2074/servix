@@ -77,6 +77,8 @@ export default function DemoPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>(initialOrderStatus)
   const [paymentRegistered, setPaymentRegistered] = useState(false)
   const [customerAdded, setCustomerAdded] = useState(false)
+  const [deviceCredentialSaved, setDeviceCredentialSaved] = useState(false)
+  const [documentPreviewOpen, setDocumentPreviewOpen] = useState(false)
   const [notice, setNotice] = useState('')
 
   const activeIndex = navigation.findIndex(item => item.id === activeView)
@@ -126,12 +128,24 @@ export default function DemoPage() {
     setNotice('Cliente fictício adicionado somente nesta demonstração.')
   }
 
+  function saveDeviceCredential() {
+    setDeviceCredentialSaved(true)
+    setNotice('PIN ficticio protegido. Ele nao aparece no recibo nem no link publico.')
+  }
+
+  function toggleDocumentPreview() {
+    setDocumentPreviewOpen(current => !current)
+    setNotice('Visualizacao demonstrativa da OS e do recibo atualizada.')
+  }
+
   function resetDemo() {
     setActiveView('dashboard')
     setBudgetApproved(false)
     setOrderStatus(initialOrderStatus)
     setPaymentRegistered(false)
     setCustomerAdded(false)
+    setDeviceCredentialSaved(false)
+    setDocumentPreviewOpen(false)
     setNotice('Demonstração reiniciada com os dados originais.')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -259,7 +273,11 @@ export default function DemoPage() {
               <DemoOrders
                 status={orderStatus}
                 statusIndex={orderStatusIndex}
+                deviceCredentialSaved={deviceCredentialSaved}
+                documentPreviewOpen={documentPreviewOpen}
                 onAdvance={advanceOrder}
+                onSaveDeviceCredential={saveDeviceCredential}
+                onToggleDocumentPreview={toggleDocumentPreview}
                 onOpenTracking={() => selectView('acompanhamento')}
               />
             )}
@@ -633,12 +651,20 @@ function DemoBudgets({
 function DemoOrders({
   status,
   statusIndex,
+  deviceCredentialSaved,
+  documentPreviewOpen,
   onAdvance,
+  onSaveDeviceCredential,
+  onToggleDocumentPreview,
   onOpenTracking,
 }: {
   status: OrderStatus
   statusIndex: number
+  deviceCredentialSaved: boolean
+  documentPreviewOpen: boolean
   onAdvance: () => void
+  onSaveDeviceCredential: () => void
+  onToggleDocumentPreview: () => void
   onOpenTracking: () => void
 }) {
   return (
@@ -728,6 +754,81 @@ function DemoOrders({
           </button>
         </aside>
       </div>
+
+      <section className="demo-order-tools" aria-label="Seguranca e documentos da ordem">
+        <article className="demo-security-card">
+          <span>Credencial do aparelho</span>
+          <h2>PIN ou senha guardado com prote&ccedil;&atilde;o</h2>
+          <p>
+            A equipe autorizada pode registrar a credencial necess&aacute;ria
+            para os testes. O dado fica criptografado, &eacute; ocultado
+            automaticamente e nunca aparece no recibo ou no link do cliente.
+          </p>
+          <div className="demo-credential-box">
+            <div>
+              <small>PIN demonstrativo</small>
+              <strong>{deviceCredentialSaved ? '••••' : 'Nao informado'}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={onSaveDeviceCredential}
+              disabled={deviceCredentialSaved}
+            >
+              {deviceCredentialSaved ? 'PIN protegido' : 'Simular cadastro'}
+            </button>
+          </div>
+        </article>
+
+        <article className="demo-document-card">
+          <span>OS e recibo para impress&atilde;o</span>
+          <h2>Entregue um comprovante claro ao cliente presencial</h2>
+          <p>
+            O documento re&uacute;ne cliente, aparelho, defeito informado,
+            acess&oacute;rios, previs&atilde;o, valores e assinaturas. Quando houver
+            pagamento confirmado, tamb&eacute;m registra o recebimento.
+          </p>
+          <button type="button" onClick={onToggleDocumentPreview}>
+            {documentPreviewOpen ? 'Fechar exemplo' : 'Ver exemplo do documento'}
+          </button>
+        </article>
+      </section>
+
+      {documentPreviewOpen && (
+        <section className="demo-document-preview" aria-label="Exemplo de ordem de servico para impressao">
+          <header>
+            <div>
+              <span>Conecta Cell</span>
+              <strong>ORDEM DE SERVI&Ccedil;O / RECIBO #1048</strong>
+            </div>
+            <small>Documento demonstrativo</small>
+          </header>
+          <div className="demo-document-grid">
+            <p><span>Cliente</span><strong>Carlos Almeida</strong></p>
+            <p><span>Aparelho</span><strong>iPhone 13</strong></p>
+            <p><span>Defeito informado</span><strong>Tela sem imagem ap&oacute;s queda</strong></p>
+            <p><span>Acess&oacute;rios recebidos</span><strong>Nenhum</strong></p>
+            <p><span>Previs&atilde;o</span><strong>02 de agosto, &agrave;s 17h</strong></p>
+            <p><span>Total autorizado</span><strong>R$ 750,00</strong></p>
+          </div>
+          <div className="demo-document-signatures">
+            <span>Assinatura do cliente</span>
+            <span>Respons&aacute;vel pela assist&ecirc;ncia</span>
+          </div>
+          <div className="demo-legal-note">
+            <strong>Informa&ccedil;&atilde;o ao consumidor</strong>
+            <p>
+              O prazo de at&eacute; 30 dias do art. 18, &sect; 1&ordm;, do CDC trata do
+              saneamento de v&iacute;cio do produto nas situa&ccedil;&otilde;es em que se
+              aplica. A previs&atilde;o espec&iacute;fica do reparo permanece registrada
+              nesta OS, sem ren&uacute;ncia aos direitos do consumidor.
+            </p>
+            <small>
+              Este comprovante da assist&ecirc;ncia n&atilde;o substitui nota fiscal ou
+              NFS-e quando sua emiss&atilde;o for obrigat&oacute;ria.
+            </small>
+          </div>
+        </section>
+      )}
     </section>
   )
 }
@@ -822,6 +923,14 @@ function DemoFinance({
             <strong>{paymentRegistered ? 'R$ 0,00' : 'R$ 750,00'}</strong>
             <small>{paymentRegistered ? 'Pagamento confirmado' : 'Aguardando recebimento'}</small>
           </div>
+          <div className="demo-receipt-note">
+            <strong>Recibo pronto para imprimir</strong>
+            <p>
+              Pagamentos confirmados podem constar no comprovante da OS. A
+              emiss&atilde;o fiscal continua seguindo as regras aplic&aacute;veis &agrave;
+              empresa e ao munic&iacute;pio.
+            </p>
+          </div>
         </aside>
       </div>
     </section>
@@ -860,6 +969,7 @@ function DemoTracking({
             <li>Previsão e valor aprovado</li>
             <li>Resumo do pagamento</li>
             <li>Histórico de mensagens públicas</li>
+            <li>PIN ou senha do aparelho nunca aparece</li>
           </ul>
           <div className="demo-tracking-link">
             <span>Link demonstrativo</span>

@@ -207,6 +207,8 @@ export default function EditOrderPage() {
       diagnostico: formData.get('diagnostico'),
       servicoRealizado: formData.get('servicoRealizado'),
       pecasUtilizadas: formData.get('pecasUtilizadas'),
+      credencialAcesso: String(formData.get('credencialAcesso') ?? ''),
+      removerCredencialAcesso: formData.has('removerCredencialAcesso'),
       tecnicoResponsavel: formData.get('tecnicoResponsavel'),
       previsaoDeEntrega: formData.get('previsaoDeEntrega'),
       status: formData.get('status'),
@@ -561,6 +563,56 @@ export default function EditOrderPage() {
 
         <section className="edit-order-section">
           <SectionHeader
+            icon={<LockIcon />}
+            title="Acesso ao aparelho"
+            description="Credencial sigilosa para testes autorizados durante o reparo."
+            variant="violet"
+          />
+
+          <div className="edit-order-section__body edit-order-grid">
+            <FormField
+              id="credencialAcesso"
+              label={'PIN, senha ou instru\u00e7\u00e3o de desbloqueio (opcional)'}
+              hint={
+                ordemAtual.possuiCredencialAcesso
+                  ? 'J\u00e1 existe uma credencial protegida. Deixe vazio para mant\u00ea-la.'
+                  : 'Ser\u00e1 armazenada criptografada e nunca aparecer\u00e1 na impress\u00e3o ou no link p\u00fablico.'
+              }
+              error={errosCampos.credencialAcesso?.[0]}
+              wide
+            >
+              <input
+                id="credencialAcesso"
+                name="credencialAcesso"
+                type="password"
+                placeholder={
+                  ordemAtual.possuiCredencialAcesso
+                    ? 'Credencial j\u00e1 cadastrada'
+                    : 'Digite somente se o cliente autorizar'
+                }
+                maxLength={120}
+                autoComplete="new-password"
+                onChange={() => limparErroCampo('credencialAcesso')}
+                aria-invalid={Boolean(errosCampos.credencialAcesso?.[0])}
+                aria-describedby={campoDescribedBy(
+                  'credencialAcesso',
+                  errosCampos.credencialAcesso?.[0],
+                  true,
+                )}
+              />
+            </FormField>
+
+            {ordemAtual.possuiCredencialAcesso && (
+              <label className="edit-order-secret-remove">
+                <input type="checkbox" name="removerCredencialAcesso" />
+                Apagar a credencial protegida desta ordem
+              </label>
+            )}
+          </div>
+        </section>
+
+        <section className="edit-order-section">
+          <SectionHeader
             icon={<CalendarIcon />}
             title="Planejamento"
             description="Responsável e prazo combinados para a entrega."
@@ -684,6 +736,14 @@ function montarAlteracoes(
     dados.pecasUtilizadas !== ordem.pecasUtilizadas
   ) {
     alteracoes.pecasUtilizadas = dados.pecasUtilizadas
+  }
+  if (dados.removerCredencialAcesso) {
+    alteracoes.credencialAcesso = null
+  } else if (
+    camposAlterados.has('credencialAcesso') &&
+    dados.credencialAcesso.length > 0
+  ) {
+    alteracoes.credencialAcesso = dados.credencialAcesso
   }
   if (
     camposAlterados.has('tecnicoResponsavel') &&
@@ -882,6 +942,10 @@ function CalendarIcon() {
 
 function InfoIcon() {
   return <Icon><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></Icon>
+}
+
+function LockIcon() {
+  return <Icon><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></Icon>
 }
 
 function WarningIcon() {

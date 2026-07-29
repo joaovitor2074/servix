@@ -35,6 +35,17 @@ export async function buscarOrdem(
   )
 }
 
+export async function buscarCredencialAcessoOrdem(
+  id: number,
+): Promise<{ credencial: string | null; atualizadaEm: string | null }> {
+  const resposta = await apiFetch(`/ordens/${id}/credencial-acesso`)
+
+  return lerResposta(
+    resposta,
+    'N\u00e3o foi poss\u00edvel acessar a credencial do aparelho',
+  )
+}
+
 export async function listarHistoricoOrdem(
   id: number,
   options: RequestOptions = {},

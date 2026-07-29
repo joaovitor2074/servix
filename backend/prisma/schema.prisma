@@ -363,25 +363,27 @@ model HistoricoStatusOrcamento {
 
 // Registro principal do atendimento técnico realizado para um cliente.
 model OrdemServico {
-  id                  Int            @id @default(autoincrement())
-  numero              Int
-  empresaId           Int
-  clienteId           Int
-  orcamentoId         Int
-  tokenAcompanhamento String         @unique @default(uuid())
-  equipamento         String
-  problemaRelatado    String
-  diagnostico         String?
-  servicoRealizado    String?
-  pecasUtilizadas     String?
-  tecnicoResponsavel  String?
-  previsaoDeEntrega   DateTime?
-  valor               Decimal        @default(0) @db.Decimal(12, 2)
-  formaDePagamento    FormaPagamento @default(NAO_INFORMADA)
-  status              StatusOrdem    @default(RECEBIDO)
-  versao              Int            @default(1)
-  criadoEm            DateTime       @default(now())
-  atualizadoEm        DateTime       @updatedAt
+  id                           Int            @id @default(autoincrement())
+  numero                       Int
+  empresaId                    Int
+  clienteId                    Int
+  orcamentoId                  Int
+  tokenAcompanhamento          String         @unique @default(uuid())
+  equipamento                  String
+  problemaRelatado             String
+  credencialAcessoCifrada      String?
+  credencialAcessoAtualizadaEm DateTime?
+  diagnostico                  String?
+  servicoRealizado             String?
+  pecasUtilizadas              String?
+  tecnicoResponsavel           String?
+  previsaoDeEntrega            DateTime?
+  valor                        Decimal        @default(0) @db.Decimal(12, 2)
+  formaDePagamento             FormaPagamento @default(NAO_INFORMADA)
+  status                       StatusOrdem    @default(RECEBIDO)
+  versao                       Int            @default(1)
+  criadoEm                     DateTime       @default(now())
+  atualizadoEm                 DateTime       @updatedAt
 
   cliente    Cliente                @relation(fields: [clienteId, empresaId], references: [id, empresaId], onDelete: Restrict)
   orcamento  Orcamento              @relation(fields: [orcamentoId, empresaId], references: [id, empresaId], onDelete: Restrict)
@@ -590,7 +592,7 @@ model AssinaturaEmpresa {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  empresa    Empresa                       @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  empresa    Empresa                      @relation(fields: [empresaId], references: [id], onDelete: Restrict)
   historicos HistoricoAssinaturaEmpresa[]
   webhooks   EventoWebhookAssinatura[]
 
@@ -602,19 +604,19 @@ model AssinaturaEmpresa {
 // Auditoria funcional do ciclo da assinatura. Guarda somente identificadores
 // e estados; tokens, dados de cartao e payloads do provedor nunca entram aqui.
 model HistoricoAssinaturaEmpresa {
-  id                       Int                        @id @default(autoincrement())
-  empresaId                Int
-  assinaturaEmpresaId      Int
-  tipo                     TipoHistoricoAssinatura
-  origem                   OrigemHistoricoAssinatura
-  statusAnterior           StatusAssinatura?
-  statusNovo               StatusAssinatura
-  mercadoPagoAssinaturaId  String?
-  requestIdProvedor        String?
-  criadoEm                 DateTime                   @default(now())
+  id                      Int                       @id @default(autoincrement())
+  empresaId               Int
+  assinaturaEmpresaId     Int
+  tipo                    TipoHistoricoAssinatura
+  origem                  OrigemHistoricoAssinatura
+  statusAnterior          StatusAssinatura?
+  statusNovo              StatusAssinatura
+  mercadoPagoAssinaturaId String?
+  requestIdProvedor       String?
+  criadoEm                DateTime                  @default(now())
 
-  empresa    Empresa            @relation(fields: [empresaId], references: [id], onDelete: Restrict)
-  assinatura AssinaturaEmpresa  @relation(fields: [assinaturaEmpresaId], references: [id], onDelete: Restrict)
+  empresa    Empresa           @relation(fields: [empresaId], references: [id], onDelete: Restrict)
+  assinatura AssinaturaEmpresa @relation(fields: [assinaturaEmpresaId], references: [id], onDelete: Restrict)
 
   @@index([empresaId, criadoEm])
   @@index([assinaturaEmpresaId, criadoEm])
@@ -624,21 +626,21 @@ model HistoricoAssinaturaEmpresa {
 // Caixa de entrada idempotente dos webhooks. O corpo completo nao e salvo:
 // apenas metadados suficientes para reprocessar consultando a API oficial.
 model EventoWebhookAssinatura {
-  id                  Int                         @id @default(autoincrement())
+  id                  Int                        @id @default(autoincrement())
   empresaId           Int?
   assinaturaEmpresaId Int?
-  requestId           String                      @unique
+  requestId           String                     @unique
   tipo                String
   recursoId           String
   status              StatusProcessamentoWebhook @default(PENDENTE)
-  tentativas          Int                         @default(0)
+  tentativas          Int                        @default(0)
   ultimaTentativaEm   DateTime?
   proximaTentativaEm  DateTime?
   processadoEm        DateTime?
   ultimoErro          String?
   alertaEmitidoEm     DateTime?
-  recebidoEm          DateTime                    @default(now())
-  atualizadoEm        DateTime                    @updatedAt
+  recebidoEm          DateTime                   @default(now())
+  atualizadoEm        DateTime                   @updatedAt
 
   empresa    Empresa?           @relation(fields: [empresaId], references: [id], onDelete: SetNull)
   assinatura AssinaturaEmpresa? @relation(fields: [assinaturaEmpresaId], references: [id], onDelete: SetNull)

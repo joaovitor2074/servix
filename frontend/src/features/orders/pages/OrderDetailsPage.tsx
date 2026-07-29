@@ -12,6 +12,7 @@ import {
   type StatusOrdem,
 } from '../../../shared/types/ordem.types'
 import {
+  buscarCredencialAcessoOrdem,
   buscarOrdem,
   listarHistoricoOrdem,
   OrdemApiError,
@@ -55,12 +56,22 @@ export default function OrderDetailsPage() {
   const [mensagemSucesso, setMensagemSucesso] = useState(() =>
     lerMensagemDaNavegacao(location.state),
   )
+  const [credencialAcesso, setCredencialAcesso] = useState<string | null>(null)
+  const [carregandoCredencial, setCarregandoCredencial] = useState(false)
+  const [erroCredencial, setErroCredencial] = useState('')
 
   useEffect(() => {
     // A listagem pode estar rolada no celular quando o funcionário toca em
     // "ver detalhes". A nova tela sempre começa pelo cabeçalho da ordem.
     window.scrollTo(0, 0)
   }, [ordemId])
+
+  useEffect(() => {
+    if (!credencialAcesso) return
+
+    const timeout = window.setTimeout(() => setCredencialAcesso(null), 30_000)
+    return () => window.clearTimeout(timeout)
+  }, [credencialAcesso])
 
   useEffect(() => {
     if (!idValido) return
@@ -72,6 +83,8 @@ export default function OrderDetailsPage() {
     void buscarOrdem(ordemId, { signal: controller.signal })
       .then(ordem => {
         setEstadoCopia('ocioso')
+        setCredencialAcesso(null)
+        setErroCredencial('')
         setOrdemCarregada({ ordemId, ordem })
         setFalhaOrdem(null)
       })
@@ -165,6 +178,26 @@ export default function OrderDetailsPage() {
     }
   }
 
+  async function revelarCredencial() {
+    if (carregandoCredencial) return
+
+    setCarregandoCredencial(true)
+    setErroCredencial('')
+
+    try {
+      const resultado = await buscarCredencialAcessoOrdem(ordemId)
+      setCredencialAcesso(resultado.credencial)
+    } catch (error) {
+      setErroCredencial(
+        error instanceof Error
+          ? error.message
+          : 'N\u00e3o foi poss\u00edvel acessar a credencial.',
+      )
+    } finally {
+      setCarregandoCredencial(false)
+    }
+  }
+
   if (!idValido) {
     return (
       <OrderDetailsFeedback
@@ -227,6 +260,14 @@ export default function OrderDetailsPage() {
 
         <div className="order-details-header__actions">
           <OrderStatusBadge status={ordemAtual.status} />
+          <button
+            className="order-details-header__print"
+            type="button"
+            onClick={() => window.print()}
+          >
+            <PrintIcon />
+            Imprimir OS / recibo
+          </button>
           <Link
             className="order-details-header__edit"
             to={`/ordens/${ordemAtual.id}/editar`}
@@ -297,6 +338,44 @@ export default function OrderDetailsPage() {
                 emphasized
               />
             </dl>
+          </DetailsCard>
+
+          <DetailsCard
+            icon={<LockIcon />}
+            title="Acesso ao aparelho"
+            description="Dado sigiloso fornecido para testes autorizados."
+            compact
+          >
+            <div className="order-device-credential">
+              {!ordemAtual.possuiCredencialAcesso ? (
+                <p>Nenhuma credencial foi cadastrada.</p>
+              ) : credencialAcesso ? (
+                <>
+                  <code>{credencialAcesso}</code>
+                  <button type="button" onClick={() => setCredencialAcesso(null)}>
+                    Ocultar agora
+                  </button>
+                  <small>Oculta&ccedil;&atilde;o autom&aacute;tica em 30 segundos.</small>
+                </>
+              ) : (
+                <>
+                  <span aria-label="Credencial oculta">••••••••</span>
+                  {ordemAtual.podeRevelarCredencial ? (
+                    <button
+                      type="button"
+                      disabled={carregandoCredencial}
+                      onClick={() => void revelarCredencial()}
+                    >
+                      {carregandoCredencial ? 'Acessando...' : 'Mostrar credencial'}
+                    </button>
+                  ) : (
+                    <small>Somente administradores e t&eacute;cnicos podem revelar.</small>
+                  )}
+                </>
+              )}
+              {erroCredencial && <p role="alert">{erroCredencial}</p>}
+              <small>Nunca &eacute; exibida na impress&atilde;o ou no link do cliente.</small>
+            </div>
           </DetailsCard>
 
           {linkAcompanhamento && (
@@ -464,6 +543,110 @@ export default function OrderDetailsPage() {
           </div>
         </aside>
       </div>
+      <ServiceDocument ordem={ordemAtual} />
+    </div>
+  )
+}
+
+function ServiceDocument({ ordem }: { ordem: OrdemServico }) {
+  const totalPago = Number(ordem.pagamentoResumo?.totalPago ?? 0)
+  const possuiPagamento = Number.isFinite(totalPago) && totalPago > 0
+  const empresa = ordem.empresa
+  const enderecoEmpresa = [empresa?.endereco, empresa?.cidade, empresa?.estado]
+    .filter(Boolean)
+    .join(' - ')
+
+  return (
+    <article className="service-document" aria-hidden="true">
+      <header className="service-document__header">
+        <div>
+          <strong>{empresa?.nome ?? 'Empresa prestadora do servi\u00e7o'}</strong>
+          {empresa?.cpfCnpj && <span>CPF/CNPJ: {empresa.cpfCnpj}</span>}
+          {enderecoEmpresa && <span>{enderecoEmpresa}</span>}
+          {(empresa?.telefone || empresa?.email) && (
+            <span>{[empresa.telefone, empresa.email].filter(Boolean).join(' - ')}</span>
+          )}
+        </div>
+        <div>
+          <span>ORDEM DE SERVI&Ccedil;O</span>
+          <strong>#{ordem.numero}</strong>
+          <time dateTime={ordem.criadoEm}>{formatarDataHora(ordem.criadoEm)}</time>
+        </div>
+      </header>
+
+      <h1>Comprovante de recebimento do equipamento</h1>
+
+      <section className="service-document__grid">
+        <DocumentField label="Cliente" value={ordem.cliente.nome} />
+        <DocumentField label="Telefone" value={formatarTelefone(ordem.cliente.telefone)} />
+        <DocumentField label="Equipamento" value={ordem.equipamento} wide />
+        <DocumentField label="Defeito/problema informado" value={ordem.problemaRelatado} wide />
+        <DocumentField
+          label={'Previs\u00e3o informada'}
+          value={ordem.previsaoDeEntrega ? formatarDataHora(ordem.previsaoDeEntrega) : 'A definir'}
+        />
+        <DocumentField label="Valor aprovado" value={formatarValor(ordem.valor)} />
+      </section>
+
+      {ordem.orcamento.itens && ordem.orcamento.itens.length > 0 && (
+        <section className="service-document__items">
+          <h2>Servi&ccedil;os e itens aprovados</h2>
+          <table>
+            <thead><tr><th>Descri&ccedil;&atilde;o</th><th>Qtd.</th><th>Total</th></tr></thead>
+            <tbody>
+              {ordem.orcamento.itens.map(item => (
+                <tr key={item.id}>
+                  <td>{item.descricao}</td>
+                  <td>{item.quantidade}</td>
+                  <td>{formatarValor(item.valorTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {possuiPagamento && (
+        <section className="service-document__payment">
+          <h2>Recibo de pagamento</h2>
+          <p>
+            Recebemos de <strong>{ordem.cliente.nome}</strong> o valor de{' '}
+            <strong>{formatarValor(String(totalPago))}</strong>, referente &agrave; ordem
+            de servi&ccedil;o #{ordem.numero}. Saldo atual:{' '}
+            <strong>{formatarValor(ordem.pagamentoResumo?.saldo ?? '0')}</strong>.
+          </p>
+        </section>
+      )}
+
+      <section className="service-document__terms">
+        <h2>Condi&ccedil;&otilde;es e direitos do consumidor</h2>
+        <ul>
+          <li>O servi&ccedil;o segue o or&ccedil;amento aprovado e qualquer altera&ccedil;&atilde;o depende de nova concord&acirc;ncia do cliente.</li>
+          <li>A garantia legal do servi&ccedil;o e os direitos por eventual v&iacute;cio permanecem preservados conforme o CDC.</li>
+          <li>O prazo de at&eacute; 30 dias do art. 18, &sect; 1&ordm;, refere-se ao saneamento de v&iacute;cio do produto nas hip&oacute;teses legais; a previs&atilde;o deste atendimento &eacute; a registrada nesta OS.</li>
+          <li>Este comprovante n&atilde;o exibe a senha do aparelho e n&atilde;o substitui nota fiscal quando sua emiss&atilde;o for obrigat&oacute;ria.</li>
+        </ul>
+      </section>
+
+      <section className="service-document__signatures">
+        <div><span>Cliente/respons&aacute;vel - entrega</span></div>
+        <div><span>Atendente - recebimento</span></div>
+      </section>
+
+      <section className="service-document__return">
+        <h2>Declara&ccedil;&atilde;o de retirada</h2>
+        <p>Declaro que recebi o equipamento, tive oportunidade de conferi-lo e fui informado sobre o servi&ccedil;o realizado, sem ren&uacute;ncia &agrave; garantia legal.</p>
+        <div><span>Cliente/respons&aacute;vel - retirada e data</span></div>
+      </section>
+    </article>
+  )
+}
+
+function DocumentField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+  return (
+    <div className={wide ? 'service-document__field service-document__field--wide' : 'service-document__field'}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
@@ -872,4 +1055,12 @@ function ExternalLinkIcon() {
 
 function CopyIcon() {
   return <Icon><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" /></Icon>
+}
+
+function PrintIcon() {
+  return <Icon><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="7" /></Icon>
+}
+
+function LockIcon() {
+  return <Icon><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></Icon>
 }

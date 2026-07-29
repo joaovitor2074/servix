@@ -2,11 +2,14 @@ import { Router } from "express"
 import {
   alterarStatusOrdem,
   atualizarOrdem,
+  buscarCredencialAcessoOrdem,
   buscarOrdem,
   listarHistoricoOrdem,
   listarOrdens,
   removerOrdem
 } from "../controllers/ordens.controllers.js"
+import { PapelUsuario } from "../generated/prisma/enums.js"
+import { autorizar } from "../middlewares/auth.middleware.js"
 import pagamentosRoutes from "./pagamentos.routes.js"
 
 // O middleware de autenticação é aplicado ao prefixo `/ordens` em app.ts.
@@ -22,6 +25,11 @@ router.post("/", (_req, res) => {
 })
 router.use("/:id/pagamentos", pagamentosRoutes)
 router.get("/:id/historico", listarHistoricoOrdem)
+router.get(
+  "/:id/credencial-acesso",
+  autorizar(PapelUsuario.ADMIN, PapelUsuario.TECNICO),
+  buscarCredencialAcessoOrdem
+)
 router.get("/:id", buscarOrdem)
 // PUT e PATCH compartilham a mesma atualização parcial neste estágio do projeto.
 router.put("/:id", atualizarOrdem)

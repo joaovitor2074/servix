@@ -584,6 +584,24 @@
   }
 }
 
+.edit-order-secret-remove {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  color: #b42318;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.edit-order-secret-remove input {
+  width: 17px;
+  height: 17px;
+  accent-color: #b42318;
+}
+
 @media (max-width: 720px) {
   .edit-order-header {
     grid-template-columns: auto minmax(0, 1fr);

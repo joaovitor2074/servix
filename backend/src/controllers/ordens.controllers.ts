@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from "express"
+import { PapelUsuario } from "../generated/prisma/enums.js"
 
 import {
   alterarStatusOrdemService,
   atualizarOrdemService,
+  buscarCredencialAcessoOrdemService,
   buscarOrdemService,
   listarHistoricoOrdemService,
   listarOrdensService,
@@ -115,7 +117,39 @@ export async function buscarOrdem(
       })
     }
 
-    return res.status(200).json(ordem)
+    return res.status(200).json({
+      ...ordem,
+      podeRevelarCredencial:
+        req.auth.papel === PapelUsuario.ADMIN ||
+        req.auth.papel === PapelUsuario.TECNICO
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+export async function buscarCredencialAcessoOrdem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const id = Number(req.params.id)
+
+    if (idEhInvalido(id)) {
+      return res.status(400).json({ erro: "ID invalido" })
+    }
+
+    const resultado = await buscarCredencialAcessoOrdemService(
+      id,
+      req.auth.empresaId
+    )
+
+    if (!resultado) {
+      return res.status(404).json({ erro: "Ordem de servico nao encontrada" })
+    }
+
+    return res.status(200).json(resultado)
   } catch (error) {
     return next(error)
   }
