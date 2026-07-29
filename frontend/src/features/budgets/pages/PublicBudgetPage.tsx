@@ -258,6 +258,19 @@ export default function PublicBudgetPage() {
               <div><span>Total</span><strong>{formatarMoeda(orcamento.total)}</strong></div>
             </section>
 
+            <section className="public-budget-analysis-note" aria-labelledby="public-budget-analysis-title">
+              <WarningIcon />
+              <div>
+                <h2 id="public-budget-analysis-title">Valor baseado na análise atual</h2>
+                <p>
+                  Se a análise técnica identificar uma necessidade diferente,
+                  a empresa apresentará um orçamento revisado. Nenhum serviço
+                  adicional ou alteração de preço será executado ou cobrado sem
+                  sua nova concordância.
+                </p>
+              </div>
+            </section>
+
             {orcamento.status === 'ENVIADO' && (
               <PaymentMethodChoice
                 value={formaPagamento}

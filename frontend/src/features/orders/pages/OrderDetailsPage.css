@@ -284,6 +284,7 @@
 
   .service-document__items,
   .service-document__payment,
+  .service-document__tracking,
   .service-document__terms,
   .service-document__return {
     margin-top: 12px;
@@ -310,6 +311,31 @@
   .service-document__payment {
     padding: 9px;
     border: 2px solid #111827;
+  }
+
+  .service-document__tracking {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border: 1px solid #667085;
+    break-inside: avoid;
+  }
+
+  .service-document__tracking > div { min-width: 0; }
+  .service-document__tracking p { margin: 0; line-height: 1.35; }
+  .service-document__tracking small {
+    display: block;
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+    color: #475467;
+    font-size: 7pt;
+  }
+
+  .service-document__qr-code {
+    flex: 0 0 auto;
+    fill: #000 !important;
+    stroke: none !important;
   }
 
   .service-document__payment p,

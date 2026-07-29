@@ -37,7 +37,8 @@ export default function FinanceDashboardPage() {
   if (erro && !dados) return <FinanceError message={erro} onRetry={() => void recarregar()} />
   if (!dados) return null
 
-  const { resumo } = dados
+  const { resumo, resumoServicos } = dados
+  const indicadoresServicos = resumoServicos.indicadores
 
   return (
     <div className="finance-page finance-overview">
@@ -58,6 +59,101 @@ export default function FinanceDashboardPage() {
       />
 
       <FinanceSourceNote fonte={dados.fonte} atualizadoEm={dados.atualizadoEm} />
+
+      <section className="finance-service-overview" aria-labelledby="finance-services-title">
+        <header className="finance-service-overview__header">
+          <div>
+            <span className="finance-eyebrow">Serviços da assistência</span>
+            <h2 id="finance-services-title">Quanto os serviços movimentaram</h2>
+            <p>
+              Soma das ordens não canceladas e dos pagamentos confirmados.
+              Consulta somente leitura no ambiente PREVIEW.
+            </p>
+          </div>
+          <span className="finance-service-overview__badge">
+            <FinanceIcon name="flask" /> PREVIEW · SOMENTE LEITURA
+          </span>
+        </header>
+
+        <div className="finance-metrics finance-service-metrics">
+          <FinanceMetric
+            label="Valor de todos os serviços"
+            value={indicadoresServicos.valorTotalServicos}
+            hint={`${indicadoresServicos.quantidadeServicos} ordens não canceladas`}
+            tone="blue"
+            icon={<FinanceIcon name="chart" />}
+          />
+          <FinanceMetric
+            label="Entrou hoje"
+            value={indicadoresServicos.recebidoHoje}
+            hint="Pagamentos confirmados · horário de Brasília"
+            tone="green"
+            icon={<FinanceIcon name="arrow-down" />}
+          />
+          <FinanceMetric
+            label="Recebido neste mês"
+            value={indicadoresServicos.recebidoNoMes}
+            hint={`${formatarMoeda(indicadoresServicos.totalRecebido)} recebido no total`}
+            tone="purple"
+            icon={<FinanceIcon name="calendar" />}
+          />
+          <FinanceMetric
+            label="Falta receber"
+            value={indicadoresServicos.aReceber}
+            hint={`${indicadoresServicos.servicosEmAberto} serviços em aberto`}
+            tone="red"
+            icon={<FinanceIcon name="wallet" />}
+          />
+        </div>
+
+        <div className="finance-service-facts">
+          <div><span>Ticket médio por serviço</span><strong>{formatarMoeda(indicadoresServicos.ticketMedio)}</strong></div>
+          <div><span>Total já recebido</span><strong>{formatarMoeda(indicadoresServicos.totalRecebido)}</strong></div>
+          <div><span>Atualizado</span><strong>{formatarDataCurta(resumoServicos.geradoEm)}</strong></div>
+        </div>
+
+        <section className="finance-card finance-card--services">
+          <FinanceCardHeader
+            eyebrow="Ordens recentes"
+            title="Serviços e saldos"
+            description="Compare o valor da ordem, o que já entrou e o saldo que ainda falta receber."
+          />
+          {resumoServicos.servicosRecentes.length === 0 ? (
+            <div className="finance-services-empty">
+              <FinanceIcon name="inbox" />
+              <strong>Nenhum serviço cadastrado</strong>
+              <span>As ordens aparecerão aqui assim que forem criadas.</span>
+            </div>
+          ) : (
+            <div className="finance-services-table-wrap">
+              <table className="finance-services-table">
+                <thead>
+                  <tr>
+                    <th>Ordem</th>
+                    <th>Cliente e aparelho</th>
+                    <th>Status</th>
+                    <th>Valor</th>
+                    <th>Recebido</th>
+                    <th>Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resumoServicos.servicosRecentes.map(servico => (
+                    <tr key={servico.id}>
+                      <td data-label="Ordem"><Link to={`/ordens/${servico.id}`}>#{servico.numero}</Link></td>
+                      <td data-label="Cliente e aparelho"><strong>{servico.cliente}</strong><small>{servico.equipamento}</small></td>
+                      <td data-label="Status"><span className={`finance-service-status finance-service-status--${servico.status.toLowerCase()}`}>{rotuloStatusServico(servico.status)}</span></td>
+                      <td data-label="Valor">{formatarMoeda(servico.valor)}</td>
+                      <td data-label="Recebido" className="finance-value">{formatarMoeda(servico.totalPago)}</td>
+                      <td data-label="Saldo" className={servico.saldo > 0 ? 'finance-service-balance--open' : 'finance-service-balance--paid'}>{formatarMoeda(servico.saldo)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </section>
 
       <section className="finance-metrics" aria-label="Indicadores financeiros">
         <FinanceMetric
@@ -207,6 +303,18 @@ export default function FinanceDashboardPage() {
       )}
     </div>
   )
+}
+
+function rotuloStatusServico(status: FinanceiroPreviewSnapshot['resumoServicos']['servicosRecentes'][number]['status']) {
+  return {
+    RECEBIDO: 'Recebido',
+    EM_ANALISE: 'Em análise',
+    EM_EXECUCAO: 'Em execução',
+    AGUARDANDO_PECA: 'Aguardando peça',
+    PRONTO: 'Pronto',
+    ENTREGUE: 'Entregue',
+    CANCELADO: 'Cancelado',
+  }[status]
 }
 
 function FinanceMetric({

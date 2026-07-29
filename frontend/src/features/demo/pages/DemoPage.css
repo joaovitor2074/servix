@@ -1352,11 +1352,25 @@
 }
 
 .demo-finance-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .demo-finance-summary article:first-child strong { color: #087443; }
 .demo-finance-summary article:nth-child(2) strong { color: #9a5700; }
+
+.demo-budget-analysis-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 11px;
+  padding: 11px;
+  color: #69450c;
+  border: 1px solid #ebd3a5;
+  border-radius: 8px;
+  background: #fff9eb;
+}
+
+.demo-budget-analysis-note strong { font-size: 10px; }
+.demo-budget-analysis-note p { color: #7b643d; font-size: 10px; line-height: 1.45; }
 
 .demo-payment-row {
   display: grid;

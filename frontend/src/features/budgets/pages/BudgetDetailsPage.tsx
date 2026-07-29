@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { QRCodeSVG } from 'qrcode.react'
 import BudgetStatusBadge from '../components/BudgetStatusBadge'
 import {
   alterarStatusOrcamento,
@@ -8,6 +9,7 @@ import {
   transformarOrcamentoEmOrdem,
 } from '../services/budgets.service'
 import {
+  STATUS_ORCAMENTO_LABELS,
   TIPO_ITEM_ORCAMENTO_LABELS,
   type Orcamento,
   type StatusOrcamento,
@@ -195,6 +197,7 @@ export default function BudgetDetailsPage() {
         </div>
         <div className="budget-details-header__actions">
           <BudgetStatusBadge status={orcamento.status} dot />
+          <button className="budget-action budget-action--secondary" type="button" onClick={() => window.print()}><PrintIcon /> Imprimir orçamento</button>
           {podeEditar && <Link className="budget-action budget-action--secondary" to={`/orcamentos/${orcamento.id}/editar`}><PencilIcon /> Editar</Link>}
           {podeEnviar && <button className="budget-action budget-action--primary" type="button" disabled={Boolean(processando)} onClick={() => void alterarStatus('ENVIADO')}><SendIcon />{processando === 'ENVIADO' ? 'Enviando...' : 'Marcar como enviado'}</button>}
           {podeReabrir && <button className="budget-action budget-action--secondary" type="button" disabled={Boolean(processando)} onClick={() => void alterarStatus('RASCUNHO')}><RefreshIcon />{processando === 'RASCUNHO' ? 'Reabrindo...' : 'Reabrir rascunho'}</button>}
@@ -368,6 +371,119 @@ export default function BudgetDetailsPage() {
           </div>
         </GuidedDialog>
       )}
+      <BudgetDocument orcamento={orcamento} linkPublico={linkPublico} />
+    </div>
+  )
+}
+
+function BudgetDocument({
+  orcamento,
+  linkPublico,
+}: {
+  orcamento: Orcamento
+  linkPublico: string
+}) {
+  const enderecoEmpresa = [
+    orcamento.empresa.endereco,
+    orcamento.empresa.cidade,
+    orcamento.empresa.estado,
+  ].filter(Boolean).join(' - ')
+
+  return (
+    <article className="budget-document" aria-hidden="true">
+      <header className="budget-document__header">
+        <div>
+          <strong>{orcamento.empresa.nome}</strong>
+          {orcamento.empresa.cpfCnpj && <span>CPF/CNPJ: {orcamento.empresa.cpfCnpj}</span>}
+          {enderecoEmpresa && <span>{enderecoEmpresa}</span>}
+          <span>{[orcamento.empresa.telefone, orcamento.empresa.email].filter(Boolean).join(' - ')}</span>
+        </div>
+        <div>
+          <span>ORÇAMENTO</span>
+          <strong>{formatarNumeroOrcamento(orcamento.numero)}</strong>
+          <time dateTime={orcamento.criadoEm}>{formatarDataHora(orcamento.criadoEm)}</time>
+        </div>
+      </header>
+
+      <section className="budget-document__grid">
+        <DocumentField label="Cliente" value={orcamento.cliente.nome} />
+        <DocumentField label="Telefone" value={formatarTelefone(orcamento.cliente.telefone)} />
+        <DocumentField label="Equipamento" value={orcamento.equipamento} wide />
+        <DocumentField label="Problema informado" value={orcamento.descricaoProblema} wide />
+        <DocumentField label="Validade da proposta" value={formatarData(orcamento.validade)} />
+        <DocumentField label="Situação" value={STATUS_ORCAMENTO_LABELS[orcamento.status]} />
+      </section>
+
+      <section className="budget-document__items">
+        <h2>Itens da proposta</h2>
+        <table>
+          <thead><tr><th>Descrição</th><th>Qtd.</th><th>Unitário</th><th>Total</th></tr></thead>
+          <tbody>
+            {orcamento.itens.map(item => (
+              <tr key={item.id}>
+                <td>{item.descricao}</td>
+                <td>{item.quantidade}</td>
+                <td>{formatarMoeda(item.valorUnitario)}</td>
+                <td>{formatarMoeda(item.valorTotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="budget-document__totals">
+        <p><span>Subtotal</span><strong>{formatarMoeda(orcamento.subtotal)}</strong></p>
+        <p><span>Desconto</span><strong>− {formatarMoeda(orcamento.desconto)}</strong></p>
+        <p><span>Total estimado</span><strong>{formatarMoeda(orcamento.total)}</strong></p>
+      </section>
+
+      <section className="budget-document__analysis-note">
+        <h2>Estimativa sujeita à análise técnica</h2>
+        <p>
+          Os valores correspondem aos itens e condições descritos com base na
+          análise disponível na emissão. Se a análise técnica identificar uma
+          necessidade diferente, a assistência apresentará um orçamento revisado.
+          Nenhum serviço adicional ou alteração de preço será executado ou cobrado
+          sem nova concordância do cliente.
+        </p>
+        <small>Após aprovado, o orçamento obriga as partes, ressalvada a livre negociação posterior, conforme o art. 40 do CDC.</small>
+      </section>
+
+      {orcamento.observacoes && (
+        <section className="budget-document__observations">
+          <h2>Observações</h2>
+          <p>{orcamento.observacoes}</p>
+        </section>
+      )}
+
+      <section className="budget-document__qr">
+        <QRCodeSVG
+          className="budget-document__qr-code"
+          value={linkPublico}
+          size={82}
+          level="M"
+          title="QR Code para revisar o orçamento"
+        />
+        <div>
+          <strong>Revise e responda pelo celular</strong>
+          <p>Aponte a câmera para o QR Code e abra o orçamento sem digitar o endereço.</p>
+          <small>{linkPublico}</small>
+        </div>
+      </section>
+
+      <section className="budget-document__signatures">
+        <div><span>Cliente/responsável - aprovação e data</span></div>
+        <div><span>Responsável pela assistência</span></div>
+      </section>
+    </article>
+  )
+}
+
+function DocumentField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+  return (
+    <div className={wide ? 'budget-document__field budget-document__field--wide' : 'budget-document__field'}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   )
 }
@@ -436,6 +552,7 @@ function deveOrientarEnvio(state: unknown) { return typeof state === 'object' &&
 function Icon({ children }: { children: ReactNode }) { return <svg viewBox="0 0 24 24" aria-hidden="true">{children}</svg> }
 function ArrowLeftIcon() { return <Icon><path d="m15 18-6-6 6-6" /></Icon> }
 function PencilIcon() { return <Icon><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></Icon> }
+function PrintIcon() { return <Icon><path d="M7 9V3h10v6M7 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-3" /><path d="M7 14h10v7H7z" /></Icon> }
 function SendIcon() { return <Icon><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></Icon> }
 function ToolIcon() { return <Icon><path d="M14.5 6.5a4 4 0 0 0-5-5l2.1 2.1-3 3L6.5 4.5a4 4 0 0 0 5 5L19 17l2-2-6.5-8.5Z" /></Icon> }
 function CheckIcon() { return <Icon><path d="m5 12 4 4L19 6" /></Icon> }

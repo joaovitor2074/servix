@@ -123,6 +123,41 @@ export interface ResumoFinanceiro {
   pagoNoMes: number
 }
 
+export interface ServicoResumoFinanceiro {
+  id: string
+  numero: number
+  cliente: string
+  equipamento: string
+  status:
+    | 'RECEBIDO'
+    | 'EM_ANALISE'
+    | 'EM_EXECUCAO'
+    | 'AGUARDANDO_PECA'
+    | 'PRONTO'
+    | 'ENTREGUE'
+    | 'CANCELADO'
+  criadoEm: string
+  valor: number
+  totalPago: number
+  saldo: number
+}
+
+export interface ResumoServicosFinanceiro {
+  fusoHorario: string
+  geradoEm: string
+  indicadores: {
+    valorTotalServicos: number
+    quantidadeServicos: number
+    servicosEmAberto: number
+    recebidoHoje: number
+    recebidoNoMes: number
+    totalRecebido: number
+    aReceber: number
+    ticketMedio: number
+  }
+  servicosRecentes: ServicoResumoFinanceiro[]
+}
+
 export type FonteDadosFinanceiros = 'API_PREVIEW' | 'DEMONSTRACAO_LOCAL'
 
 export interface FinanceiroPreviewSnapshot {
@@ -130,6 +165,7 @@ export interface FinanceiroPreviewSnapshot {
   atualizadoEm: string
   fonte: FonteDadosFinanceiros
   resumo: ResumoFinanceiro
+  resumoServicos: ResumoServicosFinanceiro
   lancamentos: LancamentoFinanceiro[]
   categorias: CategoriaFinanceira[]
   centrosCusto: CentroCustoFinanceiro[]

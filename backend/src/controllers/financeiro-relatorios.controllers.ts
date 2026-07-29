@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from "express"
 import {
   buscarDashboardFinanceiroService,
   buscarFluxoCaixaFinanceiroService,
+  buscarResumoServicosFinanceiroService,
   listarAuditoriaFinanceiraService
 } from "../services/financeiro-relatorios.service.js"
 import {
@@ -20,6 +21,13 @@ export async function buscarDashboardFinanceiroController(req: Request, res: Res
   try {
     const dashboard = await buscarDashboardFinanceiroService(req.auth.empresaId)
     return res.status(200).json(dashboard)
+  } catch (error) { return next(error) }
+}
+
+export async function buscarResumoServicosFinanceiroController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const resumo = await buscarResumoServicosFinanceiroService(req.auth.empresaId)
+    return res.status(200).json(resumo)
   } catch (error) { return next(error) }
 }
 

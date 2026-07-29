@@ -85,6 +85,15 @@ export interface Orcamento {
   cliente: ClienteResumoOrcamento
   itens: ItemOrcamento[]
   ordem: OrdemResumoOrcamento | null
+  empresa: {
+    nome: string
+    telefone?: string | null
+    email?: string | null
+    cpfCnpj?: string | null
+    endereco?: string | null
+    cidade?: string | null
+    estado?: string | null
+  }
 }
 
 export interface ItemOrcamentoInput {

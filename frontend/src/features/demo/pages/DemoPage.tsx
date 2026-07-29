@@ -592,6 +592,15 @@ function DemoBudgets({
             </span>
           </div>
 
+          <div className="demo-budget-analysis-note">
+            <strong>Valor baseado na análise atual</strong>
+            <p>
+              Se surgir uma necessidade diferente, a assistência envia um
+              orçamento revisado. A alteração só avança após nova concordância
+              do cliente.
+            </p>
+          </div>
+
           <div className="demo-card-actions">
             <button
               type="button"
@@ -864,7 +873,17 @@ function DemoFinance({
 
       <div className="demo-finance-summary">
         <article>
-          <span>Recebido no período</span>
+          <span>Valor dos serviços</span>
+          <strong>R$ 14.100,00</strong>
+          <small>32 ordens não canceladas</small>
+        </article>
+        <article>
+          <span>Entrou hoje</span>
+          <strong>R$ 750,00</strong>
+          <small>Pagamentos confirmados</small>
+        </article>
+        <article>
+          <span>Recebido no mês</span>
           <strong>{formatCurrency(received)}</strong>
           <small>Pagamentos confirmados</small>
         </article>
@@ -872,11 +891,6 @@ function DemoFinance({
           <span>A receber</span>
           <strong>{formatCurrency(pending)}</strong>
           <small>Ordens com saldo aberto</small>
-        </article>
-        <article>
-          <span>Ticket médio</span>
-          <strong>R$ 438,00</strong>
-          <small>Por serviço entregue</small>
         </article>
       </div>
 
@@ -969,6 +983,7 @@ function DemoTracking({
             <li>Previsão e valor aprovado</li>
             <li>Resumo do pagamento</li>
             <li>Histórico de mensagens públicas</li>
+            <li>QR Code impresso abre o acompanhamento direto</li>
             <li>PIN ou senha do aparelho nunca aparece</li>
           </ul>
           <div className="demo-tracking-link">

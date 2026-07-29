@@ -4,6 +4,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
+import { QRCodeSVG } from 'qrcode.react'
 import PaymentPanel from '../../payments/components/PaymentPanel'
 import {
   STATUS_ORDEM_LABELS,
@@ -543,12 +544,18 @@ export default function OrderDetailsPage() {
           </div>
         </aside>
       </div>
-      <ServiceDocument ordem={ordemAtual} />
+      <ServiceDocument ordem={ordemAtual} linkAcompanhamento={linkAcompanhamento} />
     </div>
   )
 }
 
-function ServiceDocument({ ordem }: { ordem: OrdemServico }) {
+function ServiceDocument({
+  ordem,
+  linkAcompanhamento,
+}: {
+  ordem: OrdemServico
+  linkAcompanhamento: string | null
+}) {
   const totalPago = Number(ordem.pagamentoResumo?.totalPago ?? 0)
   const possuiPagamento = Number.isFinite(totalPago) && totalPago > 0
   const empresa = ordem.empresa
@@ -587,6 +594,23 @@ function ServiceDocument({ ordem }: { ordem: OrdemServico }) {
         />
         <DocumentField label="Valor aprovado" value={formatarValor(ordem.valor)} />
       </section>
+
+      {linkAcompanhamento && (
+        <section className="service-document__tracking">
+          <QRCodeSVG
+            className="service-document__qr-code"
+            value={linkAcompanhamento}
+            size={82}
+            level="M"
+            title="QR Code para acompanhar a ordem"
+          />
+          <div>
+            <h2>Acompanhe seu serviço pelo celular</h2>
+            <p>Aponte a câmera para o QR Code e abra o acompanhamento sem digitar o endereço.</p>
+            <small>{linkAcompanhamento}</small>
+          </div>
+        </section>
+      )}
 
       {ordem.orcamento.itens && ordem.orcamento.itens.length > 0 && (
         <section className="service-document__items">

@@ -1,5 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js"
 import {
+  StatusOrdem,
+  StatusRegistroPagamento,
   StatusLancamentoFinanceiro,
   StatusMovimentacaoFinanceira,
   TipoLancamentoFinanceiro,
@@ -23,6 +25,99 @@ const TIPOS_TRANSFERENCIA = [
   TipoMovimentacaoFinanceira.TRANSFERENCIA_ENTRADA,
   TipoMovimentacaoFinanceira.TRANSFERENCIA_SAIDA
 ]
+
+const FUSO_HORARIO_FINANCEIRO = "America/Sao_Paulo"
+const STATUS_SERVICOS_EM_ABERTO = [
+  StatusOrdem.RECEBIDO,
+  StatusOrdem.EM_ANALISE,
+  StatusOrdem.EM_EXECUCAO,
+  StatusOrdem.AGUARDANDO_PECA,
+  StatusOrdem.PRONTO
+]
+
+type PartesData = {
+  ano: number
+  mes: number
+  dia: number
+  hora: number
+  minuto: number
+  segundo: number
+}
+
+function partesDataNoFuso(data: Date): PartesData {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: FUSO_HORARIO_FINANCEIRO,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(data)
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) =>
+    Number(partes.find(parte => parte.type === tipo)?.value ?? 0)
+
+  return {
+    ano: valor("year"),
+    mes: valor("month"),
+    dia: valor("day"),
+    hora: valor("hour"),
+    minuto: valor("minute"),
+    segundo: valor("second")
+  }
+}
+
+function horarioLocalParaUtc(
+  ano: number,
+  mes: number,
+  dia: number,
+  hora = 0,
+  minuto = 0,
+  segundo = 0
+) {
+  const alvoComoUtc = Date.UTC(ano, mes - 1, dia, hora, minuto, segundo)
+  let resultado = new Date(alvoComoUtc)
+
+  // Duas passagens tambem cobrem uma eventual mudanca de offset no proprio dia.
+  for (let tentativa = 0; tentativa < 2; tentativa += 1) {
+    const atual = partesDataNoFuso(resultado)
+    const atualComoUtc = Date.UTC(
+      atual.ano,
+      atual.mes - 1,
+      atual.dia,
+      atual.hora,
+      atual.minuto,
+      atual.segundo
+    )
+    resultado = new Date(resultado.getTime() + alvoComoUtc - atualComoUtc)
+  }
+
+  return resultado
+}
+
+function limitesFinanceiros(agora: Date) {
+  const hoje = partesDataNoFuso(agora)
+  const calendarioHoje = new Date(Date.UTC(hoje.ano, hoje.mes - 1, hoje.dia))
+  const calendarioAmanha = new Date(calendarioHoje)
+  calendarioAmanha.setUTCDate(calendarioAmanha.getUTCDate() + 1)
+  const calendarioProximoMes = new Date(Date.UTC(hoje.ano, hoje.mes, 1))
+
+  return {
+    inicioHoje: horarioLocalParaUtc(hoje.ano, hoje.mes, hoje.dia),
+    inicioAmanha: horarioLocalParaUtc(
+      calendarioAmanha.getUTCFullYear(),
+      calendarioAmanha.getUTCMonth() + 1,
+      calendarioAmanha.getUTCDate()
+    ),
+    inicioMes: horarioLocalParaUtc(hoje.ano, hoje.mes, 1),
+    inicioProximoMes: horarioLocalParaUtc(
+      calendarioProximoMes.getUTCFullYear(),
+      calendarioProximoMes.getUTCMonth() + 1,
+      calendarioProximoMes.getUTCDate()
+    )
+  }
+}
 
 function inicioDiaUtc(data: Date): Date {
   return new Date(Date.UTC(
@@ -199,6 +294,124 @@ export async function buscarDashboardFinanceiroService(empresaId: number) {
       resultado: realizado.entradas.minus(realizado.saidas)
     },
     proximosVencimentos: proximosVencimentos.slice(0, 12)
+  }
+}
+
+export async function buscarResumoServicosFinanceiroService(
+  empresaId: number,
+  agora = new Date()
+) {
+  const limites = limitesFinanceiros(agora)
+  const filtroServicosValidos = {
+    empresaId,
+    status: { not: StatusOrdem.CANCELADO }
+  } as const
+  const filtroPagamentosConfirmados = {
+    empresaId,
+    status: StatusRegistroPagamento.CONFIRMADO,
+    ordem: { status: { not: StatusOrdem.CANCELADO } }
+  } as const
+
+  const [
+    totalServicos,
+    servicosEmAberto,
+    recebidoTotal,
+    recebidoHoje,
+    recebidoNoMes,
+    servicosRecentes
+  ] = await Promise.all([
+    prisma.ordemServico.aggregate({
+      where: filtroServicosValidos,
+      _sum: { valor: true },
+      _avg: { valor: true },
+      _count: { _all: true }
+    }),
+    prisma.ordemServico.count({
+      where: { empresaId, status: { in: STATUS_SERVICOS_EM_ABERTO } }
+    }),
+    prisma.pagamento.aggregate({
+      where: filtroPagamentosConfirmados,
+      _sum: { valor: true }
+    }),
+    prisma.pagamento.aggregate({
+      where: {
+        ...filtroPagamentosConfirmados,
+        pagoEm: { gte: limites.inicioHoje, lt: limites.inicioAmanha }
+      },
+      _sum: { valor: true }
+    }),
+    prisma.pagamento.aggregate({
+      where: {
+        ...filtroPagamentosConfirmados,
+        pagoEm: { gte: limites.inicioMes, lt: limites.inicioProximoMes }
+      },
+      _sum: { valor: true }
+    }),
+    prisma.ordemServico.findMany({
+      where: filtroServicosValidos,
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
+      take: 8,
+      select: {
+        id: true,
+        numero: true,
+        equipamento: true,
+        status: true,
+        valor: true,
+        criadoEm: true,
+        cliente: { select: { nome: true } },
+        pagamentos: {
+          where: { status: StatusRegistroPagamento.CONFIRMADO },
+          select: { valor: true }
+        }
+      }
+    })
+  ])
+
+  const valorTotalServicos = totalServicos._sum.valor ?? new Prisma.Decimal(0)
+  const totalRecebido = recebidoTotal._sum.valor ?? new Prisma.Decimal(0)
+  const saldoCalculado = valorTotalServicos.minus(totalRecebido)
+
+  return {
+    ambiente: AMBIENTE_FINANCEIRO_PREVIEW,
+    fusoHorario: FUSO_HORARIO_FINANCEIRO,
+    geradoEm: agora,
+    periodo: {
+      inicioHoje: limites.inicioHoje,
+      fimHojeExclusivo: limites.inicioAmanha,
+      inicioMes: limites.inicioMes,
+      fimMesExclusivo: limites.inicioProximoMes
+    },
+    indicadores: {
+      valorTotalServicos,
+      quantidadeServicos: totalServicos._count._all,
+      servicosEmAberto,
+      recebidoHoje: recebidoHoje._sum.valor ?? new Prisma.Decimal(0),
+      recebidoNoMes: recebidoNoMes._sum.valor ?? new Prisma.Decimal(0),
+      totalRecebido,
+      aReceber: saldoCalculado.lessThan(0)
+        ? new Prisma.Decimal(0)
+        : saldoCalculado,
+      ticketMedio: totalServicos._avg.valor ?? new Prisma.Decimal(0)
+    },
+    servicosRecentes: servicosRecentes.map(servico => {
+      const totalPago = servico.pagamentos.reduce(
+        (total, pagamento) => total.plus(pagamento.valor),
+        new Prisma.Decimal(0)
+      )
+      const saldo = servico.valor.minus(totalPago)
+
+      return {
+        id: servico.id,
+        numero: servico.numero,
+        cliente: servico.cliente.nome,
+        equipamento: servico.equipamento,
+        status: servico.status,
+        criadoEm: servico.criadoEm,
+        valor: servico.valor,
+        totalPago,
+        saldo: saldo.lessThan(0) ? new Prisma.Decimal(0) : saldo
+      }
+    })
   }
 }
 

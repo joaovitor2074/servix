@@ -63,6 +63,17 @@ const orcamentoResumoInclude = {
 
 const orcamentoDetalhadoInclude = {
   ...orcamentoResumoInclude,
+  empresa: {
+    select: {
+      nome: true,
+      telefone: true,
+      email: true,
+      cpfCnpj: true,
+      endereco: true,
+      cidade: true,
+      estado: true
+    }
+  },
   historico: {
     include: {
       alteradoPor: {

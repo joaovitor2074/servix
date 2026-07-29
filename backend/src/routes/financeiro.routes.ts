@@ -29,6 +29,7 @@ import {
 import {
   buscarDashboardFinanceiroController,
   buscarFluxoCaixaFinanceiroController,
+  buscarResumoServicosFinanceiroController,
   listarAuditoriaFinanceiraController
 } from "../controllers/financeiro-relatorios.controllers.js"
 import { PapelUsuario } from "../generated/prisma/enums.js"
@@ -45,6 +46,7 @@ router.use(protegerMutacaoFinanceiroPreview)
 router.use(garantirIdempotenciaFinanceiroPreview)
 
 router.get("/dashboard", buscarDashboardFinanceiroController)
+router.get("/servicos/resumo", buscarResumoServicosFinanceiroController)
 router.get("/fluxo-caixa", buscarFluxoCaixaFinanceiroController)
 router.get("/auditoria", listarAuditoriaFinanceiraController)
 

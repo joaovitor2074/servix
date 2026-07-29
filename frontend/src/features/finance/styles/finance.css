@@ -313,6 +313,125 @@
   gap: 11px;
 }
 
+.finance-service-overview {
+  display: grid;
+  gap: 13px;
+  padding: 17px;
+  border: 1px solid #cfe0f7;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f7faff, #ffffff 54%);
+  box-shadow: 0 10px 28px rgba(15, 40, 77, 0.06);
+}
+
+.finance-service-overview__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.finance-service-overview__header h2 {
+  color: var(--color-text);
+  font-size: 19px;
+  letter-spacing: -0.025em;
+}
+
+.finance-service-overview__header p {
+  max-width: 720px;
+  margin-top: 5px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.finance-service-overview__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  color: #7d4c00;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  border: 1px solid #e5bf72;
+  border-radius: 999px;
+  background: #fff4d9;
+}
+
+.finance-service-overview__badge svg { width: 14px; height: 14px; }
+
+.finance-service-metrics .finance-metric {
+  box-shadow: none;
+}
+
+.finance-service-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e1e8f1;
+  border-radius: 9px;
+  background: #e1e8f1;
+}
+
+.finance-service-facts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #ffffff;
+}
+
+.finance-service-facts span { color: var(--color-text-muted); font-size: 10px; }
+.finance-service-facts strong { color: var(--color-text); font-size: 11px; }
+
+.finance-card--services { box-shadow: none; }
+.finance-services-table-wrap { overflow-x: auto; }
+.finance-services-table { width: 100%; min-width: 760px; border-collapse: collapse; }
+.finance-services-table th,
+.finance-services-table td { padding: 11px 13px; text-align: left; border-bottom: 1px solid #edf1f6; }
+.finance-services-table th { color: var(--color-text-muted); font-size: 9px; text-transform: uppercase; }
+.finance-services-table td { color: var(--color-text); font-size: 11px; }
+.finance-services-table tbody tr:last-child td { border-bottom: 0; }
+.finance-services-table tbody tr:hover { background: #f8faff; }
+.finance-services-table td:first-child a { color: var(--color-primary); font-weight: 800; text-decoration: none; }
+.finance-services-table td:nth-child(2) { display: grid; gap: 2px; }
+.finance-services-table td:nth-child(2) small { color: var(--color-text-muted); font-size: 9px; }
+
+.finance-service-status {
+  display: inline-flex;
+  padding: 4px 7px;
+  color: #315c88;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: #e7f0fb;
+}
+
+.finance-service-status--aguardando_peca { color: #8b580e; background: #fff1d8; }
+.finance-service-status--pronto,
+.finance-service-status--entregue { color: #087341; background: #e3f6ec; }
+.finance-service-status--cancelado { color: #a23939; background: #fde8e8; }
+.finance-service-balance--open { color: #a23939 !important; font-weight: 800; }
+.finance-service-balance--paid { color: #087341 !important; font-weight: 800; }
+
+.finance-services-empty {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-height: 150px;
+  padding: 28px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.finance-services-empty svg { width: 28px; height: 28px; }
+.finance-services-empty strong { color: var(--color-text); font-size: 12px; }
+.finance-services-empty span { font-size: 11px; }
+
 .finance-metric {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1540,6 +1659,7 @@ a.finance-metric:hover {
   .finance-registries-grid { grid-template-columns: 1fr; }
   .finance-cash-position { grid-template-columns: repeat(2, 1fr); }
   .finance-cash-position__main { grid-column: 1 / -1; }
+  .finance-service-facts { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 820px) {
@@ -1577,6 +1697,8 @@ a.finance-metric:hover {
   .finance-preview-banner { align-items: flex-start; top: 64px; }
   .finance-preview-banner__copy small { display: none; }
   .finance-preview-banner__badge { margin-top: 4px; }
+  .finance-service-overview { padding: 13px; }
+  .finance-service-overview__header { flex-direction: column; }
   .finance-tabs { border-radius: 10px; }
   .finance-page { gap: 14px; }
   .finance-page-header__actions { display: grid; }

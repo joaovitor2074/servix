@@ -8,6 +8,8 @@ bancárias e não executa pagamentos reais.
 
 - painel com saldo consolidado, contas a receber, contas a pagar, atrasos e
   resultado previsto;
+- resumo somente leitura das ordens de serviço, com valor total, recebido no
+  dia, recebido no mês e saldo a receber;
 - lançamentos de receitas e despesas, inclusive baixas parciais;
 - contas financeiras, categorias e centros de custo;
 - fluxo de caixa diário e consolidado, separando realizado de previsto;
@@ -94,6 +96,8 @@ Todas usam o prefixo `/preview/financeiro`:
 
 - `GET /dashboard`, `GET /fluxo-caixa`, `GET /movimentacoes` e
   `GET /auditoria`;
+- `GET /servicos/resumo`, leitura das ordens e pagamentos operacionais sem
+  criar lançamentos financeiros;
 - cadastro e edição de `/categorias`, `/centros-custo` e `/contas`;
 - cadastro, edição, baixa, cancelamento e estorno em `/lancamentos`;
 - ajustes em `/movimentacoes/ajustes` e transferências em `/transferencias`.

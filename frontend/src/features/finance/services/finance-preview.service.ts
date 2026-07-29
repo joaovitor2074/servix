@@ -22,6 +22,7 @@ import type {
   PontoFluxoCaixa,
   RegistrarBaixaFinanceiraInput,
   ResumoFinanceiro,
+  ResumoServicosFinanceiro,
   StatusLancamentoFinanceiro,
   TipoLancamentoFinanceiro,
   TipoMovimentacaoFinanceira,
@@ -132,6 +133,13 @@ interface ApiAuditoriaFinanceiraDto {
   usuario?: { id: number; nome: string } | null
 }
 
+interface ApiResumoServicosFinanceiroDto {
+  fusoHorario: string
+  geradoEm: string
+  indicadores: Record<string, unknown>
+  servicosRecentes: Array<Record<string, unknown>>
+}
+
 export class FinanceiroPreviewApiError extends Error {
   readonly status: number
   readonly codigo?: string
@@ -165,6 +173,7 @@ export async function buscarFinanceiroPreview(
       movimentacoesApi,
       fluxoBody,
       auditoriaBody,
+      resumoServicosBody,
     ] =
       await Promise.all([
         obterJson(`${BASE_PATH}/categorias`, { signal: options.signal }),
@@ -177,6 +186,9 @@ export async function buscarFinanceiroPreview(
           { signal: options.signal },
         ),
         obterJson(`${BASE_PATH}/auditoria?pagina=1&limite=20`, {
+          signal: options.signal,
+        }),
+        obterJson(`${BASE_PATH}/servicos/resumo`, {
           signal: options.signal,
         }),
       ])
@@ -198,6 +210,7 @@ export async function buscarFinanceiroPreview(
       atualizadoEm: new Date().toISOString(),
       fonte: 'API_PREVIEW',
       resumo: calcularResumo(lancamentos, contas),
+      resumoServicos: mapearResumoServicosApi(resumoServicosBody),
       lancamentos,
       categorias,
       centrosCusto,
@@ -864,6 +877,40 @@ function mapearAuditoriaApi(
   }
 }
 
+function mapearResumoServicosApi(corpo: unknown): ResumoServicosFinanceiro {
+  const raiz = (comoRegistro(corpo) ?? {}) as unknown as ApiResumoServicosFinanceiroDto
+  const indicadores = comoRegistro(raiz.indicadores) ?? {}
+  const servicos = Array.isArray(raiz.servicosRecentes)
+    ? raiz.servicosRecentes.filter(ehRegistro)
+    : []
+
+  return {
+    fusoHorario: lerTexto(raiz.fusoHorario, 'America/Sao_Paulo'),
+    geradoEm: lerTexto(raiz.geradoEm, new Date().toISOString()),
+    indicadores: {
+      valorTotalServicos: lerNumero(indicadores.valorTotalServicos),
+      quantidadeServicos: lerNumero(indicadores.quantidadeServicos),
+      servicosEmAberto: lerNumero(indicadores.servicosEmAberto),
+      recebidoHoje: lerNumero(indicadores.recebidoHoje),
+      recebidoNoMes: lerNumero(indicadores.recebidoNoMes),
+      totalRecebido: lerNumero(indicadores.totalRecebido),
+      aReceber: lerNumero(indicadores.aReceber),
+      ticketMedio: lerNumero(indicadores.ticketMedio),
+    },
+    servicosRecentes: servicos.map(servico => ({
+      id: String(servico.id ?? ''),
+      numero: lerNumero(servico.numero),
+      cliente: lerTexto(servico.cliente, 'Cliente nao informado'),
+      equipamento: lerTexto(servico.equipamento, 'Equipamento nao informado'),
+      status: lerTexto(servico.status, 'RECEBIDO') as ResumoServicosFinanceiro['servicosRecentes'][number]['status'],
+      criadoEm: lerTexto(servico.criadoEm, new Date().toISOString()),
+      valor: lerNumero(servico.valor),
+      totalPago: lerNumero(servico.totalPago),
+      saldo: lerNumero(servico.saldo),
+    })),
+  }
+}
+
 function mapearLancamentoApi(registro: Record<string, unknown>): LancamentoFinanceiro {
   const dto = registro as unknown as ApiLancamentoFinanceiroDto
   const valor = lerNumero(dto.valorTotal ?? dto.valorOriginal)
@@ -1263,6 +1310,7 @@ function criarDemonstracaoFinanceira(): FinanceiroPreviewSnapshot {
     atualizadoEm: new Date().toISOString(),
     fonte: 'DEMONSTRACAO_LOCAL',
     resumo: calcularResumo(lancamentos, contas),
+    resumoServicos: criarResumoServicosDemonstracao(),
     lancamentos,
     categorias,
     centrosCusto,
@@ -1270,6 +1318,60 @@ function criarDemonstracaoFinanceira(): FinanceiroPreviewSnapshot {
     movimentacoes,
     auditoria,
     fluxoCaixa: calcularFluxoCaixa(lancamentos, movimentacoes),
+  }
+}
+
+function criarResumoServicosDemonstracao(): ResumoServicosFinanceiro {
+  const agora = new Date().toISOString()
+
+  return {
+    fusoHorario: 'America/Sao_Paulo',
+    geradoEm: agora,
+    indicadores: {
+      valorTotalServicos: 14100,
+      quantidadeServicos: 32,
+      servicosEmAberto: 12,
+      recebidoHoje: 750,
+      recebidoNoMes: 11730,
+      totalRecebido: 12480,
+      aReceber: 1620,
+      ticketMedio: 440.63,
+    },
+    servicosRecentes: [
+      {
+        id: 'demo-os-1049',
+        numero: 1049,
+        cliente: 'Bruno Martins',
+        equipamento: 'Galaxy A54',
+        status: 'ENTREGUE',
+        criadoEm: agora,
+        valor: 420,
+        totalPago: 420,
+        saldo: 0,
+      },
+      {
+        id: 'demo-os-1048',
+        numero: 1048,
+        cliente: 'Carlos Almeida',
+        equipamento: 'iPhone 13',
+        status: 'EM_EXECUCAO',
+        criadoEm: agora,
+        valor: 750,
+        totalPago: 750,
+        saldo: 0,
+      },
+      {
+        id: 'demo-os-1045',
+        numero: 1045,
+        cliente: 'Juliana Costa',
+        equipamento: 'Galaxy S22',
+        status: 'PRONTO',
+        criadoEm: agora,
+        valor: 360,
+        totalPago: 180,
+        saldo: 180,
+      },
+    ],
   }
 }
 

@@ -18,9 +18,10 @@ export default function FinanceLayout() {
           <FlaskIcon />
         </span>
         <span className="finance-preview-banner__copy">
-          <strong>Ambiente de teste — nenhuma movimentação real</strong>
+          <strong>Financeiro em avaliação — ambiente PREVIEW</strong>
           <small>
-            Dados e ações desta área estão isolados do financeiro de produção.
+            O resumo dos serviços é somente leitura; lançamentos e ações
+            financeiras continuam isolados da produção.
           </small>
         </span>
         <span className="finance-preview-banner__badge">PREVIEW</span>

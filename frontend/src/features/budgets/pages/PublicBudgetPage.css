@@ -30,6 +30,10 @@
 .public-budget-totals > div { display: flex; justify-content: space-between; gap: 15px; color: #536479; font-size: 12px; }
 .public-budget-totals > div:last-child { padding-top: 10px; color: var(--color-text); font-size: 16px; border-top: 1px solid #c7e8d7; }
 .public-budget-totals > div:last-child strong { color: #087443; font-size: 23px; }
+.public-budget-analysis-note { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: flex-start; gap: 10px; margin: 0 24px 20px; padding: 14px; color: #69450c; border: 1px solid #ebd3a5; border-radius: 10px; background: #fff9eb; }
+.public-budget-analysis-note > svg { width: 20px; height: 20px; }
+.public-budget-analysis-note h2 { font-size: 12px; }
+.public-budget-analysis-note p { margin-top: 4px; color: #7b643d; font-size: 11px; line-height: 1.5; }
 .public-budget-payment-method { display: grid; gap: 15px; margin: 0 24px 20px; padding: 17px; border: 1px solid #d8e1ef; border-radius: 12px; background: #fbfcff; }
 .public-budget-payment-method--error { border-color: #e7a6a6; box-shadow: 0 0 0 3px rgba(188, 43, 43, .06); }
 .public-budget-payment-method__header { display: flex; align-items: flex-start; gap: 11px; }
