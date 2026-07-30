@@ -4,7 +4,12 @@ import type { Prisma } from "../generated/prisma/client.js"
 import { PapelUsuario } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import { erroPrismaPossuiCodigo } from "../lib/prisma-errors.js"
-import type { CriarUsuarioInput, ListarUsuarioQuery, AtualizarUsuarioInput } from "../validators/usuario.validator.js"
+import type {
+    CriarUsuarioInput,
+    ListarUsuarioQuery,
+    AtualizarUsuarioInput,
+    RedefinirSenhaUsuarioInput
+} from "../validators/usuario.validator.js"
 
 // Lista usuários somente da empresa autenticada e permite buscar por nome ou
 // e-mail sem diferenciar letras maiúsculas e minúsculas.
@@ -20,6 +25,7 @@ export async function listarUsuariosService(empresaId: number, filtro: ListarUsu
                     },
                 },
                 { email: { contains: filtro.busca, mode: "insensitive" } },
+                { telefone: { contains: filtro.busca } },
             ]
         } : {})
     }
@@ -39,6 +45,7 @@ export async function listarUsuariosService(empresaId: number, filtro: ListarUsu
                 id: true,
                 nome: true,
                 email: true,
+                telefone: true,
                 papel: true,
                 ativo: true,
                 criadoEm: true,
@@ -70,6 +77,7 @@ export async function buscarUsuarioService(id: number, empresaId: number) {
             id: true,
             nome: true,
             email: true,
+            telefone: true,
             papel: true,
             ativo: true,
             criadoEm: true,
@@ -83,27 +91,35 @@ export async function buscarUsuarioService(id: number, empresaId: number) {
 // select da resposta não inclui `senhaHash`.
 export async function criarUsuarioService(empresaId: number, dados: CriarUsuarioInput) {
     const usuarioSenha = await hash(dados.senha, 12)
-    const usuario = await prisma.usuario.create({
-        data: {
-            empresaId,
-            nome: dados.nome,
-            email: dados.email,
-            senhaHash: usuarioSenha,
-            papel: dados.papel
+    try {
+        const usuario = await prisma.usuario.create({
+            data: {
+                empresaId,
+                nome: dados.nome,
+                email: dados.email,
+                telefone: dados.telefone ?? null,
+                senhaHash: usuarioSenha,
+                papel: dados.papel
+            },
+            select: {
+                id: true,
+                nome: true,
+                email: true,
+                telefone: true,
+                papel: true,
+                ativo: true,
+                criadoEm: true,
+                atualizadoEm: true
+            }
+        })
 
-        },
-        select: {
-            id: true,
-            nome: true,
-            email: true,
-            papel: true,
-            ativo: true,
-            criadoEm: true,
-            atualizadoEm: true
+        return { sucesso: true as const, usuario }
+    } catch (error) {
+        if (erroPrismaPossuiCodigo(error, "P2002")) {
+            return { sucesso: false as const, motivo: "email_duplicado" as const }
         }
-    })
-
-    return usuario
+        throw error
+    }
 }
 
 // Atualiza os dados permitidos e protege a empresa contra ficar sem um
@@ -111,7 +127,8 @@ export async function criarUsuarioService(empresaId: number, dados: CriarUsuario
 export async function atualizarUsuarioService(
     id: number,
     dados: AtualizarUsuarioInput,
-    empresaId: number
+    empresaId: number,
+    usuarioAutenticadoId: number
 ) {
     // Somente campos presentes são enviados ao Prisma.
     const data: Prisma.UsuarioUpdateInput = {
@@ -120,6 +137,9 @@ export async function atualizarUsuarioService(
         }),
         ...(dados.email !== undefined && {
             email: dados.email
+        }),
+        ...(dados.telefone !== undefined && {
+            telefone: dados.telefone
         }),
         ...(dados.papel !== undefined && {
             papel: dados.papel
@@ -145,6 +165,17 @@ export async function atualizarUsuarioService(
                 return {
                     sucesso: false as const,
                     motivo: "usuario_nao_encontrado" as const
+                }
+            }
+
+            if (
+                id === usuarioAutenticadoId &&
+                dados.papel !== undefined &&
+                dados.papel !== PapelUsuario.ADMIN
+            ) {
+                return {
+                    sucesso: false as const,
+                    motivo: "propria_conta" as const
                 }
             }
 
@@ -181,6 +212,7 @@ export async function atualizarUsuarioService(
                     id: true,
                     nome: true,
                     email: true,
+                    telefone: true,
                     papel: true,
                     ativo: true,
                     criadoEm: true,
@@ -283,6 +315,7 @@ export async function alterarAtivoUsuarioService(
                 id: true,
                 nome: true,
                 email: true,
+                telefone: true,
                 papel: true,
                 ativo: true,
                 criadoEm: true,
@@ -294,4 +327,27 @@ export async function alterarAtivoUsuarioService(
             usuario: usuarioAtualizado
         }
     })
+}
+
+export async function redefinirSenhaUsuarioService(
+    id: number,
+    empresaId: number,
+    dados: RedefinirSenhaUsuarioInput
+) {
+    const usuarioExistente = await prisma.usuario.findFirst({
+        where: { id, empresaId },
+        select: { id: true }
+    })
+
+    if (!usuarioExistente) {
+        return { sucesso: false as const, motivo: "usuario_nao_encontrado" as const }
+    }
+
+    const senhaHash = await hash(dados.senha, 12)
+    await prisma.usuario.update({
+        where: { id, empresaId },
+        data: { senhaHash }
+    })
+
+    return { sucesso: true as const }
 }

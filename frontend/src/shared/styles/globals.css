@@ -50,6 +50,20 @@ body {
   min-height: 100vh;
 }
 
+html[data-performance='reduced'] {
+  text-rendering: auto;
+  --shadow-card: 0 6px 18px rgba(25, 49, 86, 0.08);
+}
+
+html[data-performance='reduced'] *,
+html[data-performance='reduced'] *::before,
+html[data-performance='reduced'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+  backdrop-filter: none !important;
+}
+
 .route-loading {
   display: grid;
   min-height: 100vh;

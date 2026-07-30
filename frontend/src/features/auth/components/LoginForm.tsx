@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { loginSchema } from '../schemas/login.schema'
 import { login as realizarLogin } from '../services/auth.service'
-import { salvarToken } from '../../../shared/utils/token-storage'
+import { salvarSessao } from '../../../shared/utils/token-storage'
 import type { UsuarioAutenticado } from '../types/auth.types'
 import './LoginForm.css'
 
@@ -43,7 +43,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
         try {
             const resposta = await realizarLogin(resultado.data)
-            salvarToken(resposta.token)
+            salvarSessao(resposta.token, resposta.usuario)
             onLogin(resposta.usuario)
         } catch (erro) {
             if (erro instanceof Error) {

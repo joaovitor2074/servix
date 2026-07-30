@@ -23,6 +23,16 @@ export const criarUsuarioSchema = z
       .email({ message: "Formato de e-mail inválido." })
       .max(254),
 
+    telefone: z
+      .union([
+        z.string().trim().regex(/^\+?[0-9 ()-]{8,20}$/, {
+          message: "Informe um telefone válido."
+        }),
+        z.literal("")
+      ])
+      .transform(valor => valor || null)
+      .optional(),
+
     senha: z
       .string()
       .min(8, { message: "A senha deve possuir pelo menos 8 caracteres." })
@@ -57,10 +67,20 @@ export const alterarAtivoUsuarioSchema = z
   })
   .strict()
 
+export const redefinirSenhaUsuarioSchema = z
+  .object({
+    senha: z
+      .string()
+      .min(8, { message: "A senha deve possuir pelo menos 8 caracteres." })
+      .max(128)
+  })
+  .strict()
+
 export type AlterarAtivoUsuarioInput = z.infer<typeof alterarAtivoUsuarioSchema>
 export type CriarUsuarioInput = z.infer<typeof criarUsuarioSchema>
 export type ListarUsuarioQuery = z.infer<typeof listarUsuarioQuerySchema>
 export type AtualizarUsuarioInput = z.infer<typeof atualizarUsuarioSchema>
+export type RedefinirSenhaUsuarioInput = z.infer<typeof redefinirSenhaUsuarioSchema>
 
 export function validarAlteracaoAtivoUsuario(dados: unknown) {
   return validarComSchema(alterarAtivoUsuarioSchema, dados)
@@ -72,6 +92,10 @@ export function validarAtualizacaoUsuario(dados: unknown) {
 
 export function validarCriacaoUsuario(dados: unknown) {
   return validarComSchema(criarUsuarioSchema, dados)
+}
+
+export function validarRedefinicaoSenhaUsuario(dados: unknown) {
+  return validarComSchema(redefinirSenhaUsuarioSchema, dados)
 }
 
 export function validarQueryUsuarios(dados:unknown){

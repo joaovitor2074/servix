@@ -10,6 +10,29 @@ interface AppLayoutProps {
   onLogout: () => void
 }
 
+const PRECARREGADORES = {
+  dashboard: () => import('../../features/dashboard/pages/DashboardPage'),
+  clientes: () => import('../../features/clients/pages/ClientsPage'),
+  orcamentos: () => import('../../features/budgets/pages/BudgetsPage'),
+  ordens: () => import('../../features/orders/pages/OrdersPage'),
+  financeiro: () => Promise.all([
+    import('../../features/finance/layouts/FinanceLayout'),
+    import('../../features/finance/pages/FinanceDashboardPage'),
+  ]),
+  usuarios: () => import('../../features/settings/users/pages/UsersSettingsPage'),
+  assinatura: () => import('../../features/settings/subscription/pages/SubscriptionSettingsPage'),
+  pagamentos: () => import('../../features/settings/payments/pages/PaymentSettingsPage'),
+} satisfies Record<string, () => Promise<unknown>>
+
+type RotaPrecarregavel = keyof typeof PRECARREGADORES
+const rotasPrecarregadas = new Set<RotaPrecarregavel>()
+
+function precarregarRota(rota: RotaPrecarregavel) {
+  if (rotasPrecarregadas.has(rota)) return
+  rotasPrecarregadas.add(rota)
+  void PRECARREGADORES[rota]().catch(() => rotasPrecarregadas.delete(rota))
+}
+
 export default function AppLayout({
   usuario,
   onLogout,
@@ -85,6 +108,8 @@ export default function AppLayout({
           <NavLink
             to="/dashboard"
             onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('dashboard')}
+            onFocus={() => precarregarRota('dashboard')}
           >
             <DashboardIcon />
             <span>Dashboard</span>
@@ -93,6 +118,8 @@ export default function AppLayout({
           <NavLink
             to="/clientes"
             onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('clientes')}
+            onFocus={() => precarregarRota('clientes')}
           >
             <ClientsIcon />
             <span>Clientes</span>
@@ -101,6 +128,8 @@ export default function AppLayout({
           <NavLink
             to="/orcamentos"
             onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('orcamentos')}
+            onFocus={() => precarregarRota('orcamentos')}
           >
             <BudgetsIcon />
             <span>Orçamentos</span>
@@ -109,6 +138,8 @@ export default function AppLayout({
           <NavLink
             to="/ordens"
             onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('ordens')}
+            onFocus={() => precarregarRota('ordens')}
           >
             <OrdersIcon />
             <span>Ordens</span>
@@ -118,6 +149,8 @@ export default function AppLayout({
             <NavLink
               to="/financeiro"
               onClick={() => setMenuAberto(false)}
+              onPointerEnter={() => precarregarRota('financeiro')}
+              onFocus={() => precarregarRota('financeiro')}
             >
               <FinanceIcon />
               <span>Financeiro</span>
@@ -128,8 +161,20 @@ export default function AppLayout({
           {usuario.papel === 'ADMIN' && (
             <>
               <NavLink
+                to="/configuracoes/usuarios"
+                onClick={() => setMenuAberto(false)}
+                onPointerEnter={() => precarregarRota('usuarios')}
+                onFocus={() => precarregarRota('usuarios')}
+              >
+                <UsersIcon />
+                <span>Usuários</span>
+              </NavLink>
+
+              <NavLink
                 to="/configuracoes/assinatura"
                 onClick={() => setMenuAberto(false)}
+                onPointerEnter={() => precarregarRota('assinatura')}
+                onFocus={() => precarregarRota('assinatura')}
               >
                 <SubscriptionIcon />
                 <span>Assinatura</span>
@@ -138,6 +183,8 @@ export default function AppLayout({
               <NavLink
                 to="/configuracoes/pagamentos"
                 onClick={() => setMenuAberto(false)}
+                onPointerEnter={() => precarregarRota('pagamentos')}
+                onFocus={() => precarregarRota('pagamentos')}
               >
                 <SettingsIcon />
                 <span>Configurações</span>
@@ -331,6 +378,16 @@ function SubscriptionIcon() {
     <Icon>
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 10h18M7 15h4" />
+    </Icon>
+  )
+}
+
+function UsersIcon() {
+  return (
+    <Icon>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2" />
+      <path d="M16 6a3 3 0 0 1 0 6M17 14a4 4 0 0 1 4 4v2" />
     </Icon>
   )
 }

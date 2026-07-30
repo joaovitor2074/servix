@@ -2,15 +2,25 @@ import './App.css'
 import { useState,useEffect } from 'react'
 import { buscarUsuarioAtual } from './features/auth/services/auth.service'
 import { FINANCEIRO_PREVIEW_HABILITADO } from './features/finance/config/finance-preview.config'
-import { obterToken,removerToken } from './shared/utils/token-storage'
+import {
+  obterToken,
+  obterUsuarioEmCache,
+  removerToken,
+  salvarUsuarioEmCache,
+} from './shared/utils/token-storage'
 import type { UsuarioAutenticado } from './features/auth/types/auth.types'
 import AppRouter from './app/router'
 
 
 
 function App() {
-  const [usuario,setUsuario] = useState<UsuarioAutenticado | null>(null)
-  const [carregando,setCarregando] = useState(true)
+  const [usuario,setUsuario] = useState<UsuarioAutenticado | null>(() => obterUsuarioEmCache())
+  const [carregando,setCarregando] = useState(() => Boolean(obterToken()) && !obterUsuarioEmCache())
+
+  function handleLogin(usuarioAutenticado: UsuarioAutenticado) {
+    salvarUsuarioEmCache(usuarioAutenticado)
+    setUsuario(usuarioAutenticado)
+  }
 
   function handleLogout(){
     limparFinanceiroPreview()
@@ -28,6 +38,8 @@ function App() {
       const token = obterToken()
 
       if(!token){
+        removerToken()
+        setUsuario(null)
         setCarregando(false)
         return
       }
@@ -35,6 +47,7 @@ function App() {
       try {
         const usuarioAtual = await buscarUsuarioAtual()
         setUsuario(usuarioAtual)
+        salvarUsuarioEmCache(usuarioAtual)
       }catch{
         limparFinanceiroPreview()
         removerToken()
@@ -51,7 +64,7 @@ function App() {
   }
 
   return (
-    <AppRouter usuario={usuario} onLogin={setUsuario} onLogout={handleLogout}/>
+    <AppRouter usuario={usuario} onLogin={handleLogin} onLogout={handleLogout}/>
   )
 
 }

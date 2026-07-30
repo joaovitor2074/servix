@@ -175,7 +175,6 @@
   visibility: hidden;
   opacity: 0;
   background-color: rgba(4, 19, 36, 0.56);
-  backdrop-filter: blur(2px);
 
   transition:
     opacity 220ms ease,
@@ -204,8 +203,7 @@
   padding: 9px 14px;
 
   border-bottom: 1px solid var(--color-border);
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background-color: #ffffff;
 }
 
 .app-topbar__start {

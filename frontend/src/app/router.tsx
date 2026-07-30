@@ -27,6 +27,7 @@ const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicT
 const DemoPage = lazy(() => import('../features/demo/pages/DemoPage'))
 const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
 const SubscriptionSettingsPage = lazy(() => import('../features/settings/subscription/pages/SubscriptionSettingsPage'))
+const UsersSettingsPage = lazy(() => import('../features/settings/users/pages/UsersSettingsPage'))
 const CadastroConcluidoPage = lazy(() => import('../features/site/pages/CadastroConcluidoPage'))
 const CadastroEmpresaPage = lazy(() => import('../features/site/pages/CadastroEmpresaPage'))
 const CheckoutPage = lazy(() => import('../features/site/pages/CheckoutPage'))
@@ -121,6 +122,16 @@ export default function AppRouter({
           element={
             usuario?.papel === 'ADMIN' ? (
               <Navigate to="/configuracoes/pagamentos" replace />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
+          path="configuracoes/usuarios"
+          element={
+            usuario?.papel === 'ADMIN' ? (
+              <UsersSettingsPage usuarioAtualId={usuario.id} />
             ) : (
               <Navigate to="/dashboard" replace />
             )

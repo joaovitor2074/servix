@@ -5,13 +5,15 @@ import {
     atualizarUsuarioService,
     buscarUsuarioService,
     criarUsuarioService,
-    listarUsuariosService
+    listarUsuariosService,
+    redefinirSenhaUsuarioService
 } from "../services/usuario.service.js";
 import {
     validarAlteracaoAtivoUsuario,
     validarAtualizacaoUsuario,
     validarCriacaoUsuario,
-    validarQueryUsuarios
+    validarQueryUsuarios,
+    validarRedefinicaoSenhaUsuario
 } from "../validators/usuario.validator.js";
 import { idEhInvalido } from "../validators/clientes.validators.js";
 
@@ -85,9 +87,15 @@ export async function criarUsuarioController(
             })
         }
 
-        const usuario = await criarUsuarioService(req.auth.empresaId, validacao.dados)
+        const resultado = await criarUsuarioService(req.auth.empresaId, validacao.dados)
 
-        return res.status(201).json(usuario)
+        if (!resultado.sucesso) {
+            return res.status(409).json({
+                erro: "Já existe um usuário com este e-mail na empresa"
+            })
+        }
+
+        return res.status(201).json(resultado.usuario)
 
     } catch (error) {
         return next(error)
@@ -172,7 +180,8 @@ export async function atualizarUsuarioController(
         const resultado = await atualizarUsuarioService(
             id,
             validacao.dados,
-            req.auth.empresaId
+            req.auth.empresaId,
+            req.auth.usuarioId
         )
 
         if (!resultado.sucesso) {
@@ -188,12 +197,51 @@ export async function atualizarUsuarioController(
                 })
             }
 
+            if (resultado.motivo === "propria_conta") {
+                return res.status(409).json({
+                    erro: "Você não pode remover o próprio acesso de administrador"
+                })
+            }
+
             return res.status(409).json({
                 erro: "Não é possível rebaixar o único administrador ativo"
             })
         }
 
         return res.status(200).json(resultado.usuario)
+    } catch (error) {
+        return next(error)
+    }
+}
+
+export async function redefinirSenhaUsuarioController(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
+    try {
+        const id = Number(req.params.id)
+        if (idEhInvalido(id)) return res.status(400).json({ erro: "ID inválido" })
+
+        const validacao = validarRedefinicaoSenhaUsuario(req.body)
+        if (!validacao.valido) {
+            return res.status(400).json({
+                erro: validacao.erro,
+                detalhes: validacao.detalhes
+            })
+        }
+
+        const resultado = await redefinirSenhaUsuarioService(
+            id,
+            req.auth.empresaId,
+            validacao.dados
+        )
+
+        if (!resultado.sucesso) {
+            return res.status(404).json({ erro: "Usuário não encontrado" })
+        }
+
+        return res.status(204).send()
     } catch (error) {
         return next(error)
     }

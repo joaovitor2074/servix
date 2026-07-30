@@ -1,6 +1,4 @@
 import {
-  FormaPagamento,
-  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   StatusRegistroPagamento
@@ -11,7 +9,6 @@ import {
   calcularResumoPagamento,
   type ResumoPagamento
 } from "./pagamentos.service.js"
-import { expirarCobrancasVencidasService } from "./cobrancas.service.js"
 
 const STATUS_ORDENS_ABERTAS = [
   StatusOrdem.RECEBIDO,
@@ -35,11 +32,6 @@ type OrdemResumoDashboard = {
   }
 }
 
-type OrdemRecente = Omit<
-  OrdemResumoDashboard,
-  "atualizadoEm" | "previsaoDeEntrega"
->
-
 type TipoPendencia =
   | "AGUARDANDO_PECA"
   | "AGUARDANDO_PAGAMENTO"
@@ -60,7 +52,6 @@ type Resumo = {
     aguardandoPeca: number
     prontasParaFinalizar: number
     porStatus: Record<StatusOrdem, number>
-    recentes: OrdemRecente[]
     emAberto: OrdemResumoDashboard[]
     pendencias: PendenciaOperacional[]
   }
@@ -68,32 +59,6 @@ type Resumo = {
     aguardandoCliente: number
     aprovadosParaOrdem: number
   }
-  cobrancas: {
-    pendentes: number
-    listaPendentes: CobrancaPendenteDashboard[]
-  }
-}
-
-type CobrancaPendenteDashboard = {
-  id: number
-  valor: Prisma.Decimal
-  formaPagamento: FormaPagamento
-  status: StatusCobranca
-  criadoEm: Date
-  expiraEm: Date | null
-  orcamento: {
-    id: number
-    numero: number
-    equipamento: string
-    cliente: {
-      id: number
-      nome: string
-    }
-  }
-  ordem: {
-    id: number
-    status: StatusOrdem
-  } | null
 }
 
 const ordemAbertaSelect = {
@@ -115,22 +80,15 @@ const ordemAbertaSelect = {
 export async function buscarResumoDashboardService(
   empresaId: number
 ): Promise<Resumo> {
-  // Atualiza estados vencidos antes de montar o indicador. Assim uma cobranca
-  // cujo Pix expirou nunca continua inflando a fila de pendencias.
-  await expirarCobrancasVencidasService(empresaId)
-
-  // Todas as consultas usam o empresaId autenticado e compartilham a mesma
-  // transacao, evitando que a dashboard misture dados de momentos diferentes.
+  // O painel e apenas um retrato operacional. As consultas independentes podem
+  // rodar em paralelo, reduzindo a espera quando o banco esta em outra regiao.
   const [
     totalClientes,
     contagensPorStatus,
-    ordensRecentes,
     ordensEmAberto,
     ordensComPendencia,
-    contagensOrcamentos,
-    totalCobrancasPendentes,
-    cobrancasPendentes
-  ] = await prisma.$transaction([
+    contagensOrcamentos
+  ] = await Promise.all([
     prisma.cliente.count({
       where: { empresaId }
     }),
@@ -139,24 +97,6 @@ export async function buscarResumoDashboardService(
       where: { empresaId },
       _count: {
         _all: true
-      }
-    }),
-    prisma.ordemServico.findMany({
-      where: { empresaId },
-      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
-      take: 5,
-      select: {
-        id: true,
-        numero: true,
-        equipamento: true,
-        status: true,
-        criadoEm: true,
-        cliente: {
-          select: {
-            id: true,
-            nome: true
-          }
-        }
       }
     }),
     prisma.ordemServico.findMany({
@@ -199,47 +139,6 @@ export async function buscarResumoDashboardService(
       },
       _count: {
         _all: true
-      }
-    }),
-    prisma.cobranca.count({
-      where: {
-        empresaId,
-        status: StatusCobranca.PENDENTE
-      }
-    }),
-    prisma.cobranca.findMany({
-      where: {
-        empresaId,
-        status: StatusCobranca.PENDENTE
-      },
-      orderBy: [{ expiraEm: "asc" }, { criadoEm: "asc" }, { id: "asc" }],
-      take: 8,
-      select: {
-        id: true,
-        valor: true,
-        formaPagamento: true,
-        status: true,
-        criadoEm: true,
-        expiraEm: true,
-        orcamento: {
-          select: {
-            id: true,
-            numero: true,
-            equipamento: true,
-            cliente: {
-              select: {
-                id: true,
-                nome: true
-              }
-            }
-          }
-        },
-        ordem: {
-          select: {
-            id: true,
-            status: true
-          }
-        }
       }
     })
   ])
@@ -312,7 +211,6 @@ export async function buscarResumoDashboardService(
       abertas,
       aguardandoPeca: porStatus.AGUARDANDO_PECA,
       prontasParaFinalizar: porStatus.PRONTO,
-      recentes: ordensRecentes,
       emAberto: ordensEmAberto,
       pendencias,
       porStatus
@@ -320,10 +218,6 @@ export async function buscarResumoDashboardService(
     orcamentos: {
       aguardandoCliente: contagemOrcamento(StatusOrcamento.ENVIADO),
       aprovadosParaOrdem: contagemOrcamento(StatusOrcamento.APROVADO)
-    },
-    cobrancas: {
-      pendentes: totalCobrancasPendentes,
-      listaPendentes: cobrancasPendentes
     }
   }
 }

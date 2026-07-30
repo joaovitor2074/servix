@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
-  FormaPagamento,
-  StatusCobranca,
   StatusOrcamento,
   StatusOrdem,
   StatusRegistroPagamento
@@ -10,20 +8,9 @@ import {
 
 const prismaMocks = vi.hoisted(() => ({
   contarClientes: vi.fn(),
-  contarCobrancas: vi.fn(),
   agruparOrdens: vi.fn(),
   listarOrdens: vi.fn(),
-  listarCobrancas: vi.fn(),
-  agruparOrcamentos: vi.fn(),
-  executarTransacao: vi.fn()
-}))
-
-const cobrancaServiceMocks = vi.hoisted(() => ({
-  expirarVencidas: vi.fn()
-}))
-
-vi.mock("./cobrancas.service.js", () => ({
-  expirarCobrancasVencidasService: cobrancaServiceMocks.expirarVencidas
+  agruparOrcamentos: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -37,12 +24,7 @@ vi.mock("../lib/prisma.js", () => ({
     },
     orcamento: {
       groupBy: prismaMocks.agruparOrcamentos
-    },
-    cobranca: {
-      count: prismaMocks.contarCobrancas,
-      findMany: prismaMocks.listarCobrancas
-    },
-    $transaction: prismaMocks.executarTransacao
+    }
   }
 }))
 
@@ -51,7 +33,6 @@ import { buscarResumoDashboardService } from "./dashboard.service.js"
 describe("buscarResumoDashboardService", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    cobrancaServiceMocks.expirarVencidas.mockResolvedValue(0)
   })
 
   it("monta indicadores e filas operacionais isolados por empresa", async () => {
@@ -65,15 +46,6 @@ describe("buscarResumoDashboardService", () => {
       previsaoDeEntrega: null,
       cliente
     }
-    const ordensRecentes = [
-      {
-        id: 7,
-        equipamento: "Notebook",
-        status: StatusOrdem.EM_EXECUCAO,
-        criadoEm,
-        cliente
-      }
-    ]
     const ordensEmAberto = [
       {
         ...ordemBase,
@@ -114,67 +86,41 @@ describe("buscarResumoDashboardService", () => {
         ]
       }
     ]
-    const cobrancasPendentes = [
-      {
-        id: 21,
-        valor: "300.00",
-        formaPagamento: FormaPagamento.PIX,
-        status: StatusCobranca.PENDENTE,
-        criadoEm,
-        expiraEm: new Date("2026-07-22T15:00:00.000Z"),
-        orcamento: {
-          id: 15,
-          numero: 20260015,
-          equipamento: "Notebook",
-          cliente
-        },
-        ordem: {
-          id: 9,
-          status: StatusOrdem.PRONTO
-        }
-      }
-    ]
-
-    prismaMocks.executarTransacao.mockResolvedValue([
-      4,
-      [
+    prismaMocks.contarClientes.mockResolvedValue(4)
+    prismaMocks.agruparOrdens.mockResolvedValue([
         { status: StatusOrdem.RECEBIDO, _count: { _all: 2 } },
         { status: StatusOrdem.EM_EXECUCAO, _count: { _all: 1 } },
         { status: StatusOrdem.AGUARDANDO_PECA, _count: { _all: 1 } },
         { status: StatusOrdem.PRONTO, _count: { _all: 2 } },
         { status: StatusOrdem.ENTREGUE, _count: { _all: 4 } },
         { status: StatusOrdem.CANCELADO, _count: { _all: 1 } }
-      ],
-      ordensRecentes,
-      ordensEmAberto,
-      ordensComPendencia,
-      [
+    ])
+    prismaMocks.listarOrdens
+      .mockResolvedValueOnce(ordensEmAberto)
+      .mockResolvedValueOnce(ordensComPendencia)
+    prismaMocks.agruparOrcamentos.mockResolvedValue([
         { status: StatusOrcamento.ENVIADO, _count: { _all: 3 } },
         { status: StatusOrcamento.APROVADO, _count: { _all: 2 } }
-      ],
-      1,
-      cobrancasPendentes
     ])
 
     const resumo = await buscarResumoDashboardService(12)
 
-    expect(cobrancaServiceMocks.expirarVencidas).toHaveBeenCalledWith(12)
     expect(prismaMocks.contarClientes).toHaveBeenCalledWith({
       where: { empresaId: 12 }
     })
     expect(prismaMocks.agruparOrdens).toHaveBeenCalledWith(
       expect.objectContaining({ where: { empresaId: 12 } })
     )
-    expect(prismaMocks.listarOrdens).toHaveBeenCalledTimes(3)
+    expect(prismaMocks.listarOrdens).toHaveBeenCalledTimes(2)
     expect(prismaMocks.listarOrdens).toHaveBeenNthCalledWith(
-      2,
+      1,
       expect.objectContaining({
         where: expect.objectContaining({ empresaId: 12 }),
         take: 8
       })
     )
     expect(prismaMocks.listarOrdens).toHaveBeenNthCalledWith(
-      3,
+      2,
       expect.objectContaining({
         where: expect.objectContaining({ empresaId: 12 }),
         take: 8,
@@ -186,39 +132,17 @@ describe("buscarResumoDashboardService", () => {
         where: expect.objectContaining({ empresaId: 12 })
       })
     )
-    expect(prismaMocks.contarCobrancas).toHaveBeenCalledWith({
-      where: {
-        empresaId: 12,
-        status: StatusCobranca.PENDENTE
-      }
-    })
-    expect(prismaMocks.listarCobrancas).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          empresaId: 12,
-          status: StatusCobranca.PENDENTE
-        },
-        take: 8
-      })
-    )
-
     expect(resumo.clientes.total).toBe(4)
     expect(resumo.ordens.total).toBe(11)
     expect(resumo.ordens.abertas).toBe(6)
     expect(resumo.ordens.aguardandoPeca).toBe(1)
     expect(resumo.ordens.prontasParaFinalizar).toBe(2)
     expect(resumo.ordens.porStatus.EM_ANALISE).toBe(0)
-    expect(resumo.ordens.recentes).toEqual(ordensRecentes)
     expect(resumo.ordens.emAberto).toEqual(ordensEmAberto)
     expect(resumo.orcamentos).toEqual({
       aguardandoCliente: 3,
       aprovadosParaOrdem: 2
     })
-    expect(resumo.cobrancas).toEqual({
-      pendentes: 1,
-      listaPendentes: cobrancasPendentes
-    })
-
     expect(resumo.ordens.pendencias).toEqual([
       expect.objectContaining({
         id: 8,
@@ -246,16 +170,10 @@ describe("buscarResumoDashboardService", () => {
   })
 
   it("retorna zero e listas vazias quando a empresa ainda nao tem operacao", async () => {
-    prismaMocks.executarTransacao.mockResolvedValue([
-      0,
-      [],
-      [],
-      [],
-      [],
-      [],
-      0,
-      []
-    ])
+    prismaMocks.contarClientes.mockResolvedValue(0)
+    prismaMocks.agruparOrdens.mockResolvedValue([])
+    prismaMocks.listarOrdens.mockResolvedValue([])
+    prismaMocks.agruparOrcamentos.mockResolvedValue([])
 
     const resumo = await buscarResumoDashboardService(99)
 
@@ -266,7 +184,6 @@ describe("buscarResumoDashboardService", () => {
         abertas: 0,
         aguardandoPeca: 0,
         prontasParaFinalizar: 0,
-        recentes: [],
         emAberto: [],
         pendencias: [],
         porStatus: expect.objectContaining({
@@ -282,10 +199,6 @@ describe("buscarResumoDashboardService", () => {
       orcamentos: {
         aguardandoCliente: 0,
         aprovadosParaOrdem: 0
-      },
-      cobrancas: {
-        pendentes: 0,
-        listaPendentes: []
       }
     })
   })

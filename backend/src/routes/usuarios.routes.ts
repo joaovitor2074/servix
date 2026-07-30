@@ -4,7 +4,8 @@ import {
     atualizarUsuarioController,
     buscarUsuarioController,
     criarUsuarioController,
-    listarUsuariosController
+    listarUsuariosController,
+    redefinirSenhaUsuarioController
 } from "../controllers/usuario.controller.js";
 import { autorizar } from "../middlewares/auth.middleware.js";
 import { PapelUsuario } from "../generated/prisma/enums.js";
@@ -17,6 +18,7 @@ router.post("/",autorizar(PapelUsuario.ADMIN),criarUsuarioController)
 router.get( "/:id", autorizar(PapelUsuario.ADMIN),buscarUsuarioController)
 router.get( "/", autorizar(PapelUsuario.ADMIN),listarUsuariosController)
 router.patch("/:id/ativo", autorizar(PapelUsuario.ADMIN), alterarAtivoUsuarioController)
+router.patch("/:id/senha", autorizar(PapelUsuario.ADMIN), redefinirSenhaUsuarioController)
 router.patch("/:id", autorizar(PapelUsuario.ADMIN), atualizarUsuarioController)
 
 
