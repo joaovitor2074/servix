@@ -19,11 +19,11 @@ export default function PlanosPage() {
     <>
       <section className="page-hero page-hero--centered">
         <div className="site-container page-hero__content">
-          <p className="eyebrow">Preço claro, escolha simples</p>
-          <h1>Um plano para organizar toda a sua operação.</h1>
+          <p className="eyebrow">Venha fazer parte</p>
+          <h1>O plano para sua empresa fazer parte do Servix.</h1>
           <p>
-            Sem combinações difíceis: os recursos essenciais do Servix reunidos
-            em uma única assinatura mensal.
+            Escolha uma gestão mais clara para sua equipe, com os recursos
+            essenciais reunidos em uma única assinatura mensal.
           </p>
         </div>
       </section>
@@ -60,7 +60,7 @@ export default function PlanosPage() {
                 to="/cadastro?redirect=/assinatura"
                 className="button button--primary button--large button--full"
               >
-                {modoProducao ? 'Assinar o Servix' : 'Começar no ambiente de teste'}
+                Quero fazer parte do Servix
               </Link>
             ) : (
               <button

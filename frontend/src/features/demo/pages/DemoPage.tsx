@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import servixSymbol from '../../../assets/brand/servix-symbol.svg'
 import './DemoPage.css'
 
@@ -88,6 +89,19 @@ export default function DemoPage() {
     () => orderFlow.indexOf(orderStatus),
     [orderStatus],
   )
+
+  useEffect(() => {
+    document.title = 'Demonstração | Servix'
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute(
+        'content',
+        'Conheça o Servix por dentro e veja como organizar clientes, orçamentos, ordens de serviço e pagamentos.',
+      )
+    document
+      .querySelector('meta[name="robots"]')
+      ?.setAttribute('content', 'index, follow')
+  }, [])
 
   function selectView(view: DemoView) {
     setActiveView(view)
@@ -200,12 +214,18 @@ export default function DemoPage() {
             <i /> Ambiente demonstrativo
           </span>
 
-          <div className="demo-topbar__account">
-            <div>
-              <strong>Conecta Cell</strong>
-              <span>Marina · Administradora</span>
+          <div className="demo-topbar__actions">
+            <Link to="/planos" className="demo-topbar__plans-link">
+              Ver planos
+            </Link>
+
+            <div className="demo-topbar__account">
+              <div>
+                <strong>Conecta Cell</strong>
+                <span>Marina · Administradora</span>
+              </div>
+              <span aria-hidden="true">MC</span>
             </div>
-            <span aria-hidden="true">MC</span>
           </div>
         </header>
 
@@ -296,18 +316,24 @@ export default function DemoPage() {
             )}
           </div>
 
-          <section className="demo-reset-card">
+          <section className="demo-conversion-card" aria-labelledby="demo-conversion-title">
             <div>
-              <span>Demonstração sem compromisso</span>
-              <h2>Experimente quantas vezes quiser</h2>
+              <span>Leve essa organização para a sua empresa</span>
+              <h2 id="demo-conversion-title">Pronto para fazer parte do Servix?</h2>
               <p>
-                Todas as informações desta página são fictícias e desaparecem
-                ao atualizar ou reiniciar a experiência.
+                Conheça os planos e escolha o próximo passo para organizar sua
+                equipe, seus atendimentos e seus recebimentos.
               </p>
             </div>
-            <button type="button" onClick={resetDemo}>
-              Reiniciar demonstração
-            </button>
+            <div className="demo-conversion-card__actions">
+              <Link to="/planos" className="demo-conversion-card__primary">
+                Conhecer os planos
+                <span aria-hidden="true">→</span>
+              </Link>
+              <button type="button" onClick={resetDemo}>
+                Reiniciar demonstração
+              </button>
+            </div>
           </section>
         </main>
       </div>

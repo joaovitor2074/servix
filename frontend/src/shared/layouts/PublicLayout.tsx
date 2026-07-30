@@ -11,12 +11,12 @@ const PAGE_METADATA: Record<string, { title: string; description: string }> = {
   '/': {
     title: 'Servix | Gestão de serviços do orçamento ao pagamento',
     description:
-      'Organize clientes, orçamentos, ordens de serviço e pagamentos em um só lugar com o Servix.',
+      'Faça parte do Servix e organize clientes, orçamentos, ordens de serviço e pagamentos em um só lugar.',
   },
   '/planos': {
     title: 'Planos | Servix',
     description:
-      'Conheça o Plano Servix para organizar a operação da sua empresa de serviços.',
+      'Conheça o Plano Servix e faça parte de uma gestão mais clara para sua empresa de serviços.',
   },
   '/assinatura-suspensa': {
     title: 'Assinatura suspensa | Servix',
@@ -26,7 +26,7 @@ const PAGE_METADATA: Record<string, { title: string; description: string }> = {
   '/cadastro': {
     title: 'Cadastre sua empresa | Servix',
     description:
-      'Crie a conta da sua empresa no Servix e prepare sua assinatura em ambiente de teste.',
+      'Crie a conta da sua empresa e faça parte do Servix.',
   },
   '/cadastro/concluido': {
     title: 'Cadastro concluído | Servix',
@@ -52,6 +52,7 @@ const PAGE_METADATA: Record<string, { title: string; description: string }> = {
 
 const navigationItems = [
   { to: '/', label: 'Início', end: true },
+  { to: '/demonstracao', label: 'Demonstração' },
   { to: '/planos', label: 'Planos' },
   { to: '/suporte', label: 'Suporte' },
   { to: '/contato', label: 'Contato' },
@@ -150,8 +151,8 @@ export default function PublicLayout() {
               <Link to="/login" className="button button--ghost" onClick={fecharMenu}>
                 Entrar
               </Link>
-              <Link to="/cadastro" className="button button--primary" onClick={fecharMenu}>
-                Começar agora
+              <Link to="/planos" className="button button--primary" onClick={fecharMenu}>
+                Fazer parte
               </Link>
             </div>
           </nav>
@@ -160,8 +161,8 @@ export default function PublicLayout() {
             <Link to="/login" className="button button--ghost">
               Entrar
             </Link>
-            <Link to="/cadastro" className="button button--primary">
-              Começar agora
+            <Link to="/planos" className="button button--primary">
+              Fazer parte
             </Link>
           </div>
         </div>
@@ -188,8 +189,9 @@ export default function PublicLayout() {
           <nav aria-label="Servix">
             <h2>Servix</h2>
             <Link to="/">Início</Link>
+            <Link to="/demonstracao">Demonstração</Link>
             <Link to="/planos">Planos</Link>
-            <Link to="/cadastro">Criar conta</Link>
+            <Link to="/cadastro">Fazer parte</Link>
             <Link to="/login">Entrar</Link>
           </nav>
 

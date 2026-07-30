@@ -215,6 +215,32 @@
   gap: 10px;
 }
 
+.demo-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-topbar__plans-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 39px;
+  padding: 9px 14px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+  text-decoration: none;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #0648d8, #1262f3);
+  box-shadow: 0 9px 20px rgba(6, 72, 216, .18);
+}
+
+.demo-topbar__plans-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(6, 72, 216, .24);
+}
+
 .demo-topbar__account div {
   display: grid;
   gap: 2px;
@@ -307,7 +333,7 @@
 .demo-public-preview__body > span,
 .demo-value-strip article > span,
 .demo-tracking-copy > span,
-.demo-reset-card > div > span {
+.demo-conversion-card > div > span {
   color: #7faeff;
   font-size: 9px;
   font-weight: 900;
@@ -335,8 +361,7 @@
 }
 
 .demo-tour__actions button,
-.demo-button,
-.demo-reset-card button {
+.demo-button {
   min-height: 40px;
   padding: 9px 13px;
   font-size: 11px;
@@ -419,8 +444,7 @@
 
 .demo-page-heading > div > span,
 .demo-card > header > span,
-.demo-benefit-card > span,
-.demo-reset-card > div > span {
+.demo-benefit-card > span {
   color: var(--color-primary);
 }
 
@@ -1649,40 +1673,70 @@
   line-height: 1.5;
 }
 
-.demo-reset-card {
+.demo-conversion-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 20px 22px;
-  border: 1px solid #c9d8ee;
-  border-radius: 14px;
+  padding: 26px 28px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
   background:
-    radial-gradient(circle at 85% 20%, rgba(6, 72, 216, .08), transparent 240px),
-    #fff;
+    radial-gradient(circle at 88% 10%, rgba(39, 115, 255, .32), transparent 280px),
+    linear-gradient(135deg, #082b4d, #061f39);
+  box-shadow: 0 18px 38px rgba(6, 31, 57, .12);
 }
 
-.demo-reset-card > div {
+.demo-conversion-card > div:first-child {
   display: grid;
   gap: 4px;
+  max-width: 690px;
 }
 
-.demo-reset-card h2 {
-  font-size: 18px;
+.demo-conversion-card h2 {
+  font-size: 22px;
   letter-spacing: -.025em;
 }
 
-.demo-reset-card p {
-  color: var(--color-text-muted);
+.demo-conversion-card p {
+  color: #c8d8e9;
   font-size: 11px;
   line-height: 1.5;
 }
 
-.demo-reset-card button {
+.demo-conversion-card__actions {
+  display: flex;
   flex: 0 0 auto;
-  color: var(--color-primary);
-  border-color: #c4d5ef;
-  background: #f7faff;
+  align-items: center;
+  gap: 9px;
+}
+
+.demo-conversion-card__actions a,
+.demo-conversion-card__actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 10px 15px;
+  font-size: 11px;
+  font-weight: 850;
+  text-decoration: none;
+  border-radius: 9px;
+}
+
+.demo-conversion-card__primary {
+  gap: 8px;
+  color: #fff;
+  border: 1px solid #1262f3;
+  background: linear-gradient(135deg, #1262f3, #0648d8);
+  box-shadow: 0 10px 22px rgba(0, 38, 125, .28);
+}
+
+.demo-conversion-card__actions button {
+  color: #dbe8f5;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .07);
 }
 
 @media (max-width: 1120px) {
@@ -1701,6 +1755,7 @@
   .demo-benefit-card,
   .demo-message-card,
   .demo-tracking-copy { padding: 20px; }
+  .demo-conversion-card { align-items: stretch; flex-direction: column; }
   .demo-customer-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
@@ -1801,8 +1856,12 @@
   .demo-payment-row > b { display: none; }
   .demo-phone-frame { padding: 8px; border-width: 6px; border-radius: 27px; }
   .demo-phone-summary { grid-template-columns: 1fr; }
-  .demo-reset-card { align-items: stretch; flex-direction: column; }
-  .demo-reset-card button { width: 100%; }
+  .demo-topbar__account { display: none; }
+  .demo-topbar__actions { gap: 7px; }
+  .demo-topbar__plans-link { min-height: 36px; padding-inline: 11px; }
+  .demo-conversion-card__actions { align-items: stretch; flex-direction: column; }
+  .demo-conversion-card__actions a,
+  .demo-conversion-card__actions button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

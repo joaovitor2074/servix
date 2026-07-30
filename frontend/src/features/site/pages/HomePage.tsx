@@ -41,27 +41,28 @@ export default function HomePage() {
       <section className="site-hero">
         <div className="site-container site-hero__grid">
           <div className="site-hero__content">
-            <p className="eyebrow">Gestão de serviços sem ruído</p>
-            <h1>Do primeiro contato ao pagamento, tudo em um só lugar.</h1>
+            <p className="eyebrow">Faça parte do Servix</p>
+            <h1>Sua empresa mais organizada, do atendimento ao pagamento.</h1>
             <p className="site-hero__lead">
-              Organize clientes, orçamentos, ordens de serviço e pagamentos com
-              um fluxo claro para sua equipe e para quem contrata você.
+              Entre para uma rotina de serviços mais clara: clientes,
+              orçamentos, ordens e pagamentos conectados para sua equipe
+              trabalhar melhor e sua empresa crescer com controle.
             </p>
 
             <div className="site-hero__actions">
-              <Link to="/cadastro" className="button button--primary button--large">
-                Começar agora
+              <Link to="/planos" className="button button--primary button--large">
+                Quero fazer parte
                 <span aria-hidden="true">→</span>
               </Link>
-              <Link to="/planos" className="button button--secondary button--large">
-                Ver o plano
+              <Link to="/demonstracao" className="button button--secondary button--large">
+                Conhecer o Servix
               </Link>
             </div>
 
             <ul className="site-hero__assurances" aria-label="Destaques do Servix">
+              <li><span aria-hidden="true">✓</span> Plano mensal claro</li>
               <li><span aria-hidden="true">✓</span> Implantação simples</li>
-              <li><span aria-hidden="true">✓</span> Checkout seguro pelo Mercado Pago</li>
-              <li><span aria-hidden="true">✓</span> Conta separada por empresa</li>
+              <li><span aria-hidden="true">✓</span> Sua empresa em um ambiente próprio</li>
             </ul>
           </div>
 
@@ -173,14 +174,14 @@ export default function HomePage() {
       <section className="site-section site-section--dark" aria-labelledby="plan-home-title">
         <div className="site-container home-plan">
           <div className="home-plan__copy">
-            <p className="eyebrow eyebrow--light">Um plano para começar</p>
-            <h2 id="plan-home-title">A operação inteira por um valor simples.</h2>
+            <p className="eyebrow eyebrow--light">Seu lugar no Servix</p>
+            <h2 id="plan-home-title">Faça parte com um plano simples e completo.</h2>
             <p>
-              Organize a equipe e centralize a operação em uma assinatura
-              mensal clara, processada com segurança pelo Mercado Pago.
+              Reúna equipe, clientes e serviços em uma assinatura mensal clara,
+              feita para acompanhar a rotina da sua empresa.
             </p>
             <Link to="/planos" className="text-link text-link--light">
-              Ver detalhes do plano <span aria-hidden="true">→</span>
+              Conhecer o plano Servix <span aria-hidden="true">→</span>
             </Link>
           </div>
 
@@ -195,8 +196,8 @@ export default function HomePage() {
                 <li key={resource}><span aria-hidden="true">✓</span>{resource}</li>
               ))}
             </ul>
-            <Link to="/cadastro" className="button button--primary button--full">
-              Criar conta
+            <Link to="/planos" className="button button--primary button--full">
+              Quero fazer parte
             </Link>
           </article>
         </div>
@@ -205,12 +206,12 @@ export default function HomePage() {
       <section className="site-section final-cta" aria-labelledby="final-cta-title">
         <div className="site-container final-cta__card">
           <div>
-            <p className="eyebrow">Seu próximo serviço pode começar melhor</p>
-            <h2 id="final-cta-title">Dê à sua equipe um lugar claro para trabalhar.</h2>
+            <p className="eyebrow">Sua empresa tem lugar no Servix</p>
+            <h2 id="final-cta-title">Faça parte de uma gestão criada para quem vive de serviços.</h2>
           </div>
           <div className="final-cta__actions">
-            <Link to="/cadastro" className="button button--primary button--large">
-              Começar agora
+            <Link to="/planos" className="button button--primary button--large">
+              Conhecer os planos
             </Link>
             <Link to="/contato" className="button button--secondary button--large">
               Falar com o Servix
