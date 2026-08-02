@@ -99,6 +99,20 @@
   background: #e6f8ef;
 }
 
+.sites-service-hero__social-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 16px;
+  align-items: center;
+  margin-top: 18px;
+  color: #607087;
+  font-size: 12px;
+}
+
+.sites-service-hero__social-cta > span { font-weight: 750; }
+.sites-service-hero__social-cta a { color: #0648d8; font-weight: 800; text-decoration: none; }
+.sites-service-hero__social-cta a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
 .sites-service-preview {
   min-width: 0;
   margin: 0;
@@ -362,6 +376,8 @@
 .public-shell[data-theme='dark'] .sites-offer-card li { color: #c5d3e4; }
 .public-shell[data-theme='dark'] .sites-model-card__caption span { color: #91a3ba; }
 .public-shell[data-theme='dark'] .sites-service-hero__price { color: #b8c8db; border-color: #2a405a; background: rgba(17, 30, 48, 0.75); }
+.public-shell[data-theme='dark'] .sites-service-hero__social-cta { color: #a8b8cc; }
+.public-shell[data-theme='dark'] .sites-service-hero__social-cta a { color: #75a5ff; }
 .public-shell[data-theme='dark'] .sites-pricing-notes { border-color: #273a53; background: #111e30; }
 .public-shell[data-theme='dark'] .sites-pricing-notes__heading h3,
 .public-shell[data-theme='dark'] .sites-pricing-notes__extras strong { color: #f5f8fd; }

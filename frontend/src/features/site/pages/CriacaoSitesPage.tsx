@@ -1,12 +1,12 @@
 import { Link } from 'react-router'
-import { SITE_CONTACT_EMAIL } from '../site-data'
 import './CriacaoSitesPage.css'
 
-const ORCAMENTO_HREF = `mailto:${SITE_CONTACT_EMAIL}?subject=${encodeURIComponent(
-  'Quero um orçamento para criação de site',
-)}&body=${encodeURIComponent(
-  'Olá! Quero criar um site para minha empresa.\n\nNome da empresa:\nSegmento:\nO que preciso no site:\nMelhor forma de contato:',
+const SERVIX_PHONE = '5599981657973'
+const SERVIX_PHONE_DISPLAY = '(99) 98165-7973'
+const WHATSAPP_HREF = `https://wa.me/${SERVIX_PHONE}?text=${encodeURIComponent(
+  'Olá! Vi a página de criação de sites da Servix e quero pedir um orçamento.',
 )}`
+const INSTAGRAM_HREF = 'https://www.instagram.com/servixso/'
 
 const beneficios = [
   {
@@ -120,8 +120,8 @@ export default function CriacaoSitesPage() {
             </div>
 
             <div className="sites-service-hero__actions">
-              <a className="button button--primary button--large" href={ORCAMENTO_HREF}>
-                Pedir orçamento
+              <a className="button button--primary button--large" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
+                Falar no WhatsApp
                 <span aria-hidden="true">→</span>
               </a>
               <a className="button button--secondary button--large" href="#modelos">
@@ -134,6 +134,13 @@ export default function CriacaoSitesPage() {
               <li><span aria-hidden="true">✓</span> Responsivo no celular</li>
               <li><span aria-hidden="true">✓</span> Orçamento sem compromisso</li>
             </ul>
+
+            <div className="sites-service-hero__social-cta">
+              <span>Atendimento: {SERVIX_PHONE_DISPLAY}</span>
+              <a href={INSTAGRAM_HREF} target="_blank" rel="noreferrer">
+                Siga @servixso no Instagram <span aria-hidden="true">→</span>
+              </a>
+            </div>
           </div>
 
           <SiteShowcase />
@@ -203,8 +210,8 @@ export default function CriacaoSitesPage() {
                 <ul>
                   {solucao.items.map(item => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}
                 </ul>
-                <a className={solucao.featured ? 'button button--primary' : 'button button--secondary'} href={ORCAMENTO_HREF}>
-                  Solicitar orçamento
+                <a className={solucao.featured ? 'button button--primary' : 'button button--secondary'} href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
+                  Quero este pacote
                 </a>
               </article>
             ))}
@@ -307,7 +314,7 @@ export default function CriacaoSitesPage() {
             <span>Equipe organiza no Servix</span>
           </div>
           <div className="sites-combo__actions">
-            <a className="button button--primary button--large" href={ORCAMENTO_HREF}>Quero o combo</a>
+            <a className="button button--primary button--large" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">Quero o combo</a>
             <Link className="text-link" to="/demonstracao">Conhecer o sistema <span aria-hidden="true">→</span></Link>
           </div>
         </div>
@@ -347,8 +354,12 @@ export default function CriacaoSitesPage() {
             <h2 id="sites-final-cta-title">Conte como é sua empresa e receba uma proposta para o seu site.</h2>
           </div>
           <div className="final-cta__actions">
-            <a className="button button--primary button--large" href={ORCAMENTO_HREF}>Pedir orçamento</a>
-            <Link className="button button--secondary button--large" to="/contato">Falar com o Servix</Link>
+            <a className="button button--primary button--large" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
+              WhatsApp {SERVIX_PHONE_DISPLAY}
+            </a>
+            <a className="button button--secondary button--large" href={INSTAGRAM_HREF} target="_blank" rel="noreferrer">
+              Ver Instagram
+            </a>
           </div>
         </div>
       </section>
