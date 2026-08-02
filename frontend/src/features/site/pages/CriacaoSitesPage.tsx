@@ -33,6 +33,7 @@ const solucoes = [
   {
     label: 'Comece bem',
     title: 'Site Essencial',
+    price: 'R$ 600',
     description:
       'Uma página completa para apresentar a empresa, os serviços e os caminhos de contato.',
     items: [
@@ -45,6 +46,7 @@ const solucoes = [
   {
     label: 'Mais procurado',
     title: 'Site Profissional',
+    price: 'R$ 1.200',
     description:
       'Mais espaço para explicar seus diferenciais, fortalecer a marca e organizar seus serviços.',
     items: [
@@ -58,6 +60,8 @@ const solucoes = [
   {
     label: 'Operação completa',
     title: 'Site + Servix',
+    price: 'R$ 1.500',
+    priceDetail: 'Inclui 3 meses de Servix. Depois, R$ 34,90/mês.',
     description:
       'Presença profissional para captar clientes e o Servix para organizar o atendimento depois do contato.',
     items: [
@@ -109,6 +113,11 @@ export default function CriacaoSitesPage() {
               Criamos sites claros, rápidos e preparados para apresentar seus
               serviços, gerar confiança e facilitar o primeiro contato.
             </p>
+
+            <div className="sites-service-hero__price">
+              <span>Projetos a partir de</span>
+              <strong>R$ 600</strong>
+            </div>
 
             <div className="sites-service-hero__actions">
               <a className="button button--primary button--large" href={ORCAMENTO_HREF}>
@@ -186,6 +195,11 @@ export default function CriacaoSitesPage() {
                 <span className="sites-offer-card__label">{solucao.label}</span>
                 <h3>{solucao.title}</h3>
                 <p>{solucao.description}</p>
+                <div className="sites-offer-card__price">
+                  <span>A partir de</span>
+                  <strong>{solucao.price}</strong>
+                  {'priceDetail' in solucao && solucao.priceDetail ? <small>{solucao.priceDetail}</small> : null}
+                </div>
                 <ul>
                   {solucao.items.map(item => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}
                 </ul>
@@ -194,6 +208,28 @@ export default function CriacaoSitesPage() {
                 </a>
               </article>
             ))}
+          </div>
+
+          <div className="sites-pricing-notes" aria-labelledby="sites-pricing-notes-title">
+            <div className="sites-pricing-notes__heading">
+              <p className="eyebrow">Condições transparentes</p>
+              <h3 id="sites-pricing-notes-title">Tudo combinado antes de começar.</h3>
+              <p>
+                O orçamento final considera o tamanho do projeto e o que sua
+                empresa realmente precisa. Você aprova tudo antes da produção.
+              </p>
+            </div>
+            <dl className="sites-pricing-notes__conditions">
+              <div><dt>Pagamento</dt><dd>50% no início e 50% antes da publicação.</dd></div>
+              <div><dt>Domínio e hospedagem</dt><dd>Contratados separadamente e no nome do cliente.</dd></div>
+              <div><dt>Manutenção opcional</dt><dd>A partir de R$ 100 por mês.</dd></div>
+            </dl>
+            <div className="sites-pricing-notes__extras">
+              <p><span>Página extra</span><strong>R$ 200</strong></p>
+              <p><span>Produção de textos</span><strong>R$ 150</strong></p>
+              <p><span>Alteração adicional</span><strong>R$ 100</strong></p>
+              <p><span>Entrega urgente</span><strong>+30%</strong></p>
+            </div>
           </div>
         </div>
       </section>
@@ -286,7 +322,7 @@ export default function CriacaoSitesPage() {
           <div className="faq-list">
             <details>
               <summary>Quanto custa criar um site?</summary>
-              <p>O valor depende da quantidade de páginas, do conteúdo e das integrações. Você recebe um orçamento claro antes do início.</p>
+              <p>O Site Essencial começa em R$ 600. O valor final depende da quantidade de páginas, do conteúdo e das integrações, sempre com um orçamento claro antes do início.</p>
             </details>
             <details>
               <summary>O site funciona bem no celular?</summary>
@@ -294,7 +330,7 @@ export default function CriacaoSitesPage() {
             </details>
             <details>
               <summary>Domínio e hospedagem estão incluídos?</summary>
-              <p>Esses itens são definidos no orçamento. Também orientamos a escolha do domínio e a forma de publicação mais adequada.</p>
+              <p>Não. Esses itens são contratados separadamente e ficam no nome do cliente. Orientamos a escolha do domínio e da hospedagem mais adequada.</p>
             </details>
             <details>
               <summary>Preciso contratar o sistema Servix?</summary>
