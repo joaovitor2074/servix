@@ -1,12 +1,14 @@
 import { Link } from 'react-router'
+import {
+  criarLinkWhatsApp,
+  SITE_INSTAGRAM_URL,
+  SITE_WHATSAPP_DISPLAY,
+} from '../site-data'
 import './CriacaoSitesPage.css'
 
-const SERVIX_PHONE = '5599981657973'
-const SERVIX_PHONE_DISPLAY = '(99) 98165-7973'
-const WHATSAPP_HREF = `https://wa.me/${SERVIX_PHONE}?text=${encodeURIComponent(
+const WHATSAPP_HREF = criarLinkWhatsApp(
   'Olá! Vi a página de criação de sites da Servix e quero pedir um orçamento.',
-)}`
-const INSTAGRAM_HREF = 'https://www.instagram.com/servixso/'
+)
 
 const beneficios = [
   {
@@ -136,8 +138,8 @@ export default function CriacaoSitesPage() {
             </ul>
 
             <div className="sites-service-hero__social-cta">
-              <span>Atendimento: {SERVIX_PHONE_DISPLAY}</span>
-              <a href={INSTAGRAM_HREF} target="_blank" rel="noreferrer">
+              <span>Atendimento: {SITE_WHATSAPP_DISPLAY}</span>
+              <a href={SITE_INSTAGRAM_URL} target="_blank" rel="noreferrer">
                 Siga @servixso no Instagram <span aria-hidden="true">→</span>
               </a>
             </div>
@@ -355,9 +357,9 @@ export default function CriacaoSitesPage() {
           </div>
           <div className="final-cta__actions">
             <a className="button button--primary button--large" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
-              WhatsApp {SERVIX_PHONE_DISPLAY}
+              WhatsApp {SITE_WHATSAPP_DISPLAY}
             </a>
-            <a className="button button--secondary button--large" href={INSTAGRAM_HREF} target="_blank" rel="noreferrer">
+            <a className="button button--secondary button--large" href={SITE_INSTAGRAM_URL} target="_blank" rel="noreferrer">
               Ver Instagram
             </a>
           </div>

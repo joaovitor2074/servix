@@ -1,5 +1,19 @@
 import { Link } from 'react-router'
-import { SITE_CONTACT_EMAIL, SITE_SUPPORT_EMAIL } from '../site-data'
+import {
+  criarLinkWhatsApp,
+  SITE_CONTACT_EMAIL,
+  SITE_INSTAGRAM_URL,
+  SITE_SUPPORT_EMAIL,
+  SITE_WHATSAPP_DISPLAY,
+} from '../site-data'
+
+const WHATSAPP_COMERCIAL_HREF = criarLinkWhatsApp(
+  'Olá! Quero conhecer melhor o Servix.',
+)
+
+const WHATSAPP_SITES_HREF = criarLinkWhatsApp(
+  'Olá! Quero pedir um orçamento para criação de site.',
+)
 
 export default function ContatoPage() {
   return (
@@ -24,11 +38,14 @@ export default function ContatoPage() {
               Conte brevemente o tipo de serviço da empresa, o tamanho da equipe
               e o que você precisa organizar primeiro.
             </p>
-            <a className="button button--primary" href={`mailto:${SITE_CONTACT_EMAIL}?subject=Quero conhecer o Servix`}>
-              Enviar e-mail
+            <a className="button button--primary" href={WHATSAPP_COMERCIAL_HREF} target="_blank" rel="noreferrer">
+              WhatsApp {SITE_WHATSAPP_DISPLAY}
             </a>
             <a className="text-link" href={`mailto:${SITE_CONTACT_EMAIL}`}>
               {SITE_CONTACT_EMAIL}
+            </a>
+            <a className="text-link" href={SITE_INSTAGRAM_URL} target="_blank" rel="noreferrer">
+              Instagram @servixso
             </a>
           </article>
 
@@ -56,9 +73,11 @@ export default function ContatoPage() {
             </p>
             <a
               className="button button--secondary"
-              href={`mailto:${SITE_CONTACT_EMAIL}?subject=Quero um orçamento para criação de site`}
+              href={WHATSAPP_SITES_HREF}
+              target="_blank"
+              rel="noreferrer"
             >
-              Pedir orçamento
+              Pedir orçamento no WhatsApp
             </a>
             <Link className="text-link" to="/criacao-de-sites">
               Conhecer o Servix Sites

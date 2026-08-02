@@ -20,6 +20,14 @@ export const SITE_CONTACT_EMAIL =
 export const SITE_SUPPORT_EMAIL =
   import.meta.env.VITE_SUPPORT_EMAIL?.trim() || 'suporte.vercel@gmail.com'
 
+export const SITE_WHATSAPP_NUMBER = '5599981657973'
+export const SITE_WHATSAPP_DISPLAY = '(99) 98165-7973'
+export const SITE_INSTAGRAM_URL = 'https://www.instagram.com/servixso/'
+
+export function criarLinkWhatsApp(mensagem: string) {
+  return `https://wa.me/${SITE_WHATSAPP_NUMBER}?text=${encodeURIComponent(mensagem)}`
+}
+
 export const SITE_LEGAL_NAME = import.meta.env.VITE_LEGAL_NAME?.trim() || ''
 
 export const SITE_LEGAL_DOCUMENT =
