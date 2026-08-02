@@ -20,6 +20,7 @@ const PRECARREGADORES = {
   garantias: () => import('../../features/warranties/pages/WarrantiesPage'),
   whatsapp: () => import('../../features/communication/pages/WhatsAppPage'),
   relatorios: () => import('../../features/reports/pages/ReportsPage'),
+  prospeccao: () => import('../../features/prospects/pages/ProspectsPage'),
   financeiro: () => Promise.all([
     import('../../features/finance/layouts/FinanceLayout'),
     import('../../features/finance/pages/FinanceDashboardPage'),
@@ -199,6 +200,16 @@ export default function AppLayout({
           >
             <ReportsIcon />
             <span>Relatórios</span>
+          </NavLink>
+
+          <NavLink
+            to="/prospeccao"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('prospeccao')}
+            onFocus={() => precarregarRota('prospeccao')}
+          >
+            <ProspectsIcon />
+            <span>Prospecção</span>
           </NavLink>
 
           {FINANCEIRO_PREVIEW_HABILITADO && usuario.papel === 'ADMIN' && (
@@ -476,6 +487,10 @@ function WhatsAppIcon() {
 
 function ReportsIcon() {
   return <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></Icon>
+}
+
+function ProspectsIcon() {
+  return <Icon><circle cx="10" cy="9" r="4" /><path d="M3 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v2M18 7v6M15 10h6" /></Icon>
 }
 
 function textoDiasRestantes(dias: number | null) {

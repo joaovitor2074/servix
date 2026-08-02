@@ -28,6 +28,7 @@ const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPa
 const WarrantiesPage = lazy(() => import('../features/warranties/pages/WarrantiesPage'))
 const WhatsAppPage = lazy(() => import('../features/communication/pages/WhatsAppPage'))
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'))
+const ProspectsPage = lazy(() => import('../features/prospects/pages/ProspectsPage'))
 const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicTrackingPage'))
 const DemoPage = lazy(() => import('../features/demo/pages/DemoPage'))
 const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
@@ -112,6 +113,7 @@ export default function AppRouter({
         <Route path="garantias" element={<WarrantiesPage />} />
         <Route path="whatsapp" element={<WhatsAppPage podeConfigurar={usuario?.papel === 'ADMIN'} />} />
         <Route path="relatorios" element={<ReportsPage />} />
+        <Route path="prospeccao" element={<ProspectsPage />} />
         <Route
           path="financeiro"
           element={

@@ -1,0 +1,98 @@
+.prospects-page { display: grid; gap: 20px; max-width: 1500px; margin: 0 auto; color: #203047; }
+.prospects-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.prospects-header > div:first-child > span { color: #2872ce; font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+.prospects-header h1 { margin-top: 4px; color: #14243a; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.035em; }
+.prospects-header p { max-width: 680px; margin-top: 7px; color: #718096; font-size: 12px; line-height: 1.55; }
+.prospects-header__actions { display: flex; gap: 9px; flex-shrink: 0; }
+.prospects-button { min-height: 39px; padding: 9px 14px; font: inherit; font-size: 10px; font-weight: 800; border-radius: 8px; cursor: pointer; }
+.prospects-button:disabled { opacity: .5; cursor: not-allowed; }
+.prospects-button--primary { color: #fff; border: 1px solid #2767b0; background: #2767b0; }
+.prospects-button--secondary { color: #40536d; border: 1px solid #d4deea; background: #fff; }
+
+.prospects-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.prospect-metric { position: relative; overflow: hidden; padding: 17px 18px; border: 1px solid #e0e7f0; border-radius: 12px; background: #fff; box-shadow: 0 7px 22px rgba(28, 54, 91, .045); }
+.prospect-metric::before { position: absolute; inset: 0 auto 0 0; width: 3px; content: ''; background: #aab6c6; }
+.prospect-metric span { display: block; color: #748399; font-size: 9px; font-weight: 750; text-transform: uppercase; }
+.prospect-metric strong { display: block; margin-top: 5px; color: #1b2e49; font-size: 24px; }
+.prospect-metric--blue::before { background: #397bd0; }
+.prospect-metric--orange::before { background: #df8a2a; }
+.prospect-metric--purple::before { background: #8b62ca; }
+.prospect-metric--green::before { background: #269b65; }
+
+.prospect-form-card { overflow: hidden; border: 1px solid #dbe4ef; border-radius: 14px; background: #fff; box-shadow: 0 14px 38px rgba(26, 53, 91, .08); }
+.prospect-form-card__heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; border-bottom: 1px solid #e8edf4; background: #f8fafc; }
+.prospect-form-card__heading span { color: #3972b7; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.prospect-form-card__heading h2 { margin-top: 3px; color: #23364f; font-size: 16px; }
+.prospect-form-card__heading > button { width: 31px; height: 31px; color: #65768c; font-size: 20px; border: 1px solid #d7e0eb; border-radius: 8px; background: #fff; cursor: pointer; }
+.prospect-form-card form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 20px; }
+.prospect-form-card label { display: grid; gap: 6px; color: #45576e; font-size: 10px; font-weight: 750; }
+.prospect-form-card input, .prospect-form-card select, .prospect-form-card textarea { width: 100%; min-height: 38px; padding: 9px 10px; color: #25374f; font: inherit; font-size: 10px; border: 1px solid #d5deea; border-radius: 8px; outline: none; background: #fff; }
+.prospect-form-card input:focus, .prospect-form-card select:focus, .prospect-form-card textarea:focus { border-color: #4d84c8; box-shadow: 0 0 0 3px rgba(77, 132, 200, .12); }
+.prospect-form-card textarea { resize: vertical; line-height: 1.5; }
+.prospect-form__notes { grid-column: span 2; }
+.prospect-form__actions { display: flex; grid-column: 1 / -1; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.prospect-form__actions button { min-height: 37px; padding: 8px 14px; color: #53657b; font: inherit; font-size: 10px; font-weight: 800; border: 1px solid #d6dfe9; border-radius: 8px; background: #fff; cursor: pointer; }
+.prospect-form__actions button:last-child { color: #fff; border-color: #2767b0; background: #2767b0; }
+
+.prospects-board { overflow: hidden; border: 1px solid #dfe6ef; border-radius: 14px; background: #fff; box-shadow: 0 10px 32px rgba(23, 50, 86, .05); }
+.prospects-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) 190px auto; gap: 9px; align-items: center; padding: 14px; border-bottom: 1px solid #e6ebf2; background: #f8fafc; }
+.prospects-toolbar label { display: block; }
+.prospects-toolbar input, .prospects-toolbar select { width: 100%; min-height: 36px; padding: 8px 10px; color: #40536b; font: inherit; font-size: 10px; border: 1px solid #d7e0eb; border-radius: 8px; outline: none; background: #fff; }
+.prospects-toolbar > span { color: #8290a2; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.prospects-list { display: grid; }
+.prospect-card { display: grid; grid-template-columns: minmax(210px, 1.25fr) minmax(150px, .9fr) 150px 115px auto; gap: 16px; align-items: center; padding: 16px 18px; border-bottom: 1px solid #edf1f5; }
+.prospect-card:last-child { border-bottom: 0; }
+.prospect-card:hover { background: #fbfcfe; }
+.prospect-card__identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.prospect-card__identity > span { display: grid; flex: 0 0 auto; place-items: center; width: 36px; height: 36px; color: #2d68ae; font-size: 10px; font-weight: 850; border-radius: 9px; background: #eaf2fc; }
+.prospect-card__identity h2 { overflow: hidden; color: #24364d; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.prospect-card__identity p { overflow: hidden; margin-top: 3px; color: #8290a2; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.prospect-card__contact, .prospect-card__next { display: grid; gap: 3px; min-width: 0; }
+.prospect-card__contact small, .prospect-card__next small { color: #8996a8; font-size: 8px; font-weight: 750; text-transform: uppercase; }
+.prospect-card__contact strong, .prospect-card__next strong { overflow: hidden; color: #405269; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.prospect-card__contact > span { color: #8996a8; font-size: 8px; }
+.prospect-status select { width: 100%; min-height: 31px; padding: 6px 8px; color: #315f99; font: inherit; font-size: 9px; font-weight: 750; border: 1px solid #cfe0f3; border-radius: 999px; outline: none; background: #eef5fd; }
+.prospect-status--contatado select, .prospect-status--respondeu select { color: #9a631f; border-color: #edd5ae; background: #fff7e9; }
+.prospect-status--proposta select { color: #6c4aa2; border-color: #decff2; background: #f7f0ff; }
+.prospect-status--fechado select { color: #26704d; border-color: #c6e6d6; background: #edf9f3; }
+.prospect-status--arquivado select { color: #687689; border-color: #dce2e9; background: #f3f5f7; }
+.prospect-card__actions { display: flex; justify-content: flex-end; gap: 6px; }
+.prospect-card__actions a, .prospect-card__actions button { min-height: 29px; padding: 6px 8px; color: #3c6ea9; font: inherit; font-size: 8px; font-weight: 800; text-decoration: none; white-space: nowrap; border: 1px solid #d5e2f1; border-radius: 7px; background: #fff; cursor: pointer; }
+.prospect-card__actions a { color: #fff; border-color: #268b5d; background: #268b5d; }
+.prospect-card__actions .is-danger { color: #a34c4c; border-color: #efdada; }
+.prospect-card__notes { grid-column: 1 / -1; padding: 10px 12px; color: #68798e; font-size: 9px; line-height: 1.5; border-radius: 7px; background: #f7f9fb; }
+.prospects-empty { display: grid; justify-items: center; padding: 60px 20px; text-align: center; }
+.prospects-empty > span { display: grid; place-items: center; width: 45px; height: 45px; color: #4b7fbd; font-size: 23px; border-radius: 50%; background: #edf4fc; }
+.prospects-empty h2 { margin-top: 14px; color: #2b3d55; font-size: 16px; }
+.prospects-empty p { max-width: 420px; margin-top: 6px; color: #7b899c; font-size: 10px; line-height: 1.55; }
+.prospects-empty button { margin-top: 17px; padding: 9px 13px; color: #fff; font: inherit; font-size: 9px; font-weight: 800; border: 0; border-radius: 8px; background: #2767b0; cursor: pointer; }
+.prospects-privacy { display: flex; align-items: center; gap: 8px; padding: 11px 13px; color: #65778d; font-size: 9px; border: 1px solid #dce5ef; border-radius: 9px; background: #f7f9fc; }
+.prospects-privacy strong { color: #40536c; white-space: nowrap; }
+
+@media (max-width: 1150px) {
+  .prospect-card { grid-template-columns: minmax(210px, 1fr) minmax(150px, .8fr) 145px auto; }
+  .prospect-card__next { display: none; }
+}
+
+@media (max-width: 900px) {
+  .prospects-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .prospect-form-card form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prospect-card { grid-template-columns: minmax(190px, 1fr) 145px auto; }
+  .prospect-card__contact { display: none; }
+}
+
+@media (max-width: 680px) {
+  .prospects-header { display: grid; align-items: start; }
+  .prospects-header__actions { width: 100%; }
+  .prospects-header__actions .prospects-button { flex: 1; }
+  .prospects-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prospect-form-card form { grid-template-columns: 1fr; }
+  .prospect-form__notes { grid-column: auto; }
+  .prospects-toolbar { grid-template-columns: 1fr; }
+  .prospects-toolbar > span { display: none; }
+  .prospect-card { grid-template-columns: 1fr; gap: 12px; padding: 17px; }
+  .prospect-card__contact, .prospect-card__next { display: grid; }
+  .prospect-card__actions { justify-content: stretch; }
+  .prospect-card__actions a, .prospect-card__actions button { flex: 1; text-align: center; }
+  .prospects-privacy { align-items: flex-start; flex-direction: column; }
+}
