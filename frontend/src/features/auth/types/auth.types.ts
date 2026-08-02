@@ -12,6 +12,14 @@ export interface EmpresaResumo{
     nome:string
     slug:string
     status:'PENDENTE_ASSINATURA' | 'ATIVA' | 'SUSPENSA'
+    acesso?: ResumoAcessoEmpresa
+}
+
+export interface ResumoAcessoEmpresa {
+    tipo:'ASSINATURA' | 'TESTE_GRATUITO' | 'PILOTO' | 'LIBERADO_MANUALMENTE' | 'BLOQUEADO'
+    ativo:boolean
+    diasRestantes:number | null
+    expiraEm:string | null
 }
 
 export interface UsuarioAutenticado{

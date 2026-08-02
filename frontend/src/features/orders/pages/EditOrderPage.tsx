@@ -21,7 +21,9 @@ import {
 import {
   atualizarOrdem,
   buscarOrdem,
+  buscarUsuariosAtribuiveis,
   OrdemApiError,
+  type UsuarioAtribuivel,
 } from '../services/orders.service'
 import './EditOrderPage.css'
 
@@ -35,6 +37,15 @@ interface FalhaCarregamento {
   mensagem: string
   naoEncontrado: boolean
 }
+
+const CHECKLIST_ENTRADA = [
+  ['TELA_TRINCADA', 'Tela trincada'],
+  ['RISCOS', 'Riscos'],
+  ['AMASSADOS', 'Amassados'],
+  ['MARCAS_DE_QUEDA', 'Marcas de queda'],
+  ['SINAIS_DE_LIQUIDO', 'Sinais de líquido'],
+  ['NAO_LIGA', 'Não liga'],
+] as const
 
 export default function EditOrderPage() {
   const { id } = useParams()
@@ -52,6 +63,8 @@ export default function EditOrderPage() {
   const [exigeRecarregamento, setExigeRecarregamento] = useState(false)
   const [statusSelecionado, setStatusSelecionado] =
     useState<StatusOrdem | null>(null)
+  const [usuariosAtribuiveis, setUsuariosAtribuiveis] =
+    useState<UsuarioAtribuivel[]>([])
   const [errosCampos, setErrosCampos] = useState<
     Record<string, string[] | undefined>
   >({})
@@ -165,6 +178,18 @@ export default function EditOrderPage() {
     return () => controller.abort()
   }, [idValido, ordemId, tentativa])
 
+  useEffect(() => {
+    const controller = new AbortController()
+    void buscarUsuariosAtribuiveis(controller.signal)
+      .then(setUsuariosAtribuiveis)
+      .catch(error => {
+        if (!(error instanceof Error && error.name === 'AbortError')) {
+          setUsuariosAtribuiveis([])
+        }
+      })
+    return () => controller.abort()
+  }, [])
+
   const ordemAtual =
     ordemCarregada?.ordemId === ordemId ? ordemCarregada.ordem : null
   const falhaAtual = falha?.ordemId === ordemId ? falha : null
@@ -207,9 +232,20 @@ export default function EditOrderPage() {
       diagnostico: formData.get('diagnostico'),
       servicoRealizado: formData.get('servicoRealizado'),
       pecasUtilizadas: formData.get('pecasUtilizadas'),
+      marcaAparelho: formData.get('marcaAparelho'),
+      modeloAparelho: formData.get('modeloAparelho'),
+      imei: formData.get('imei'),
+      numeroSerie: formData.get('numeroSerie'),
+      corAparelho: formData.get('corAparelho'),
+      capacidadeAparelho: formData.get('capacidadeAparelho'),
+      acessoriosEntrada: formData.get('acessoriosEntrada'),
+      checklistEntrada: formData.getAll('checklistEntrada'),
+      defeitosVisiveis: formData.get('defeitosVisiveis'),
+      aparelhoJaAberto: formData.get('aparelhoJaAberto'),
+      aceiteCliente: formData.has('aceiteCliente'),
       credencialAcesso: String(formData.get('credencialAcesso') ?? ''),
       removerCredencialAcesso: formData.has('removerCredencialAcesso'),
-      tecnicoResponsavel: formData.get('tecnicoResponsavel'),
+      tecnicoResponsavelId: formData.get('tecnicoResponsavelId'),
       previsaoDeEntrega: formData.get('previsaoDeEntrega'),
       status: formData.get('status'),
       mensagemPublica: formData.get('mensagemPublica'),
@@ -563,6 +599,95 @@ export default function EditOrderPage() {
 
         <section className="edit-order-section">
           <SectionHeader
+            icon={<DeviceIcon />}
+            eyebrow="Conferência no recebimento"
+            title="Entrada segura do aparelho"
+            description="Identifique o aparelho, registre o estado físico e confirme o aceite do cliente."
+            variant="violet"
+          />
+
+          <div className="edit-order-section__body edit-order-grid">
+            <FormField id="marcaAparelho" label="Marca" error={errosCampos.marcaAparelho?.[0]}>
+              <input id="marcaAparelho" name="marcaAparelho" maxLength={80}
+                defaultValue={ordemAtual.marcaAparelho ?? ''} placeholder="Ex.: Apple, Samsung"
+                onChange={() => limparErroCampo('marcaAparelho')} />
+            </FormField>
+            <FormField id="modeloAparelho" label="Modelo" error={errosCampos.modeloAparelho?.[0]}>
+              <input id="modeloAparelho" name="modeloAparelho" maxLength={120}
+                defaultValue={ordemAtual.modeloAparelho ?? ''} placeholder="Ex.: iPhone 13"
+                onChange={() => limparErroCampo('modeloAparelho')} />
+            </FormField>
+            <FormField id="imei" label="IMEI" hint="Somente para aparelhos que possuem IMEI." error={errosCampos.imei?.[0]}>
+              <input id="imei" name="imei" maxLength={30} inputMode="numeric"
+                defaultValue={ordemAtual.imei ?? ''} autoComplete="off"
+                onChange={() => limparErroCampo('imei')} />
+            </FormField>
+            <FormField id="numeroSerie" label="Número de série" error={errosCampos.numeroSerie?.[0]}>
+              <input id="numeroSerie" name="numeroSerie" maxLength={80}
+                defaultValue={ordemAtual.numeroSerie ?? ''} autoComplete="off"
+                onChange={() => limparErroCampo('numeroSerie')} />
+            </FormField>
+            <FormField id="corAparelho" label="Cor" error={errosCampos.corAparelho?.[0]}>
+              <input id="corAparelho" name="corAparelho" maxLength={60}
+                defaultValue={ordemAtual.corAparelho ?? ''}
+                onChange={() => limparErroCampo('corAparelho')} />
+            </FormField>
+            <FormField id="capacidadeAparelho" label="Capacidade" hint="Ex.: 128 GB, 16 GB RAM" error={errosCampos.capacidadeAparelho?.[0]}>
+              <input id="capacidadeAparelho" name="capacidadeAparelho" maxLength={60}
+                defaultValue={ordemAtual.capacidadeAparelho ?? ''}
+                onChange={() => limparErroCampo('capacidadeAparelho')} />
+            </FormField>
+            <FormField id="acessoriosEntrada" label="Acessórios deixados" error={errosCampos.acessoriosEntrada?.[0]} wide>
+              <textarea id="acessoriosEntrada" name="acessoriosEntrada" maxLength={1000} rows={3}
+                defaultValue={ordemAtual.acessoriosEntrada ?? ''}
+                placeholder="Ex.: capa, chip e carregador USB-C"
+                onChange={() => limparErroCampo('acessoriosEntrada')} />
+            </FormField>
+
+            <fieldset className="edit-order-checklist">
+              <legend>Checklist do estado físico</legend>
+              <div>
+                {CHECKLIST_ENTRADA.map(([valor, rotulo]) => (
+                  <label key={valor}>
+                    <input type="checkbox" name="checklistEntrada" value={valor}
+                      defaultChecked={ordemAtual.checklistEntrada.includes(valor)} />
+                    {rotulo}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <FormField id="defeitosVisiveis" label="Defeitos visíveis e observações" error={errosCampos.defeitosVisiveis?.[0]} wide>
+              <textarea id="defeitosVisiveis" name="defeitosVisiveis" maxLength={2000} rows={3}
+                defaultValue={ordemAtual.defeitosVisiveis ?? ''}
+                placeholder="Descreva marcas, trincas e outros detalhes conferidos com o cliente."
+                onChange={() => limparErroCampo('defeitosVisiveis')} />
+            </FormField>
+
+            <fieldset className="edit-order-checklist edit-order-checklist--compact">
+              <legend>O aparelho já foi aberto?</legend>
+              <div>
+                <label><input type="radio" name="aparelhoJaAberto" value="SIM"
+                  defaultChecked={ordemAtual.aparelhoJaAberto === true} /> Sim</label>
+                <label><input type="radio" name="aparelhoJaAberto" value="NAO"
+                  defaultChecked={ordemAtual.aparelhoJaAberto === false} /> Não</label>
+                <label><input type="radio" name="aparelhoJaAberto" value=""
+                  defaultChecked={ordemAtual.aparelhoJaAberto === null} /> Não informado</label>
+              </div>
+            </fieldset>
+
+            <label className="edit-order-client-acceptance">
+              <input type="checkbox" name="aceiteCliente" defaultChecked={Boolean(ordemAtual.aceiteClienteEm)} />
+              <span>
+                <strong>Cliente conferiu e aceitou a entrada</strong>
+                <small>Registra data e hora do aceite para o comprovante.</small>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section className="edit-order-section">
+          <SectionHeader
             icon={<LockIcon />}
             title="Acesso ao aparelho"
             description="Credencial sigilosa para testes autorizados durante o reparo."
@@ -621,27 +746,30 @@ export default function EditOrderPage() {
 
           <div className="edit-order-section__body edit-order-grid">
             <FormField
-              id="tecnicoResponsavel"
+              id="tecnicoResponsavelId"
               label="Técnico responsável"
-              hint="O backend atual utiliza o nome livre do responsável."
-              error={errosCampos.tecnicoResponsavel?.[0]}
+              hint="Vinculado a um usuário ativo da empresa."
+              error={errosCampos.tecnicoResponsavelId?.[0]}
             >
-              <input
-                id="tecnicoResponsavel"
-                name="tecnicoResponsavel"
-                type="text"
-                defaultValue={ordemAtual.tecnicoResponsavel ?? ''}
-                placeholder="Nome do técnico"
-                maxLength={120}
-                autoComplete="off"
-                onChange={() => limparErroCampo('tecnicoResponsavel')}
-                aria-invalid={Boolean(errosCampos.tecnicoResponsavel?.[0])}
+              <select
+                id="tecnicoResponsavelId"
+                name="tecnicoResponsavelId"
+                defaultValue={ordemAtual.tecnicoResponsavelId ?? ''}
+                onChange={() => limparErroCampo('tecnicoResponsavelId')}
+                aria-invalid={Boolean(errosCampos.tecnicoResponsavelId?.[0])}
                 aria-describedby={campoDescribedBy(
-                  'tecnicoResponsavel',
-                  errosCampos.tecnicoResponsavel?.[0],
+                  'tecnicoResponsavelId',
+                  errosCampos.tecnicoResponsavelId?.[0],
                   true,
                 )}
-              />
+              >
+                <option value="">Não atribuído</option>
+                {usuariosAtribuiveis.map(usuario => (
+                  <option key={usuario.id} value={usuario.id}>
+                    {usuario.nome} · {rotuloPapel(usuario.papel)}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField
@@ -737,6 +865,45 @@ function montarAlteracoes(
   ) {
     alteracoes.pecasUtilizadas = dados.pecasUtilizadas
   }
+  if (camposAlterados.has('marcaAparelho') && dados.marcaAparelho !== ordem.marcaAparelho) {
+    alteracoes.marcaAparelho = dados.marcaAparelho
+  }
+  if (camposAlterados.has('modeloAparelho') && dados.modeloAparelho !== ordem.modeloAparelho) {
+    alteracoes.modeloAparelho = dados.modeloAparelho
+  }
+  if (camposAlterados.has('imei') && dados.imei !== ordem.imei) {
+    alteracoes.imei = dados.imei
+  }
+  if (camposAlterados.has('numeroSerie') && dados.numeroSerie !== ordem.numeroSerie) {
+    alteracoes.numeroSerie = dados.numeroSerie
+  }
+  if (camposAlterados.has('corAparelho') && dados.corAparelho !== ordem.corAparelho) {
+    alteracoes.corAparelho = dados.corAparelho
+  }
+  if (camposAlterados.has('capacidadeAparelho') && dados.capacidadeAparelho !== ordem.capacidadeAparelho) {
+    alteracoes.capacidadeAparelho = dados.capacidadeAparelho
+  }
+  if (camposAlterados.has('acessoriosEntrada') && dados.acessoriosEntrada !== ordem.acessoriosEntrada) {
+    alteracoes.acessoriosEntrada = dados.acessoriosEntrada
+  }
+  if (
+    camposAlterados.has('checklistEntrada') &&
+    dados.checklistEntrada.join('|') !== ordem.checklistEntrada.join('|')
+  ) {
+    alteracoes.checklistEntrada = dados.checklistEntrada
+  }
+  if (camposAlterados.has('defeitosVisiveis') && dados.defeitosVisiveis !== ordem.defeitosVisiveis) {
+    alteracoes.defeitosVisiveis = dados.defeitosVisiveis
+  }
+  if (camposAlterados.has('aparelhoJaAberto') && dados.aparelhoJaAberto !== ordem.aparelhoJaAberto) {
+    alteracoes.aparelhoJaAberto = dados.aparelhoJaAberto
+  }
+  if (
+    camposAlterados.has('aceiteCliente') &&
+    dados.aceiteCliente !== Boolean(ordem.aceiteClienteEm)
+  ) {
+    alteracoes.aceiteCliente = dados.aceiteCliente
+  }
   if (dados.removerCredencialAcesso) {
     alteracoes.credencialAcesso = null
   } else if (
@@ -746,10 +913,10 @@ function montarAlteracoes(
     alteracoes.credencialAcesso = dados.credencialAcesso
   }
   if (
-    camposAlterados.has('tecnicoResponsavel') &&
-    dados.tecnicoResponsavel !== ordem.tecnicoResponsavel
+    camposAlterados.has('tecnicoResponsavelId') &&
+    dados.tecnicoResponsavelId !== ordem.tecnicoResponsavelId
   ) {
-    alteracoes.tecnicoResponsavel = dados.tecnicoResponsavel
+    alteracoes.tecnicoResponsavelId = dados.tecnicoResponsavelId
   }
   if (
     camposAlterados.has('previsaoDeEntrega') &&
@@ -944,8 +1111,18 @@ function InfoIcon() {
   return <Icon><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></Icon>
 }
 
+function rotuloPapel(papel: UsuarioAtribuivel['papel']) {
+  return papel === 'TECNICO'
+    ? 'Técnico'
+    : papel === 'ADMIN' ? 'Administrador' : 'Atendente'
+}
+
 function LockIcon() {
   return <Icon><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></Icon>
+}
+
+function DeviceIcon() {
+  return <Icon><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M10 5h4M11 18h2" /></Icon>
 }
 
 function WarningIcon() {

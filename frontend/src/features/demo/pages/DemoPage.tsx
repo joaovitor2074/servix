@@ -5,9 +5,14 @@ import './DemoPage.css'
 
 type DemoView =
   | 'dashboard'
+  | 'kanban'
   | 'clientes'
   | 'orcamentos'
   | 'ordens'
+  | 'estoque'
+  | 'garantias'
+  | 'whatsapp'
+  | 'relatorios'
   | 'financeiro'
   | 'acompanhamento'
 
@@ -28,36 +33,66 @@ const navigation: Array<{
     id: 'dashboard',
     label: 'Visão geral',
     shortLabel: '01',
-    description: 'Enxergue prioridades e próximos passos em poucos segundos.',
+    description: 'Conheça a nova operação completa do Servix em poucos minutos.',
+  },
+  {
+    id: 'kanban',
+    label: 'Kanban',
+    shortLabel: '02',
+    description: 'Visualize a oficina por etapa e mova cada serviço com clareza.',
+  },
+  {
+    id: 'orcamentos',
+    label: 'Orçamento online',
+    shortLabel: '03',
+    description: 'Envie uma proposta profissional e receba a decisão do cliente.',
+  },
+  {
+    id: 'estoque',
+    label: 'Estoque',
+    shortLabel: '04',
+    description: 'Controle peças, movimentações e alertas de estoque mínimo.',
+  },
+  {
+    id: 'garantias',
+    label: 'Garantias',
+    shortLabel: '05',
+    description: 'Emita certificados e acompanhe prazos sem planilhas.',
+  },
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    shortLabel: '06',
+    description: 'Prepare mensagens por etapa com links e histórico de envios.',
+  },
+  {
+    id: 'relatorios',
+    label: 'Relatórios',
+    shortLabel: '07',
+    description: 'Transforme a rotina da assistência em indicadores úteis.',
   },
   {
     id: 'clientes',
     label: 'Clientes',
-    shortLabel: '02',
+    shortLabel: '08',
     description: 'Centralize contatos e o histórico de cada atendimento.',
-  },
-  {
-    id: 'orcamentos',
-    label: 'Orçamentos',
-    shortLabel: '03',
-    description: 'Monte propostas claras e receba a decisão do cliente.',
   },
   {
     id: 'ordens',
     label: 'Ordens de serviço',
-    shortLabel: '04',
+    shortLabel: '09',
     description: 'Acompanhe o reparo do recebimento até a entrega.',
   },
   {
     id: 'financeiro',
     label: 'Pagamentos',
-    shortLabel: '05',
+    shortLabel: '10',
     description: 'Saiba o que foi pago e o que ainda falta receber.',
   },
   {
     id: 'acompanhamento',
     label: 'Visão do cliente',
-    shortLabel: '06',
+    shortLabel: '11',
     description: 'Compartilhe transparência sem expor dados internos.',
   },
 ]
@@ -80,6 +115,9 @@ export default function DemoPage() {
   const [customerAdded, setCustomerAdded] = useState(false)
   const [deviceCredentialSaved, setDeviceCredentialSaved] = useState(false)
   const [documentPreviewOpen, setDocumentPreviewOpen] = useState(false)
+  const [kanbanAdvanced, setKanbanAdvanced] = useState(false)
+  const [stockAdded, setStockAdded] = useState(false)
+  const [whatsappPrepared, setWhatsappPrepared] = useState(false)
   const [notice, setNotice] = useState('')
 
   const activeIndex = navigation.findIndex(item => item.id === activeView)
@@ -96,7 +134,7 @@ export default function DemoPage() {
       .querySelector('meta[name="description"]')
       ?.setAttribute(
         'content',
-        'Conheça o Servix por dentro e veja como organizar clientes, orçamentos, ordens de serviço e pagamentos.',
+        'Conheça Kanban, orçamento online, estoque, garantias, WhatsApp, relatórios e toda a operação do Servix.',
       )
     document
       .querySelector('meta[name="robots"]')
@@ -160,6 +198,9 @@ export default function DemoPage() {
     setCustomerAdded(false)
     setDeviceCredentialSaved(false)
     setDocumentPreviewOpen(false)
+    setKanbanAdvanced(false)
+    setStockAdded(false)
+    setWhatsappPrepared(false)
     setNotice('Demonstração reiniciada com os dados originais.')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -276,6 +317,15 @@ export default function DemoPage() {
             {activeView === 'dashboard' && (
               <DemoDashboard onNavigate={selectView} />
             )}
+            {activeView === 'kanban' && (
+              <DemoKanban
+                advanced={kanbanAdvanced}
+                onAdvance={() => {
+                  setKanbanAdvanced(true)
+                  setNotice('OS #1051 movida para Pronto nesta demonstração.')
+                }}
+              />
+            )}
             {activeView === 'clientes' && (
               <DemoCustomers
                 customerAdded={customerAdded}
@@ -301,6 +351,28 @@ export default function DemoPage() {
                 onOpenTracking={() => selectView('acompanhamento')}
               />
             )}
+            {activeView === 'estoque' && (
+              <DemoInventory
+                stockAdded={stockAdded}
+                onAddStock={() => {
+                  setStockAdded(true)
+                  setNotice('Entrada de 5 telas registrada nesta demonstração.')
+                }}
+              />
+            )}
+            {activeView === 'garantias' && (
+              <DemoWarranties onIssue={() => setNotice('Certificado demonstrativo preparado para o cliente.')} />
+            )}
+            {activeView === 'whatsapp' && (
+              <DemoWhatsApp
+                prepared={whatsappPrepared}
+                onPrepare={() => {
+                  setWhatsappPrepared(true)
+                  setNotice('Mensagem personalizada preparada. Nenhum envio real foi feito.')
+                }}
+              />
+            )}
+            {activeView === 'relatorios' && <DemoReports />}
             {activeView === 'financeiro' && (
               <DemoFinance
                 paymentRegistered={paymentRegistered}
@@ -383,6 +455,24 @@ function DemoDashboard({
           </article>
         ))}
       </div>
+
+      <section className="demo-feature-launchpad" aria-labelledby="demo-feature-launchpad-title">
+        <header>
+          <div>
+            <span>Novidades do Servix</span>
+            <h2 id="demo-feature-launchpad-title">Uma operação completa, do balcão ao pós-venda</h2>
+          </div>
+          <small>Clique para explorar</small>
+        </header>
+        <div>
+          <FeatureLaunchButton icon="K" title="Kanban" detail="Oficina por etapas" onClick={() => onNavigate('kanban')} />
+          <FeatureLaunchButton icon="O" title="Orçamento online" detail="Aprovação pelo cliente" onClick={() => onNavigate('orcamentos')} />
+          <FeatureLaunchButton icon="E" title="Estoque" detail="Peças e alertas" onClick={() => onNavigate('estoque')} />
+          <FeatureLaunchButton icon="G" title="Garantias" detail="Certificados e prazos" onClick={() => onNavigate('garantias')} />
+          <FeatureLaunchButton icon="W" title="WhatsApp" detail="Mensagens prontas" onClick={() => onNavigate('whatsapp')} />
+          <FeatureLaunchButton icon="R" title="Relatórios" detail="Indicadores da operação" onClick={() => onNavigate('relatorios')} />
+        </div>
+      </section>
 
       <div className="demo-dashboard-grid">
         <DemoCard
@@ -471,6 +561,228 @@ function DemoDashboard({
           </table>
         </div>
       </DemoCard>
+    </section>
+  )
+}
+
+function DemoKanban({
+  advanced,
+  onAdvance,
+}: {
+  advanced: boolean
+  onAdvance: () => void
+}) {
+  return (
+    <section className="demo-section" aria-labelledby="kanban-title">
+      <PageHeading
+        id="kanban-title"
+        eyebrow="Fluxo visual"
+        title="A oficina inteira organizada em um Kanban"
+        description="Cada cartão mostra cliente, equipamento, responsável e prazo. A equipe bate o olho e sabe exatamente o que deve avançar."
+        action={
+          <button className="demo-button demo-button--primary" type="button" onClick={onAdvance} disabled={advanced}>
+            {advanced ? 'OS movida para Pronto' : 'Mover OS #1051 para Pronto'}
+          </button>
+        }
+      />
+
+      <div className="demo-kanban-summary">
+        <article><span>Em andamento</span><strong>{advanced ? '7' : '8'}</strong><small>ordens ativas</small></article>
+        <article><span>Aguardando peça</span><strong>3</strong><small>com pendência</small></article>
+        <article><span>Prontos</span><strong>{advanced ? '5' : '4'}</strong><small>para retirada</small></article>
+      </div>
+
+      <div className="demo-kanban-board">
+        <KanbanColumn title="Recebido" count={2} tone="slate">
+          <KanbanCard code="#1054" customer="Paula Nunes" device="MacBook Air M1" owner="Lucas" due="Hoje" />
+          <KanbanCard code="#1053" customer="André Lima" device="Galaxy A34" owner="Marina" due="Hoje" />
+        </KanbanColumn>
+        <KanbanColumn title="Em análise" count={2} tone="blue">
+          <KanbanCard code="#1052" customer="Rita Campos" device="iPhone 11" owner="Marina" due="14h" />
+          <KanbanCard code="#1050" customer="João Prado" device="Dell Inspiron" owner="Lucas" due="Amanhã" />
+        </KanbanColumn>
+        <KanbanColumn title="Em execução" count={advanced ? 1 : 2} tone="purple">
+          {!advanced && <KanbanCard featured code="#1051" customer="Ana Souza" device="iPhone 12" owner="Lucas" due="Hoje, 17h" />}
+          <KanbanCard code="#1047" customer="Nina Reis" device="Moto G84" owner="Marina" due="Amanhã" />
+        </KanbanColumn>
+        <KanbanColumn title="Pronto" count={advanced ? 3 : 2} tone="green">
+          {advanced && <KanbanCard featured code="#1051" customer="Ana Souza" device="iPhone 12" owner="Lucas" due="Retirada" />}
+          <KanbanCard code="#1049" customer="Bruno Martins" device="Galaxy A54" owner="Lucas" due="Retirada" />
+          <KanbanCard code="#1042" customer="Rafael Lima" device="Moto G84" owner="Marina" due="Retirada" />
+        </KanbanColumn>
+      </div>
+    </section>
+  )
+}
+
+function DemoInventory({
+  stockAdded,
+  onAddStock,
+}: {
+  stockAdded: boolean
+  onAddStock: () => void
+}) {
+  const oledStock = stockAdded ? 7 : 2
+  return (
+    <section className="demo-section" aria-labelledby="inventory-title">
+      <PageHeading
+        id="inventory-title"
+        eyebrow="Peças e produtos"
+        title="Estoque conectado à rotina da assistência"
+        description="Acompanhe quantidades, custo, preço de venda e todas as movimentações sem depender de uma planilha separada."
+        action={<button className="demo-button demo-button--primary" type="button" onClick={onAddStock} disabled={stockAdded}>{stockAdded ? 'Entrada registrada' : 'Simular entrada de 5 unidades'}</button>}
+      />
+
+      <div className="demo-inventory-overview">
+        <article><span>Itens cadastrados</span><strong>48</strong><small>42 ativos</small></article>
+        <article><span>Valor em estoque</span><strong>R$ 18.420</strong><small>pelo custo atual</small></article>
+        <article className={stockAdded ? '' : 'is-alert'}><span>Abaixo do mínimo</span><strong>{stockAdded ? '2' : '3'}</strong><small>pedem reposição</small></article>
+      </div>
+
+      <div className="demo-inventory-grid">
+        <DemoCard eyebrow="Saldo atual" title="Peças mais utilizadas" description="Alertas aparecem antes que a falta de uma peça pare a oficina.">
+          <div className="demo-stock-list">
+            <StockRow name="Tela OLED iPhone 12" sku="TEL-IP12-OLED" stock={oledStock} minimum={4} price="R$ 389,90" />
+            <StockRow name="Conector USB-C Galaxy A54" sku="CON-A54-USBC" stock={8} minimum={3} price="R$ 79,90" />
+            <StockRow name="Pasta térmica 5g" sku="PAS-TERM-5G" stock={16} minimum={5} price="R$ 24,90" />
+            <StockRow name="Bateria Moto G84" sku="BAT-MG84" stock={1} minimum={2} price="R$ 159,90" />
+          </div>
+        </DemoCard>
+        <aside className="demo-movement-card">
+          <span>Rastreabilidade</span>
+          <h2>Últimas movimentações</h2>
+          <div>
+            {stockAdded && <MovementRow signal="+" title="Entrada de 5 unidades" detail="Tela OLED iPhone 12 · agora" tone="green" />}
+            <MovementRow signal="−" title="Usada na OS #1051" detail="Tela OLED iPhone 12 · há 18 min" tone="blue" />
+            <MovementRow signal="+" title="Compra recebida" detail="Conector USB-C · ontem" tone="green" />
+            <MovementRow signal="−" title="Usada na OS #1049" detail="Pasta térmica · ontem" tone="blue" />
+          </div>
+          <p>Cada entrada e saída fica registrada com data, ordem e responsável.</p>
+        </aside>
+      </div>
+    </section>
+  )
+}
+
+function DemoWarranties({ onIssue }: { onIssue: () => void }) {
+  return (
+    <section className="demo-section" aria-labelledby="warranties-title">
+      <PageHeading
+        id="warranties-title"
+        eyebrow="Pós-venda"
+        title="Garantias criadas automaticamente na entrega"
+        description="O Servix registra a cobertura, calcula a validade e mantém o certificado ligado à ordem e ao cliente."
+        action={<button className="demo-button demo-button--primary" type="button" onClick={onIssue}>Preparar certificado</button>}
+      />
+
+      <div className="demo-warranty-summary">
+        <article><span>Garantias ativas</span><strong>23</strong><small>serviços protegidos</small></article>
+        <article><span>Vencem em 15 dias</span><strong>4</strong><small>acompanhe o prazo</small></article>
+        <article><span>Utilizadas no mês</span><strong>2</strong><small>com histórico completo</small></article>
+      </div>
+
+      <div className="demo-warranty-grid">
+        <DemoCard eyebrow="Controle" title="Certificados recentes" description="Encontre a garantia pelo cliente, aparelho, ordem ou código.">
+          <div className="demo-warranty-list">
+            <WarrantyRow customer="Bruno Martins" device="Galaxy A54" order="#1049" expires="28 out 2026" status="Ativa" />
+            <WarrantyRow customer="Rafael Lima" device="Moto G84" order="#1042" expires="19 out 2026" status="Ativa" />
+            <WarrantyRow customer="Juliana Costa" device="Galaxy S22" order="#1038" expires="12 ago 2026" status="Vence em breve" />
+          </div>
+        </DemoCard>
+        <aside className="demo-certificate-card">
+          <header><img src={servixSymbol} alt="" /><div><strong>Certificado de garantia</strong><span>GRT-1049-2026</span></div></header>
+          <div className="demo-certificate-card__customer"><span>Cliente</span><strong>Bruno Martins</strong><small>Galaxy A54 · OS #1049</small></div>
+          <dl><div><dt>Início</dt><dd>30 jul 2026</dd></div><div><dt>Validade</dt><dd>28 out 2026</dd></div><div><dt>Prazo</dt><dd>90 dias</dd></div></dl>
+          <p>Cobre o serviço e as peças descritas na ordem, conforme os termos registrados na entrega.</p>
+          <button type="button" onClick={onIssue}>Enviar certificado ao cliente</button>
+        </aside>
+      </div>
+    </section>
+  )
+}
+
+function DemoWhatsApp({
+  prepared,
+  onPrepare,
+}: {
+  prepared: boolean
+  onPrepare: () => void
+}) {
+  return (
+    <section className="demo-section" aria-labelledby="whatsapp-title">
+      <PageHeading
+        id="whatsapp-title"
+        eyebrow="Comunicação"
+        title="WhatsApp organizado dentro do atendimento"
+        description="Prepare mensagens com os dados certos, links seguros e textos configurados pela empresa. O envio continua sob controle da equipe."
+        action={<button className="demo-button demo-button--whatsapp" type="button" onClick={onPrepare} disabled={prepared}>{prepared ? 'Mensagem preparada' : 'Preparar mensagem'}</button>}
+      />
+
+      <div className="demo-whatsapp-mode"><div><i /><span><strong>Envio manual seguro</strong><small>Modo ativo nesta demonstração</small></span></div><span className="demo-whatsapp-api-badge">API oficial disponível</span></div>
+
+      <div className="demo-whatsapp-grid">
+        <DemoCard eyebrow="Central do WhatsApp" title="Mensagens pendentes" description="Ordens, orçamentos e garantias ficam em filas fáceis de acompanhar.">
+          <div className="demo-whatsapp-tabs"><button className="is-active" type="button">Ordens <span>6</span></button><button type="button">Orçamentos <span>2</span></button><button type="button">Garantias <span>3</span></button></div>
+          <div className="demo-whatsapp-list">
+            <WhatsAppQueueRow initials="FR" customer="Felipe Rocha" context="OS #1042 · Pronto" text="Seu equipamento está pronto para retirada." highlighted={prepared} />
+            <WhatsAppQueueRow initials="AC" customer="Ana Costa" context="Orçamento #208" text="Orçamento disponível para aprovação." />
+            <WhatsAppQueueRow initials="BM" customer="Bruno Martins" context="Garantia · 90 dias" text="Certificado de garantia disponível." />
+          </div>
+        </DemoCard>
+        <aside className="demo-chat-card">
+          <header><span>FR</span><div><strong>Felipe Rocha</strong><small>WhatsApp · OS #1042</small></div><i /></header>
+          <div className="demo-chat-card__body">
+            <span>Mensagem preparada pelo Servix</span>
+            <blockquote>Olá, Felipe! Seu Moto G84 da ordem #1042 está pronto para retirada. Veja os detalhes no link seguro de acompanhamento — Conecta Cell</blockquote>
+            <small>{prepared ? 'Pronta para conferir e abrir no WhatsApp' : 'Clique em “Preparar mensagem” para simular'}</small>
+          </div>
+          <footer><button type="button" onClick={onPrepare}>{prepared ? 'Abrir no WhatsApp' : 'Preparar agora'}</button></footer>
+        </aside>
+      </div>
+
+      <div className="demo-whatsapp-benefits"><article><strong>8 modelos editáveis</strong><span>Um texto para cada etapa</span></article><article><strong>Links seguros</strong><span>Orçamento, status e garantia</span></article><article><strong>Histórico de envios</strong><span>Preparada, enviada ou falhou</span></article><article><strong>API oficial opcional</strong><span>Credenciais protegidas</span></article></div>
+    </section>
+  )
+}
+
+function DemoReports() {
+  return (
+    <section className="demo-section" aria-labelledby="reports-title">
+      <PageHeading
+        id="reports-title"
+        eyebrow="Gestão por indicadores"
+        title="Relatórios que mostram onde a operação pode melhorar"
+        description="Filtre o período e acompanhe volume, conversão, prazo médio, faturamento e os serviços mais realizados."
+        action={<button className="demo-button demo-button--primary" type="button">Exportar relatório</button>}
+      />
+
+      <div className="demo-report-filters"><button type="button">Últimos 30 dias</button><span>01 jul — 31 jul 2026</span><small>Dados atualizados agora</small></div>
+      <div className="demo-report-metrics">
+        <article><span>Ordens abertas</span><strong>48</strong><small>+12% no período</small></article>
+        <article><span>Taxa de aprovação</span><strong>76%</strong><small>38 de 50 orçamentos</small></article>
+        <article><span>Prazo médio</span><strong>3,2 dias</strong><small>−0,6 dia</small></article>
+        <article><span>Faturamento</span><strong>R$ 24.680</strong><small>+18% no período</small></article>
+      </div>
+
+      <div className="demo-reports-grid">
+        <DemoCard eyebrow="Desempenho" title="Ordens concluídas por semana" description="Uma leitura rápida da capacidade de entrega da equipe.">
+          <div className="demo-bars" aria-label="Gráfico de ordens concluídas por semana">
+            <ReportBar label="Semana 1" value={62} total="12" />
+            <ReportBar label="Semana 2" value={78} total="15" />
+            <ReportBar label="Semana 3" value={70} total="14" />
+            <ReportBar label="Semana 4" value={92} total="18" />
+          </div>
+        </DemoCard>
+        <DemoCard eyebrow="Serviços" title="Mais realizados" description="Entenda o que mais movimenta a assistência.">
+          <ol className="demo-ranking">
+            <li><span>01</span><div><strong>Troca de tela</strong><small>18 ordens</small></div><b>R$ 8.420</b></li>
+            <li><span>02</span><div><strong>Troca de bateria</strong><small>11 ordens</small></div><b>R$ 3.260</b></li>
+            <li><span>03</span><div><strong>Reparo em placa</strong><small>7 ordens</small></div><b>R$ 4.780</b></li>
+            <li><span>04</span><div><strong>Limpeza preventiva</strong><small>6 ordens</small></div><b>R$ 1.140</b></li>
+          </ol>
+        </DemoCard>
+      </div>
+      <div className="demo-report-insight"><span>Leitura do Servix</span><p><strong>Seu melhor resultado foi na última semana.</strong> A fila de serviços aguardando peça caiu 22%, enquanto as entregas cresceram.</p></div>
     </section>
   )
 }
@@ -1074,6 +1386,109 @@ function DemoTracking({
       </div>
     </section>
   )
+}
+
+function FeatureLaunchButton({
+  icon,
+  title,
+  detail,
+  onClick,
+}: {
+  icon: string
+  title: string
+  detail: string
+  onClick: () => void
+}) {
+  return <button type="button" onClick={onClick}><span>{icon}</span><div><strong>{title}</strong><small>{detail}</small></div><i aria-hidden="true">→</i></button>
+}
+
+function KanbanColumn({
+  title,
+  count,
+  tone,
+  children,
+}: {
+  title: string
+  count: number
+  tone: string
+  children: ReactNode
+}) {
+  return <section className={`demo-kanban-column demo-kanban-column--${tone}`}><header><div><i /><strong>{title}</strong></div><span>{count}</span></header><div>{children}</div></section>
+}
+
+function KanbanCard({
+  code,
+  customer,
+  device,
+  owner,
+  due,
+  featured = false,
+}: {
+  code: string
+  customer: string
+  device: string
+  owner: string
+  due: string
+  featured?: boolean
+}) {
+  return <article className={featured ? 'is-featured' : ''}><header><strong>{code}</strong><span>•••</span></header><h3>{device}</h3><p>{customer}</p><footer><span>{owner.slice(0, 1)}</span><small>{owner}</small><time>{due}</time></footer></article>
+}
+
+function StockRow({
+  name,
+  sku,
+  stock,
+  minimum,
+  price,
+}: {
+  name: string
+  sku: string
+  stock: number
+  minimum: number
+  price: string
+}) {
+  const low = stock <= minimum
+  return <article><div><strong>{name}</strong><small>{sku}</small></div><span className={low ? 'is-low' : ''}>{stock} un.</span><div><b>{price}</b><small>Mínimo: {minimum}</small></div></article>
+}
+
+function MovementRow({ signal, title, detail, tone }: { signal: string; title: string; detail: string; tone: string }) {
+  return <article><span className={`is-${tone}`}>{signal}</span><div><strong>{title}</strong><small>{detail}</small></div></article>
+}
+
+function WarrantyRow({
+  customer,
+  device,
+  order,
+  expires,
+  status,
+}: {
+  customer: string
+  device: string
+  order: string
+  expires: string
+  status: string
+}) {
+  return <article><span>{customer.slice(0, 1)}</span><div><strong>{customer}</strong><small>{device} · OS {order}</small></div><div><b>{expires}</b><small className={status === 'Ativa' ? 'is-active' : 'is-warning'}>{status}</small></div></article>
+}
+
+function WhatsAppQueueRow({
+  initials,
+  customer,
+  context,
+  text,
+  highlighted = false,
+}: {
+  initials: string
+  customer: string
+  context: string
+  text: string
+  highlighted?: boolean
+}) {
+  return <article className={highlighted ? 'is-highlighted' : ''}><span>{initials}</span><div><header><strong>{customer}</strong><small>{context}</small></header><p>{text}</p></div><i aria-hidden="true">›</i></article>
+}
+
+function ReportBar({ label, value, total }: { label: string; value: number; total: string }) {
+  return <div><span>{label}</span><div><i style={{ width: `${value}%` }} /></div><strong>{total}</strong></div>
 }
 
 function PageHeading({

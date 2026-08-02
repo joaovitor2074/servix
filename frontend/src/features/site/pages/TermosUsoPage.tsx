@@ -71,7 +71,7 @@ export default function TermosUsoPage() {
           <section>
             <h2>4. Assinatura do Servix</h2>
             <p>
-              O Plano Servix custa R$ 79,90 por mês e possui renovação mensal.
+              O Plano Servix custa R$ 34,90 por mês e possui renovação mensal.
               O checkout informa claramente se está em TESTE, sem cobrança
               real, ou em PRODUÇÃO, com cobrança recorrente pelo Mercado Pago.
               Qualquer alteração de preço será informada antes de produzir

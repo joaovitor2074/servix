@@ -372,149 +372,9 @@
   background-color: #dce9ff;
 }
 
-.payment-provider-documentation {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 10px 12px;
-  min-width: 0;
-  padding: 14px;
-  color: var(--color-text-muted);
-  border: 1px solid #cdddf8;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f7faff 0%, #eef5ff 100%);
-}
-
-.payment-provider-documentation__icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  color: var(--color-primary);
-  border-radius: 9px;
-  background-color: #ffffff;
-  box-shadow: 0 3px 10px rgba(6, 72, 216, 0.1);
-}
-
-.payment-provider-documentation__icon svg,
-.payment-provider-documentation a svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.payment-provider-documentation strong {
-  display: block;
-  color: var(--color-text);
-  font-size: 13px;
-}
-
-.payment-provider-documentation p {
-  margin-top: 4px;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.payment-provider-documentation__status {
+.payment-provider-grid > .mercado-pago-connection {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 11px;
-  border: 1px solid;
-  border-radius: 9px;
-  background-color: rgba(255, 255, 255, 0.72);
-}
-
-.payment-provider-documentation__status > span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.payment-provider-documentation__status strong {
-  font-size: 11px;
-}
-
-.payment-provider-documentation__status p {
-  margin-top: 2px;
-  font-size: 10px;
-}
-
-.payment-provider-documentation__status small {
-  padding: 3px 7px;
-  color: #ffffff;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  border-radius: 999px;
-}
-
-.payment-provider-documentation__status--ready {
-  color: #087341;
-  border-color: #bce9d0;
-}
-
-.payment-provider-documentation__status--ready small {
-  background-color: #087341;
-}
-
-.payment-provider-documentation__status--waiting {
-  color: #8a5b13;
-  border-color: #ead3aa;
-}
-
-
-.payment-provider-documentation__status--waiting small {
-  background-color: #8a5b13;
-}
-
-.payment-provider-documentation__status--error {
-  color: #a52828;
-  border-color: #f0c0c0;
-}
-
-.payment-provider-documentation__status--error small {
-  background-color: #a52828;
-}
-
-.payment-provider-documentation a {
-  grid-column: 1 / -1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 8px 12px;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 750;
-  text-decoration: none;
-  border-radius: 9px;
-  background-color: var(--color-primary);
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.payment-provider-documentation a:hover {
-  background-color: var(--color-primary-dark);
-  transform: translateY(-1px);
-}
-
-.payment-provider-documentation a:focus-visible {
-  outline: 3px solid rgba(6, 72, 216, 0.2);
-  outline-offset: 2px;
-}
-
-.payment-provider-documentation a svg {
-  width: 15px;
-  height: 15px;
+  margin-top: 0;
 }
 
 .mercado-pago-connection {
@@ -1173,16 +1033,6 @@
     flex-direction: column;
   }
 
-  .payment-provider-documentation__status {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .payment-provider-documentation__status small {
-    grid-column: 2;
-    justify-self: start;
-  }
-
   .mercado-pago-connection__header {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -1247,17 +1097,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .payment-provider-documentation {
-    grid-column: 1 / -1;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .payment-provider-documentation a {
-    grid-column: auto;
-    min-width: 166px;
-  }
-
   .payment-settings-summary {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1297,7 +1136,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .payment-provider,
-  .payment-provider-documentation a,
   .payment-switch__control,
   .payment-switch__control::after,
   .payment-settings-skeleton,

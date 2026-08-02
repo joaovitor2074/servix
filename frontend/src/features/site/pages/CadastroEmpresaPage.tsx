@@ -4,10 +4,7 @@ import { cadastrarEmpresa } from '../site.service'
 import {
   formatarMoeda,
   SERVIX_PLAN,
-  SITE_LEGAL_IDENTITY_PENDING_MESSAGE,
-  SITE_LEGAL_IDENTITY_READY,
 } from '../site-data'
-import { useCatalogoAssinaturas } from '../use-catalogo-assinaturas'
 
 type EtapaCadastro = 1 | 2 | 3
 
@@ -57,14 +54,12 @@ const estados = [
   'SP', 'SE', 'TO',
 ]
 
-export default function CadastroEmpresaPage() {
+export default function CadastroEmpresaPage({
+  onNovaEmpresaCriada,
+}: {
+  onNovaEmpresaCriada: () => void
+}) {
   const navigate = useNavigate()
-  const { catalogo, erroCatalogo, carregandoCatalogo } = useCatalogoAssinaturas()
-  const modoProducao = catalogo?.ambiente === 'PRODUCAO'
-  const identidadeLegalBloqueiaProducao =
-    modoProducao && !SITE_LEGAL_IDENTITY_READY
-  const checkoutDisponivel =
-    catalogo?.checkoutDisponivel === true && !identidadeLegalBloqueiaProducao
   const [etapa, setEtapa] = useState<EtapaCadastro>(1)
   const [dados, setDados] = useState(initialFormData)
   const [erros, setErros] = useState<Record<string, string>>({})
@@ -161,9 +156,8 @@ export default function CadastroEmpresaPage() {
         novosErros.aceitouPrivacidade = 'Confirme a leitura da Política de Privacidade.'
       }
       if (!dados.aceitouAmbienteTeste) {
-        novosErros.aceitouAmbienteTeste = modoProducao
-          ? 'Confirme que entendeu a cobrança recorrente.'
-          : 'Confirme que entendeu o ambiente de teste.'
+        novosErros.aceitouAmbienteTeste =
+          'Confirme as condições do teste gratuito.'
       }
     }
 
@@ -192,16 +186,6 @@ export default function CadastroEmpresaPage() {
       return
     }
 
-    if (!checkoutDisponivel) {
-      setErroApi(
-        (identidadeLegalBloqueiaProducao
-          ? SITE_LEGAL_IDENTITY_PENDING_MESSAGE
-          : erroCatalogo) ||
-          'O checkout está temporariamente indisponível. Tente novamente em instantes.',
-      )
-      return
-    }
-
     setEnviando(true)
 
     try {
@@ -225,12 +209,11 @@ export default function CadastroEmpresaPage() {
         },
       })
 
-      const checkoutToken = resposta.assinatura?.checkoutToken
-      if (!checkoutToken) {
-        throw new Error('A empresa foi criada, mas o checkout não foi disponibilizado.')
-      }
-
-      navigate(`/checkout/${encodeURIComponent(checkoutToken)}`, {
+      // O cadastro é público e pode ser aberto enquanto outra empresa ainda
+      // está autenticada neste navegador. Remova essa sessão antes de oferecer
+      // o primeiro acesso para não redirecionar ao dashboard da empresa antiga.
+      onNovaEmpresaCriada()
+      navigate('/cadastro/concluido', {
         state: resposta,
       })
     } catch (erro) {
@@ -254,13 +237,11 @@ export default function CadastroEmpresaPage() {
     <section className="signup-page">
       <div className="site-container signup-page__header">
         <p className="eyebrow">
-          {modoProducao ? 'Comece sua assinatura' : 'Comece pelo ambiente de teste'}
+          Teste gratuito de 5 dias
         </p>
         <h1>Crie a conta da sua empresa.</h1>
         <p>
-          {modoProducao
-            ? `São três etapas rápidas. A assinatura de ${formatarMoeda(SERVIX_PLAN.valorMensal)} por mês será confirmada no checkout.`
-            : 'São três etapas rápidas. Nenhuma cobrança real será feita agora.'}
+          São três etapas rápidas. Sem cartão, sem assinatura antecipada e sem cobrança agora.
         </p>
       </div>
 
@@ -505,15 +486,13 @@ export default function CadastroEmpresaPage() {
               <fieldset>
                 <legend id="cadastro-etapa-3" tabIndex={-1}>Plano e confirmações</legend>
                 <p className="signup-form__intro">
-                  {modoProducao
-                    ? 'Revise o plano e confirme as condições da assinatura mensal.'
-                    : 'Revise o plano e confirme as condições desta etapa de teste.'}
+                  Revise o plano que poderá ser contratado somente ao final do teste.
                 </p>
 
                 <article className="signup-plan-summary">
                   <div>
                     <span className="status-pill">
-                      {modoProducao ? 'Assinatura em produção' : 'Ambiente de teste'}
+                      5 dias grátis
                     </span>
                     <h2>{SERVIX_PLAN.nome}</h2>
                     <p>Todos os recursos essenciais para começar.</p>
@@ -552,21 +531,12 @@ export default function CadastroEmpresaPage() {
                     error={erros.aceitouAmbienteTeste}
                     onChange={checked => atualizarCampo('aceitouAmbienteTeste', checked)}
                   >
-                    {modoProducao
-                      ? `Entendo que esta é uma assinatura recorrente de ${formatarMoeda(SERVIX_PLAN.valorMensal)} por mês, cobrada pelo Mercado Pago até o cancelamento.`
-                      : 'Entendo que esta assinatura é apenas de teste, sem cobrança ou renovação real.'}
+                    Entendo que o teste dura 5 dias, não exige cartão e não gera cobrança ou renovação automática.
                   </CheckboxField>
                 </div>
               </fieldset>
             )}
 
-            {(identidadeLegalBloqueiaProducao || erroCatalogo) && etapa === 3 && (
-              <p className="form-alert" role="alert">
-                {identidadeLegalBloqueiaProducao
-                  ? SITE_LEGAL_IDENTITY_PENDING_MESSAGE
-                  : erroCatalogo}
-              </p>
-            )}
             {erroApi && <p className="form-alert" role="alert">{erroApi}</p>}
 
             <div className="signup-form__actions">
@@ -578,17 +548,14 @@ export default function CadastroEmpresaPage() {
               <button
                 type="submit"
                 className="button button--primary"
-                disabled={
-                  enviando ||
-                  (etapa === 3 && (carregandoCatalogo || !checkoutDisponivel))
-                }
+                disabled={enviando}
                 aria-busy={enviando}
               >
                 {etapa < 3
                   ? 'Continuar'
                   : enviando
                     ? 'Criando empresa...'
-                    : 'Continuar para o checkout'}
+                    : 'Iniciar teste gratuito'}
               </button>
             </div>
           </form>
@@ -597,8 +564,8 @@ export default function CadastroEmpresaPage() {
         <aside className="signup-security-note">
           <strong>Cadastro seguro e separado</strong>
           <p>
-            A conta Mercado Pago da sua empresa não é solicitada aqui. Ela só
-            poderá ser conectada depois, pelo administrador, dentro do sistema.
+            Seus dados ficam salvos na conta da própria empresa. A contratação
+            do plano só será oferecida quando os 5 dias terminarem.
           </p>
           <Link to="/planos" className="text-link">Rever o plano</Link>
         </aside>

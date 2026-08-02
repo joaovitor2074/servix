@@ -18,6 +18,9 @@ export interface PortalAssinatura {
     canceladaEm?: string | null
     ativadaEm?: string | null
     proximaCobrancaEm?: string | null
+    testeGratisIniciadoEm?: string | null
+    testeGratisExpiraEm?: string | null
+    acessoPilotoAte?: string | null
     atualizadoEm: string
   }
 }

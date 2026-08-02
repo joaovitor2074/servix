@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import type { UsuarioAutenticado } from '../../features/auth/types/auth.types'
 import { FINANCEIRO_PREVIEW_HABILITADO } from '../../features/finance/config/finance-preview.config'
 import servixSymbol from '../../assets/brand/servix-symbol.svg'
@@ -15,6 +15,11 @@ const PRECARREGADORES = {
   clientes: () => import('../../features/clients/pages/ClientsPage'),
   orcamentos: () => import('../../features/budgets/pages/BudgetsPage'),
   ordens: () => import('../../features/orders/pages/OrdersPage'),
+  kanban: () => import('../../features/kanban/pages/KanbanPage'),
+  estoque: () => import('../../features/inventory/pages/InventoryPage'),
+  garantias: () => import('../../features/warranties/pages/WarrantiesPage'),
+  whatsapp: () => import('../../features/communication/pages/WhatsAppPage'),
+  relatorios: () => import('../../features/reports/pages/ReportsPage'),
   financeiro: () => Promise.all([
     import('../../features/finance/layouts/FinanceLayout'),
     import('../../features/finance/pages/FinanceDashboardPage'),
@@ -22,6 +27,7 @@ const PRECARREGADORES = {
   usuarios: () => import('../../features/settings/users/pages/UsersSettingsPage'),
   assinatura: () => import('../../features/settings/subscription/pages/SubscriptionSettingsPage'),
   pagamentos: () => import('../../features/settings/payments/pages/PaymentSettingsPage'),
+  whatsappConfiguracoes: () => import('../../features/settings/whatsapp/pages/WhatsAppSettingsPage'),
 } satisfies Record<string, () => Promise<unknown>>
 
 type RotaPrecarregavel = keyof typeof PRECARREGADORES
@@ -145,6 +151,56 @@ export default function AppLayout({
             <span>Ordens</span>
           </NavLink>
 
+          <NavLink
+            to="/kanban"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('kanban')}
+            onFocus={() => precarregarRota('kanban')}
+          >
+            <KanbanIcon />
+            <span>Kanban</span>
+          </NavLink>
+
+          <NavLink
+            to="/estoque"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('estoque')}
+            onFocus={() => precarregarRota('estoque')}
+          >
+            <InventoryIcon />
+            <span>Estoque</span>
+          </NavLink>
+
+          <NavLink
+            to="/garantias"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('garantias')}
+            onFocus={() => precarregarRota('garantias')}
+          >
+            <WarrantyIcon />
+            <span>Garantias</span>
+          </NavLink>
+
+          <NavLink
+            to="/whatsapp"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('whatsapp')}
+            onFocus={() => precarregarRota('whatsapp')}
+          >
+            <WhatsAppIcon />
+            <span>WhatsApp</span>
+          </NavLink>
+
+          <NavLink
+            to="/relatorios"
+            onClick={() => setMenuAberto(false)}
+            onPointerEnter={() => precarregarRota('relatorios')}
+            onFocus={() => precarregarRota('relatorios')}
+          >
+            <ReportsIcon />
+            <span>Relatórios</span>
+          </NavLink>
+
           {FINANCEIRO_PREVIEW_HABILITADO && usuario.papel === 'ADMIN' && (
             <NavLink
               to="/financeiro"
@@ -188,6 +244,16 @@ export default function AppLayout({
               >
                 <SettingsIcon />
                 <span>Configurações</span>
+              </NavLink>
+
+              <NavLink
+                to="/configuracoes/whatsapp"
+                onClick={() => setMenuAberto(false)}
+                onPointerEnter={() => precarregarRota('whatsappConfiguracoes')}
+                onFocus={() => precarregarRota('whatsappConfiguracoes')}
+              >
+                <WhatsAppIcon />
+                <span>Config. WhatsApp</span>
               </NavLink>
             </>
           )}
@@ -251,6 +317,25 @@ export default function AppLayout({
             </div>
           </div>
         </header>
+
+        {(usuario.empresa.acesso?.tipo === 'TESTE_GRATUITO' ||
+          usuario.empresa.acesso?.tipo === 'PILOTO') && (
+          <aside className="app-access-banner" role="status">
+            <div>
+              <strong>
+                {usuario.empresa.acesso.tipo === 'PILOTO'
+                  ? 'Acesso piloto liberado'
+                  : 'Teste gratuito em andamento'}
+              </strong>
+              <span>
+                {textoDiasRestantes(usuario.empresa.acesso.diasRestantes)}. Seus dados estão sendo salvos normalmente.
+              </span>
+            </div>
+            {usuario.papel === 'ADMIN' && (
+              <Link to="/configuracoes/assinatura">Ver detalhes</Link>
+            )}
+          </aside>
+        )}
 
         <main className="app-layout__content">
           <Outlet />
@@ -371,6 +456,31 @@ function FinanceIcon() {
       <path d="M7 7V5h10v2M8 13h8M12 10v6" />
     </Icon>
   )
+}
+
+function KanbanIcon() {
+  return <Icon><rect x="3" y="4" width="5" height="16" rx="1" /><rect x="10" y="4" width="5" height="10" rx="1" /><rect x="17" y="4" width="4" height="13" rx="1" /></Icon>
+}
+
+function InventoryIcon() {
+  return <Icon><path d="m4 8 8-4 8 4-8 4-8-4Z" /><path d="m4 8v9l8 4 8-4V8M12 12v9" /></Icon>
+}
+
+function WarrantyIcon() {
+  return <Icon><path d="M12 3 5 6v5c0 4.7 2.8 8.2 7 10 4.2-1.8 7-5.3 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-5" /></Icon>
+}
+
+function WhatsAppIcon() {
+  return <Icon><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.4-4A8 8 0 1 1 20 11.5Z" /><path d="M8.5 8.5c.5 3 2 4.5 5 5" /></Icon>
+}
+
+function ReportsIcon() {
+  return <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></Icon>
+}
+
+function textoDiasRestantes(dias: number | null) {
+  if (dias === null) return 'Acesso sem prazo informado'
+  return dias === 1 ? 'Resta 1 dia' : `Restam ${dias} dias`
 }
 
 function SubscriptionIcon() {

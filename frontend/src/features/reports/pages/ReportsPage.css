@@ -1,0 +1,24 @@
+.reports-filter { display: flex; align-items: end; gap: 10px; padding: 13px; border: 1px solid var(--color-border); border-radius: 12px; background: #fff; }
+.reports-filter label { width: 170px; }
+.reports-filter button { min-height: 41px; border: 0; }
+.reports-metrics article small { margin-top: auto; }
+.reports-radar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.reports-radar article { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; border: 1px solid #dfe5ef; border-radius: 10px; background: #f8faff; }
+.reports-radar span { color: #637086; font-size: 11px; font-weight: 650; }
+.reports-radar strong { color: var(--color-text); font-size: 15px; }
+.reports-radar .is-warning { border-color: #f0d59a; background: #fff9e9; }
+.reports-radar .is-warning strong { color: #9b6407; }
+.reports-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(310px, .7fr); gap: 16px; }
+.reports-status > div { display: grid; gap: 12px; padding: 18px; }
+.reports-status article { display: grid; grid-template-columns: 110px 1fr 28px; align-items: center; gap: 10px; }
+.reports-status article span, .reports-status article strong { color: #59677d; font-size: 10px; }
+.reports-status article strong { text-align: right; }
+.reports-status article div { overflow: hidden; height: 8px; border-radius: 999px; background: #edf0f5; }
+.reports-status article i { display: block; min-width: 2px; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0648d8, #5191ff); }
+.reports-ranking { display: grid; list-style: none; }
+.reports-ranking li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--color-border); }
+.reports-ranking li > span { display: grid; place-items: center; width: 25px; height: 25px; color: var(--color-primary); font-size: 10px; font-weight: 800; border-radius: 7px; background: #eaf1ff; }
+.reports-ranking strong { color: var(--color-text); font-size: 11px; }
+.reports-ranking em { color: var(--color-text-muted); font-size: 9px; font-style: normal; }
+@media (max-width: 900px) { .reports-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .reports-filter { align-items: stretch; flex-direction: column; } .reports-filter label { width: 100%; } .reports-radar { grid-template-columns: 1fr; } }

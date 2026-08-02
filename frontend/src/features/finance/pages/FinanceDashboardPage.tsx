@@ -39,6 +39,8 @@ export default function FinanceDashboardPage() {
 
   const { resumo, resumoServicos } = dados
   const indicadoresServicos = resumoServicos.indicadores
+  const totalVencido = somarValoresMonetarios(resumo.vencidoAReceber, resumo.vencidoAPagar)
+  const saldoVencido = subtrairValoresMonetarios(resumo.vencidoAReceber, resumo.vencidoAPagar)
 
   return (
     <div className="finance-page finance-overview">
@@ -59,6 +61,32 @@ export default function FinanceDashboardPage() {
       />
 
       <FinanceSourceNote fonte={dados.fonte} atualizadoEm={dados.atualizadoEm} />
+
+      <section className="finance-attention" aria-labelledby="finance-attention-title">
+        <div className="finance-attention__heading">
+          <span className="finance-attention__icon"><FinanceIcon name="warning" /></span>
+          <div>
+            <span className="finance-eyebrow">Radar financeiro</span>
+            <h2 id="finance-attention-title">
+              {totalVencido > 0 ? 'Valores vencidos pedem atenção' : 'Nenhum valor vencido no momento'}
+            </h2>
+            <p>
+              {totalVencido > 0
+                ? 'Priorize cobranças e compromissos para manter o caixa previsível.'
+                : 'Seu calendário financeiro está em dia. Continue acompanhando os próximos vencimentos.'}
+            </p>
+          </div>
+        </div>
+        <div className="finance-attention__numbers">
+          <div><span>A receber vencido</span><strong className="is-income">{formatarMoeda(resumo.vencidoAReceber)}</strong></div>
+          <div><span>A pagar vencido</span><strong className="is-expense">{formatarMoeda(resumo.vencidoAPagar)}</strong></div>
+          <div><span>Saldo dos atrasos</span><strong className={saldoVencido >= 0 ? 'is-income' : 'is-expense'}>{formatarMoeda(saldoVencido)}</strong></div>
+        </div>
+        <div className="finance-attention__actions">
+          <Link to="/financeiro/contas-a-receber">Revisar recebimentos <FinanceIcon name="chevron" /></Link>
+          <Link to="/financeiro/contas-a-pagar">Revisar pagamentos <FinanceIcon name="chevron" /></Link>
+        </div>
+      </section>
 
       <section className="finance-service-overview" aria-labelledby="finance-services-title">
         <header className="finance-service-overview__header">

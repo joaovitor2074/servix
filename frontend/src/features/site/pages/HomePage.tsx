@@ -171,6 +171,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="site-section site-section--tinted final-cta" aria-labelledby="sites-home-title">
+        <div className="site-container final-cta__card">
+          <div>
+            <p className="eyebrow">Também criamos seu site</p>
+            <h2 id="sites-home-title">Sua empresa organizada por dentro e bem apresentada por fora.</h2>
+          </div>
+          <div className="final-cta__actions">
+            <Link to="/criacao-de-sites" className="button button--primary button--large">
+              Conhecer o Servix Sites
+            </Link>
+            <Link to="/contato" className="button button--secondary button--large">
+              Pedir orçamento
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="site-section site-section--dark" aria-labelledby="plan-home-title">
         <div className="site-container home-plan">
           <div className="home-plan__copy">

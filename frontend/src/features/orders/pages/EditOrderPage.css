@@ -596,6 +596,68 @@
   cursor: pointer;
 }
 
+.edit-order-checklist {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #dfe3ea;
+  border-radius: 12px;
+}
+
+.edit-order-checklist legend {
+  padding: 0 6px;
+  color: #344054;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.edit-order-checklist > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.edit-order-checklist label,
+.edit-order-client-acceptance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475467;
+  font-size: 0.875rem;
+}
+
+.edit-order-checklist input,
+.edit-order-client-acceptance input {
+  width: 18px;
+  height: 18px;
+  accent-color: #6941c6;
+}
+
+.edit-order-checklist--compact {
+  grid-column: auto;
+}
+
+.edit-order-client-acceptance {
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid #b7e4c7;
+  border-radius: 12px;
+  background: #f0fdf4;
+}
+
+.edit-order-client-acceptance span {
+  display: grid;
+  gap: 3px;
+}
+
+.edit-order-client-acceptance strong {
+  color: #166534;
+}
+
+.edit-order-client-acceptance small {
+  color: #49745a;
+}
+
 .edit-order-secret-remove input {
   width: 17px;
   height: 17px;

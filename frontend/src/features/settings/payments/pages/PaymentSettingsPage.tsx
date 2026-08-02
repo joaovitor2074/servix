@@ -9,10 +9,13 @@ import {
   atualizarConfiguracaoPagamento,
   buscarConfiguracaoPagamento,
   ConflitoConfiguracaoPagamentoError,
+  desconectarMercadoPago,
+  iniciarOAuthMercadoPago,
 } from '../services/payment-settings.service'
 import type {
   AtualizarConfiguracaoPagamentoInput,
   ConfiguracaoPagamento,
+  IntegracaoMercadoPago,
   ProvedorPagamentoDisponivel,
   ProvedorPagamento,
 } from '../types/payment-settings.types'
@@ -26,9 +29,6 @@ interface ProvedorOpcao {
   icon: ReactNode
 }
 
-const MERCADO_PAGO_DOCUMENTATION_URL =
-  'https://www.mercadopago.com.br/developers/pt/docs/overview'
-
 const PROVEDORES: ProvedorOpcao[] = [
   {
     id: 'MANUAL',
@@ -40,15 +40,15 @@ const PROVEDORES: ProvedorOpcao[] = [
   {
     id: 'SIMULADO',
     nome: 'Gateway simulado',
-    descricao: 'Cobranças automáticas ficarão disponíveis em uma etapa futura.',
-    destaque: 'Em desenvolvimento',
+    descricao: 'Gera cobranças fictícias para validar o fluxo sem movimentar dinheiro.',
+    destaque: 'Teste',
     icon: <SimulationIcon />,
   },
   {
     id: 'MERCADO_PAGO',
     nome: 'Mercado Pago',
-    descricao: 'A conexão OAuth e os pagamentos online estão em desenvolvimento.',
-    destaque: 'Em desenvolvimento',
+    descricao: 'Conecte a conta da assistência para receber cobranças Pix.',
+    destaque: 'OAuth',
     icon: <WalletIcon />,
   },
   {
@@ -68,13 +68,36 @@ export default function PaymentSettingsPage() {
   const [provedoresDisponiveis, setProvedoresDisponiveis] = useState<
     ProvedorPagamentoDisponivel[]
   >([])
+  const [integracaoMercadoPago, setIntegracaoMercadoPago] =
+    useState<IntegracaoMercadoPago | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [conectandoMercadoPago, setConectandoMercadoPago] = useState(false)
+  const [desconectandoMercadoPago, setDesconectandoMercadoPago] =
+    useState(false)
+  const [retornoOAuth] = useState(lerRetornoOAuth)
   const [erroCarregamento, setErroCarregamento] = useState('')
-  const [erroSalvamento, setErroSalvamento] = useState('')
+  const [erroSalvamento, setErroSalvamento] = useState(() =>
+    retornoOAuth?.resultado === 'erro'
+      ? mensagemRetornoOAuth(retornoOAuth.codigo)
+      : '',
+  )
   const [conflito, setConflito] = useState(false)
-  const [mensagemSucesso, setMensagemSucesso] = useState('')
+  const [mensagemSucesso, setMensagemSucesso] = useState(() =>
+    retornoOAuth?.resultado === 'conectado'
+      ? 'Conta do Mercado Pago conectada. Selecione o provedor e salve para ativar o Pix.'
+      : '',
+  )
   const [tentativa, setTentativa] = useState(0)
+
+  useEffect(() => {
+    if (!retornoOAuth) return
+
+    const url = new URL(window.location.href)
+    url.searchParams.delete('mercadoPago')
+    url.searchParams.delete('codigo')
+    window.history.replaceState(window.history.state, '', url)
+  }, [retornoOAuth])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -84,8 +107,11 @@ export default function PaymentSettingsPage() {
         setConfiguracao(resultado.configuracao)
         setRascunho(criarRascunho(resultado.configuracao))
         setProvedoresDisponiveis(resultado.provedoresDisponiveis)
+        setIntegracaoMercadoPago(resultado.integracaoMercadoPago)
         setErroCarregamento('')
         setConflito(false)
+        setConectandoMercadoPago(false)
+        setDesconectandoMercadoPago(false)
       })
       .catch(error => {
         if (error instanceof Error && error.name === 'AbortError') return
@@ -118,16 +144,11 @@ export default function PaymentSettingsPage() {
     setMensagemSucesso('')
 
     try {
-      const dadosEnvio = {
-        ...rascunho,
-        provedor: 'MANUAL' as const,
-        ambiente: 'PRODUCAO' as const,
-        pixHabilitado: false,
-      }
-      const resultado = await atualizarConfiguracaoPagamento(dadosEnvio)
+      const resultado = await atualizarConfiguracaoPagamento(rascunho)
       setConfiguracao(resultado.configuracao)
       setRascunho(criarRascunho(resultado.configuracao))
       setProvedoresDisponiveis(resultado.provedoresDisponiveis)
+      setIntegracaoMercadoPago(resultado.integracaoMercadoPago)
       setMensagemSucesso('Configurações de pagamento salvas com sucesso.')
     } catch (error) {
       setConflito(error instanceof ConflitoConfiguracaoPagamentoError)
@@ -146,7 +167,10 @@ export default function PaymentSettingsPage() {
   }
 
   function selecionarProvedor(provedor: ProvedorPagamento) {
-    if (provedor !== 'MANUAL') return
+    const disponibilidade = provedoresDisponiveis.find(
+      item => item.provedor === provedor,
+    )
+    if (!disponibilidade?.disponivel) return
 
     setMensagemSucesso('')
     setErroSalvamento('')
@@ -157,7 +181,8 @@ export default function PaymentSettingsPage() {
       return {
         ...atual,
         provedor,
-        pixHabilitado: false,
+        ativo: true,
+        pixHabilitado: provedor === 'MERCADO_PAGO',
         ambiente: ambientes.includes(atual.ambiente)
           ? atual.ambiente
           : ambientes[0] ?? 'TESTE',
@@ -166,7 +191,7 @@ export default function PaymentSettingsPage() {
   }
 
   function alterarOpcao(
-    campo: 'ativo',
+    campo: 'ativo' | 'pixHabilitado',
     valor: boolean,
   ) {
     setMensagemSucesso('')
@@ -174,12 +199,50 @@ export default function PaymentSettingsPage() {
     setRascunho(atual => (atual ? { ...atual, [campo]: valor } : atual))
   }
 
+  async function handleConectarMercadoPago() {
+    if (conectandoMercadoPago || desconectandoMercadoPago) return
+
+    setConectandoMercadoPago(true)
+    setErroSalvamento('')
+    setMensagemSucesso('')
+
+    try {
+      const { authorizationUrl } = await iniciarOAuthMercadoPago()
+      window.location.assign(authorizationUrl)
+    } catch (error) {
+      setErroSalvamento(obterMensagemErro(error))
+      setConectandoMercadoPago(false)
+    }
+  }
+
+  async function handleDesconectarMercadoPago() {
+    if (conectandoMercadoPago || desconectandoMercadoPago) return
+    if (!window.confirm(
+      'Desconectar a conta do Mercado Pago? Novas cobranças Pix ficarão indisponíveis.',
+    )) return
+
+    setDesconectandoMercadoPago(true)
+    setErroSalvamento('')
+    setMensagemSucesso('')
+
+    try {
+      await desconectarMercadoPago()
+      setMensagemSucesso('Conta do Mercado Pago desconectada com sucesso.')
+      setCarregando(true)
+      setTentativa(valor => valor + 1)
+    } catch (error) {
+      setErroSalvamento(obterMensagemErro(error))
+      setDesconectandoMercadoPago(false)
+    }
+  }
+
   if (carregando) return <PaymentSettingsSkeleton />
 
   if (
     erroCarregamento ||
     !configuracao ||
-    !rascunho
+    !rascunho ||
+    !integracaoMercadoPago
   ) {
     return (
       <section className="payment-settings-feedback" role="alert">
@@ -196,9 +259,10 @@ export default function PaymentSettingsPage() {
   }
 
   const modoManual = rascunho.provedor === 'MANUAL'
+  const modoMercadoPago = rascunho.provedor === 'MERCADO_PAGO'
   const provedorSelecionadoDisponivel =
-    modoManual && provedoresDisponiveis.find(
-      item => item.provedor === 'MANUAL',
+    provedoresDisponiveis.find(
+      item => item.provedor === rascunho.provedor,
     )?.disponivel === true
   const ambientesSelecionados = obterAmbientesProvedor(
     rascunho.provedor,
@@ -228,10 +292,10 @@ export default function PaymentSettingsPage() {
           <ShieldIcon />
         </span>
         <div>
-          <strong>Pagamentos online em desenvolvimento</strong>
+          <strong>Conexão segura com a conta da assistência</strong>
           <p>
-            Por enquanto, os recebimentos são feitos diretamente na
-            assistência e registrados manualmente na ordem de serviço.
+            O Servix usa OAuth: a senha e o Access Token do Mercado Pago nunca
+            são informados nesta tela nem enviados ao navegador.
           </p>
         </div>
       </div>
@@ -273,9 +337,7 @@ export default function PaymentSettingsPage() {
               const disponibilidade = provedoresDisponiveis.find(
                 item => item.provedor === provedor.id,
               )
-              const disponivel =
-                provedor.id === 'MANUAL' &&
-                disponibilidade?.disponivel === true
+              const disponivel = disponibilidade?.disponivel === true
 
               return (
                 <label
@@ -313,6 +375,7 @@ export default function PaymentSettingsPage() {
                       <span className="payment-provider__reason">
                         {obterMotivoIndisponibilidade(
                           provedor.id,
+                          disponibilidade,
                         )}
                       </span>
                     )}
@@ -321,41 +384,14 @@ export default function PaymentSettingsPage() {
               )
             })}
 
-            <div className="payment-provider-documentation" role="note">
-              <span className="payment-provider-documentation__icon">
-                <BookIcon />
-              </span>
-              <div>
-                <strong>Integração com o Mercado Pago</strong>
-                <p>
-                  A conexão OAuth será liberada depois da validação técnica.
-                  Até lá, nenhuma conta pode ser conectada nesta tela.
-                </p>
-              </div>
-              <a
-                href={MERCADO_PAGO_DOCUMENTATION_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Abrir documentação oficial do Mercado Pago em uma nova aba"
-              >
-                Abrir documentação
-                <ExternalLinkIcon />
-              </a>
-              <div
-                className="payment-provider-documentation__status payment-provider-documentation__status--waiting"
-                role="status"
-              >
-                <span aria-hidden="true" />
-                <div>
-                  <strong>Aplicativo OAuth</strong>
-                  <p>Configuração preservada no servidor, mas indisponível para uso.</p>
-                </div>
-                <small>Em desenvolvimento</small>
-              </div>
-            </div>
+            <MercadoPagoConnectionCard
+              integracao={integracaoMercadoPago}
+              conectando={conectandoMercadoPago}
+              desconectando={desconectandoMercadoPago}
+              onConectar={() => void handleConectarMercadoPago()}
+              onDesconectar={() => void handleDesconectarMercadoPago()}
+            />
           </fieldset>
-
-          <MercadoPagoDevelopmentCard />
         </section>
 
         <section className="payment-settings-card">
@@ -364,8 +400,9 @@ export default function PaymentSettingsPage() {
             <div>
               <h2>Defina o funcionamento</h2>
               <p>
-                O registro manual confirma valores que já foram recebidos
-                diretamente pela assistência.
+                {modoMercadoPago
+                  ? 'Ative as cobranças Pix recebidas na conta conectada.'
+                  : 'O registro manual confirma valores recebidos diretamente pela assistência.'}
               </p>
             </div>
           </div>
@@ -378,11 +415,24 @@ export default function PaymentSettingsPage() {
               description={
                 modoManual
                   ? 'Mantém o registro manual disponível nas ordens de serviço.'
-                  : 'Permite utilizar o provedor nos testes de cobrança.'
+                  : 'Permite utilizar o provedor conectado nas cobranças.'
               }
               onChange={valor => alterarOpcao('ativo', valor)}
             />
 
+            {modoMercadoPago && (
+              <SwitchField
+                checked={rascunho.pixHabilitado}
+                disabled={
+                  salvando ||
+                  !provedorSelecionadoDisponivel ||
+                  !rascunho.ativo
+                }
+                label="Habilitar cobranças Pix"
+                description="Permite gerar Pix para os clientes usando a conta conectada."
+                onChange={valor => alterarOpcao('pixHabilitado', valor)}
+              />
+            )}
           </div>
 
           <fieldset className="payment-environment" disabled={salvando}>
@@ -390,8 +440,8 @@ export default function PaymentSettingsPage() {
             <div>
               <strong>Ambiente</strong>
               <span>
-                Produção identifica registros reais feitos pela equipe. Nenhum
-                pagamento é processado pelo Servix neste modo.
+                O ambiente é definido pela configuração OAuth do servidor e
+                precisa corresponder à conta autorizada.
               </span>
             </div>
             <div className="payment-environment__options">
@@ -425,7 +475,10 @@ export default function PaymentSettingsPage() {
             <span>Configuração atual</span>
             <strong>{obterNomeProvedor(rascunho.provedor)}</strong>
             <small>
-              {rascunho.ativo ? 'Ativo' : 'Inativo'} · pagamentos online em desenvolvimento
+              {rascunho.ativo ? 'Ativo' : 'Inativo'}
+              {modoMercadoPago
+                ? ` · Pix ${rascunho.pixHabilitado ? 'habilitado' : 'desabilitado'}`
+                : ''}
             </small>
           </div>
 
@@ -476,10 +529,41 @@ export default function PaymentSettingsPage() {
   )
 }
 
-function MercadoPagoDevelopmentCard() {
+function MercadoPagoConnectionCard({
+  integracao,
+  conectando,
+  desconectando,
+  onConectar,
+  onDesconectar,
+}: {
+  integracao: IntegracaoMercadoPago
+  conectando: boolean
+  desconectando: boolean
+  onConectar: () => void
+  onDesconectar: () => void
+}) {
+  const processando = conectando || desconectando
+  const conectado = integracao.conectado && integracao.status === 'CONECTADA'
+  const tone = conectado
+    ? 'connected'
+    : integracao.status === 'ERRO' || !integracao.oauthDisponivel
+      ? 'error'
+      : integracao.status === 'BLOQUEADA' || integracao.status === 'EXPIRADA'
+        ? 'warning'
+        : 'disconnected'
+  const status = conectado
+    ? 'Conectada'
+    : integracao.status === 'BLOQUEADA'
+      ? 'Ambiente incorreto'
+      : integracao.status === 'EXPIRADA'
+        ? 'Expirada'
+        : integracao.status === 'ERRO'
+          ? 'Requer atenção'
+          : 'Desconectada'
+
   return (
     <section
-      className="mercado-pago-connection mercado-pago-connection--disconnected"
+      className={`mercado-pago-connection mercado-pago-connection--${tone}`}
       aria-labelledby="mercado-pago-connection-title"
     >
       <header className="mercado-pago-connection__header">
@@ -489,20 +573,89 @@ function MercadoPagoDevelopmentCard() {
         <div>
           <span>Conta da empresa</span>
           <h3 id="mercado-pago-connection-title">Mercado Pago</h3>
-          <p>A conexão OAuth ainda não está disponível para as empresas.</p>
+          <p>
+            {conectado
+              ? 'Esta assistência autorizou o Servix a criar e consultar cobranças.'
+              : 'Conecte a conta que receberá os pagamentos dos clientes.'}
+          </p>
         </div>
         <span className="mercado-pago-connection__status">
           <i aria-hidden="true" />
-          Em desenvolvimento
+          {status}
         </span>
       </header>
+
+      {integracao.mercadoPagoUserId && (
+        <dl className="mercado-pago-connection__details">
+          <div>
+            <dt>Conta Mercado Pago</dt>
+            <dd>{integracao.mercadoPagoUserId}</dd>
+          </div>
+          <div>
+            <dt>Ambiente</dt>
+            <dd>{integracao.liveMode ? 'Produção' : 'Teste'}</dd>
+          </div>
+          {integracao.conectadoEm && (
+            <div>
+              <dt>Conectada em</dt>
+              <dd>{formatarData(integracao.conectadoEm)}</dd>
+            </div>
+          )}
+          {integracao.tokenExpiraEm && (
+            <div>
+              <dt>Credencial válida até</dt>
+              <dd>{formatarData(integracao.tokenExpiraEm)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+
+      {integracao.liveMode && conectado && (
+        <div className="mercado-pago-connection__live-warning" role="note">
+          <WarningIcon />
+          <span>Conta de produção: as cobranças criadas movimentam dinheiro real.</span>
+        </div>
+      )}
+
+      {integracao.motivoIndisponibilidade && !conectado && (
+        <div className="mercado-pago-connection__error" role="alert">
+          <WarningIcon />
+          <span>{integracao.motivoIndisponibilidade}</span>
+        </div>
+      )}
 
       <div className="mercado-pago-connection__footer">
         <p>
           <ShieldIcon />
-          Até a liberação, use apenas o registro manual depois que a assistência
-          receber o pagamento diretamente.
+          A autorização acontece no domínio oficial do Mercado Pago. O Servix
+          armazena os tokens criptografados somente no servidor.
         </p>
+        <div className="mercado-pago-connection__actions">
+          <button
+            className="mercado-pago-connection__connect"
+            type="button"
+            disabled={!integracao.oauthDisponivel || processando}
+            onClick={onConectar}
+          >
+            {conectando ? <LoadingIcon /> : <ExternalLinkIcon />}
+            {conectando
+              ? 'Abrindo Mercado Pago...'
+              : conectado
+                ? 'Reconectar conta'
+                : 'Conectar Mercado Pago'}
+          </button>
+          {integracao.mercadoPagoUserId && (
+            <button
+              className="mercado-pago-connection__disconnect"
+              type="button"
+              disabled={processando}
+              onClick={onDesconectar}
+            >
+              {desconectando && <LoadingIcon />}
+              {desconectando ? 'Desconectando...' : 'Desconectar'}
+            </button>
+          )}
+        </div>
       </div>
     </section>
   )
@@ -568,10 +721,10 @@ function criarRascunho(
 ): AtualizarConfiguracaoPagamentoInput {
   return {
     versaoEsperada: configuracao.versao,
-    provedor: 'MANUAL',
-    ambiente: 'PRODUCAO',
-    ativo: true,
-    pixHabilitado: false,
+    provedor: configuracao.provedor,
+    ambiente: configuracao.ambiente,
+    ativo: configuracao.ativo,
+    pixHabilitado: configuracao.pixHabilitado,
   }
 }
 
@@ -592,18 +745,59 @@ function obterRotuloDisponibilidade(
   provedor: ProvedorOpcao,
   disponibilidade?: ProvedorPagamentoDisponivel,
 ) {
-  if (provedor.id === 'MANUAL' && disponibilidade?.disponivel) {
+  if (disponibilidade?.disponivel) {
     return provedor.destaque
   }
-  return provedor.id === 'ASAAS' ? 'Em breve' : 'Em desenvolvimento'
+  if (provedor.id === 'MERCADO_PAGO' && disponibilidade?.configuracaoServidor === 'CONFIGURADA') {
+    return 'Conectar conta'
+  }
+  return provedor.id === 'ASAAS' ? 'Em breve' : 'Indisponível'
 }
 
 function obterMotivoIndisponibilidade(
   provedor: ProvedorPagamento,
+  disponibilidade?: ProvedorPagamentoDisponivel,
 ) {
+  if (disponibilidade?.motivoIndisponibilidade) {
+    return disponibilidade.motivoIndisponibilidade
+  }
   return provedor === 'ASAAS'
     ? 'Este provedor ainda não está disponível.'
-    : 'Pagamentos online estão em desenvolvimento.'
+    : 'Este provedor não está disponível neste ambiente.'
+}
+
+function lerRetornoOAuth() {
+  const url = new URL(window.location.href)
+  const resultado = url.searchParams.get('mercadoPago')
+
+  if (resultado !== 'conectado' && resultado !== 'erro') return null
+
+  return {
+    resultado,
+    codigo: url.searchParams.get('codigo'),
+  }
+}
+
+function mensagemRetornoOAuth(codigo: string | null) {
+  const mensagens: Record<string, string> = {
+    AUTORIZACAO_NEGADA: 'A autorização foi cancelada no Mercado Pago.',
+    AMBIENTE_INCOMPATIVEL:
+      'A conta autorizada pertence a outro ambiente. Confira se o servidor está em teste ou produção.',
+    COBRANCAS_PENDENTES:
+      'Existem cobranças pendentes vinculadas à conta atual. Concilie-as antes de trocar a conexão.',
+    CONTA_JA_CONECTADA:
+      'Esta conta do Mercado Pago já está conectada a outra empresa no Servix.',
+    STATE_INVALIDO:
+      'A solicitação de conexão expirou ou já foi utilizada. Inicie novamente.',
+    CALLBACK_INVALIDO:
+      'O Mercado Pago não devolveu uma autorização válida. Tente novamente.',
+    TROCA_TOKEN_FALHOU:
+      'Não foi possível validar a autorização com o Mercado Pago. Tente novamente.',
+  }
+
+  return codigo && mensagens[codigo]
+    ? mensagens[codigo]
+    : 'Não foi possível concluir a conexão com o Mercado Pago.'
 }
 
 function formatarData(valor: string) {
@@ -669,10 +863,6 @@ function SaveIcon() {
 
 function LoadingIcon() {
   return <Icon><path d="M20 12a8 8 0 1 1-2.3-5.7" /></Icon>
-}
-
-function BookIcon() {
-  return <Icon><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5v-16ZM20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5v-16Z" /></Icon>
 }
 
 function ExternalLinkIcon() {

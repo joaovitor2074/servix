@@ -122,6 +122,34 @@ export interface EmpresaDaOrdem {
   estado: string | null
 }
 
+export interface GarantiaDaOrdem {
+  id: number
+  codigo: string
+  status: 'ATIVA' | 'UTILIZADA' | 'CANCELADA'
+  dias: number
+  inicioEm: string
+  expiraEm: string
+  termos: string
+}
+
+export const ITENS_CHECKLIST_ENTRADA = [
+  'TELA_TRINCADA',
+  'RISCOS',
+  'AMASSADOS',
+  'MARCAS_DE_QUEDA',
+  'SINAIS_DE_LIQUIDO',
+  'NAO_LIGA',
+] as const
+
+export type ItemChecklistEntrada = (typeof ITENS_CHECKLIST_ENTRADA)[number]
+
+export interface TecnicoResponsavelResumo {
+  id: number
+  nome: string
+  papel: 'ADMIN' | 'ATENDENTE' | 'TECNICO'
+  ativo: boolean
+}
+
 // Representa exatamente uma ordem devolvida por GET /ordens. Datas chegam em
 // JSON como strings ISO e o Decimal do Prisma chega como texto.
 export interface OrdemServico {
@@ -132,6 +160,17 @@ export interface OrdemServico {
   orcamentoId: number
   equipamento: string
   problemaRelatado: string
+  marcaAparelho: string | null
+  modeloAparelho: string | null
+  imei: string | null
+  numeroSerie: string | null
+  corAparelho: string | null
+  capacidadeAparelho: string | null
+  acessoriosEntrada: string | null
+  checklistEntrada: ItemChecklistEntrada[]
+  defeitosVisiveis: string | null
+  aparelhoJaAberto: boolean | null
+  aceiteClienteEm: string | null
   possuiCredencialAcesso: boolean
   podeRevelarCredencial?: boolean
   credencialAcessoAtualizadaEm: string | null
@@ -139,6 +178,8 @@ export interface OrdemServico {
   servicoRealizado: string | null
   pecasUtilizadas: string | null
   tecnicoResponsavel: string | null
+  tecnicoResponsavelId: number | null
+  tecnicoResponsavelUsuario?: TecnicoResponsavelResumo | null
   previsaoDeEntrega: string | null
   valor: string
   formaDePagamento: FormaPagamento
@@ -150,6 +191,7 @@ export interface OrdemServico {
   cliente: ClienteResumoOrdem
   orcamento: OrcamentoDaOrdem
   pagamentoResumo?: ResumoPagamentoOrdem
+  garantia?: GarantiaDaOrdem | null
   empresa?: EmpresaDaOrdem | null
 }
 
@@ -163,8 +205,20 @@ export interface AtualizarOrdemInput {
   diagnostico?: string | null
   servicoRealizado?: string | null
   pecasUtilizadas?: string | null
+  marcaAparelho?: string | null
+  modeloAparelho?: string | null
+  imei?: string | null
+  numeroSerie?: string | null
+  corAparelho?: string | null
+  capacidadeAparelho?: string | null
+  acessoriosEntrada?: string | null
+  checklistEntrada?: ItemChecklistEntrada[]
+  defeitosVisiveis?: string | null
+  aparelhoJaAberto?: boolean | null
+  aceiteCliente?: boolean
   credencialAcesso?: string | null
   tecnicoResponsavel?: string | null
+  tecnicoResponsavelId?: number | null
   previsaoDeEntrega?: string | null
   status?: StatusOrdem
   mensagemPublica?: string

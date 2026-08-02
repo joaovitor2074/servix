@@ -20,6 +20,9 @@ export interface AssinaturaAtual {
   proximaCobrancaEm?: string | null
   ultimaSincronizacaoEm?: string | null
   canceladaEm?: string | null
+  testeGratisIniciadoEm?: string | null
+  testeGratisExpiraEm?: string | null
+  acessoPilotoAte?: string | null
   criadoEm: string
   atualizadoEm: string
 }

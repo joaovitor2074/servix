@@ -1,0 +1,12 @@
+.inventory-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, .75fr); gap: 16px; align-items: start; }
+.stock-badge { display: inline-flex; padding: 5px 8px; color: #087341; font-weight: 750; border-radius: 999px; background: #e8f8ef; }
+.stock-badge--low { color: #a12d2d; background: #fdecec; }
+.inventory-movements { display: grid; }
+.inventory-movements article { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
+.inventory-movements article > span { display: grid; place-items: center; min-width: 37px; height: 34px; padding: 0 7px; font-size: 11px; font-weight: 800; border-radius: 8px; }
+.inventory-movements .is-in { color: #087341; background: #e8f8ef; }
+.inventory-movements .is-out { color: #b43131; background: #fdecec; }
+.inventory-movements article strong, .inventory-movements article small { display: block; font-size: 11px; }
+.inventory-movements article small, .inventory-movements article time { margin-top: 3px; color: var(--color-text-muted); font-size: 9px; }
+.inventory-movements article a { color: var(--color-primary); font-size: 10px; font-weight: 700; }
+@media (max-width: 1050px) { .inventory-grid { grid-template-columns: 1fr; } }

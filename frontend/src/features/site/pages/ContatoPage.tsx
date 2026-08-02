@@ -46,6 +46,24 @@ export default function ContatoPage() {
               {SITE_SUPPORT_EMAIL}
             </a>
           </article>
+
+          <article className="contact-card">
+            <span className="contact-card__marker" aria-hidden="true">03</span>
+            <h2>Criação de sites</h2>
+            <p>
+              Conte qual é o segmento da empresa, quais serviços você quer
+              apresentar e o principal objetivo do novo site.
+            </p>
+            <a
+              className="button button--secondary"
+              href={`mailto:${SITE_CONTACT_EMAIL}?subject=Quero um orçamento para criação de site`}
+            >
+              Pedir orçamento
+            </a>
+            <Link className="text-link" to="/criacao-de-sites">
+              Conhecer o Servix Sites
+            </Link>
+          </article>
         </div>
       </section>
 

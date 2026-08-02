@@ -333,6 +333,36 @@ export default function OrderDetailsPage() {
             <dl className="order-details-fields">
               <DetailItem label="Equipamento" value={ordemAtual.equipamento} />
               <DetailItem
+                label="Marca e modelo"
+                value={juntarValores(ordemAtual.marcaAparelho, ordemAtual.modeloAparelho)}
+              />
+              <DetailItem label="IMEI" value={ordemAtual.imei ?? 'Não informado'} />
+              <DetailItem label="Número de série" value={ordemAtual.numeroSerie ?? 'Não informado'} />
+              <DetailItem
+                label="Cor e capacidade"
+                value={juntarValores(ordemAtual.corAparelho, ordemAtual.capacidadeAparelho)}
+              />
+              <DetailItem
+                label="Já foi aberto"
+                value={ordemAtual.aparelhoJaAberto === null
+                  ? 'Não informado'
+                  : ordemAtual.aparelhoJaAberto ? 'Sim' : 'Não'}
+              />
+              <DetailItem label="Acessórios deixados" value={ordemAtual.acessoriosEntrada ?? 'Nenhum informado'} wide />
+              <DetailItem
+                label="Checklist de entrada"
+                value={formatarChecklist(ordemAtual.checklistEntrada)}
+                wide
+              />
+              <DetailItem label="Defeitos visíveis" value={ordemAtual.defeitosVisiveis ?? 'Nenhum informado'} wide />
+              <DetailItem
+                label="Aceite do cliente"
+                value={ordemAtual.aceiteClienteEm
+                  ? `Confirmado em ${formatarDataHora(ordemAtual.aceiteClienteEm)}`
+                  : 'Ainda não confirmado'}
+                wide
+              />
+              <DetailItem
                 label="Problema relatado"
                 value={ordemAtual.problemaRelatado}
                 wide
@@ -468,6 +498,30 @@ export default function OrderDetailsPage() {
             />
           </DetailsCard>
 
+          {ordemAtual.garantia && (
+            <DetailsCard
+              icon={<WarrantyIcon />}
+              title="Garantia do serviço"
+              description="Certificado criado automaticamente na entrega."
+              variant="green"
+              compact
+            >
+              <dl className="order-details-side-fields">
+                <DetailItem
+                  label="Validade"
+                  value={`${formatarDataHora(ordemAtual.garantia.inicioEm)} até ${formatarDataHora(ordemAtual.garantia.expiraEm)}`}
+                />
+                <DetailItem
+                  label="Código"
+                  value={ordemAtual.garantia.codigo.slice(0, 8).toUpperCase()}
+                />
+              </dl>
+              <Link className="order-details-budget-link" to="/garantias">
+                Abrir certificado de garantia
+              </Link>
+            </DetailsCard>
+          )}
+
           <DetailsCard
             icon={<HistoryIcon />}
             title="Histórico do atendimento"
@@ -587,6 +641,12 @@ function ServiceDocument({
         <DocumentField label="Cliente" value={ordem.cliente.nome} />
         <DocumentField label="Telefone" value={formatarTelefone(ordem.cliente.telefone)} />
         <DocumentField label="Equipamento" value={ordem.equipamento} wide />
+        <DocumentField label="Marca/modelo" value={juntarValores(ordem.marcaAparelho, ordem.modeloAparelho)} />
+        <DocumentField label="IMEI / número de série" value={juntarValores(ordem.imei, ordem.numeroSerie)} />
+        <DocumentField label="Cor/capacidade" value={juntarValores(ordem.corAparelho, ordem.capacidadeAparelho)} />
+        <DocumentField label="Acessórios deixados" value={ordem.acessoriosEntrada || 'Nenhum informado'} />
+        <DocumentField label="Estado físico" value={formatarChecklist(ordem.checklistEntrada)} wide />
+        <DocumentField label="Defeitos visíveis" value={ordem.defeitosVisiveis || 'Nenhum informado'} wide />
         <DocumentField label="Defeito/problema informado" value={ordem.problemaRelatado} wide />
         <DocumentField
           label={'Previs\u00e3o informada'}
@@ -1057,6 +1117,10 @@ function WalletIcon() {
   return <Icon><path d="M3 6h15a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V6Z" /><path d="M3 6V5a2 2 0 0 1 2-2h12M15 12h6v4h-6a2 2 0 0 1 0-4Z" /></Icon>
 }
 
+function WarrantyIcon() {
+  return <Icon><path d="M12 3 5 6v5c0 4.7 2.8 8.2 7 10 4.2-1.8 7-5.3 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-5" /></Icon>
+}
+
 function InfoIcon() {
   return <Icon><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></Icon>
 }
@@ -1079,6 +1143,24 @@ function ExternalLinkIcon() {
 
 function CopyIcon() {
   return <Icon><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M15 9V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4" /></Icon>
+}
+
+function juntarValores(...valores: Array<string | null>) {
+  const preenchidos = valores.filter((valor): valor is string => Boolean(valor?.trim()))
+  return preenchidos.length ? preenchidos.join(' · ') : 'Não informado'
+}
+
+function formatarChecklist(itens: OrdemServico['checklistEntrada']) {
+  if (!itens.length) return 'Sem avarias marcadas'
+  const rotulos: Record<OrdemServico['checklistEntrada'][number], string> = {
+    TELA_TRINCADA: 'Tela trincada',
+    RISCOS: 'Riscos',
+    AMASSADOS: 'Amassados',
+    MARCAS_DE_QUEDA: 'Marcas de queda',
+    SINAIS_DE_LIQUIDO: 'Sinais de líquido',
+    NAO_LIGA: 'Não liga',
+  }
+  return itens.map(item => rotulos[item]).join(', ')
 }
 
 function PrintIcon() {

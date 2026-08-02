@@ -7,7 +7,7 @@ import {
 } from 'react-router'
 import { sincronizarCheckout } from '../site.service'
 import { formatarMoeda } from '../site-data'
-import type { CheckoutData } from '../site.types'
+import type { CadastroEmpresaResponse, CheckoutData } from '../site.types'
 
 export default function CadastroConcluidoPage() {
   const location = useLocation()
@@ -21,7 +21,9 @@ export default function CadastroConcluidoPage() {
     searchParams.get('checkout') ||
     ''
   ).split(/[?&]/, 1)[0]
-  const dadosIniciais = (location.state as CheckoutData | null) ?? null
+  const dadosIniciais = (
+    location.state as CadastroEmpresaResponse | CheckoutData | null
+  ) ?? null
   const [dados, setDados] = useState<CheckoutData | null>(dadosIniciais)
   const [carregando, setCarregando] = useState(!dadosIniciais && Boolean(token))
   const [erro, setErro] = useState('')
@@ -80,7 +82,10 @@ export default function CadastroConcluidoPage() {
     )
   }
 
-  if (dados?.assinatura.status === 'PENDENTE') {
+  const testeGratis = 'acesso' in (dados ?? {}) &&
+    (dados as CadastroEmpresaResponse).acesso?.tipo === 'TESTE_GRATUITO'
+
+  if (dados?.assinatura.status === 'PENDENTE' && !testeGratis) {
     return (
       <section className="state-page">
         <div className="site-container state-card">
@@ -107,7 +112,7 @@ export default function CadastroConcluidoPage() {
     )
   }
 
-  if (!dados || dados.assinatura.status !== 'ATIVA') {
+  if (!dados || (!testeGratis && dados.assinatura.status !== 'ATIVA')) {
     return (
       <section className="state-page">
         <div className="site-container state-card">
@@ -134,7 +139,9 @@ export default function CadastroConcluidoPage() {
         <p className="eyebrow">Cadastro concluído</p>
         <h1>Sua empresa foi criada com sucesso.</h1>
         <p className="completion-card__lead">
-          {modoTeste
+          {testeGratis
+            ? 'Seu teste gratuito de 5 dias começou agora.'
+            : modoTeste
             ? 'A assinatura foi confirmada no ambiente de teste.'
             : 'A assinatura mensal foi confirmada pelo Mercado Pago.'}{' '}
           Agora você já pode acessar o Servix com o slug, e-mail e senha cadastrados.
@@ -142,19 +149,28 @@ export default function CadastroConcluidoPage() {
 
         <dl className="completion-summary">
           <div><dt>Empresa</dt><dd>{dados.empresa.nome}</dd></div>
-          <div><dt>Plano</dt><dd>{dados.assinatura.planoNome}</dd></div>
+          <div><dt>{testeGratis ? 'Após o teste' : 'Plano'}</dt><dd>{dados.assinatura.planoNome}</dd></div>
           <div><dt>{modoTeste ? 'Valor de referência' : 'Mensalidade'}</dt><dd>{formatarMoeda(dados.assinatura.valorMensal)}/mês</dd></div>
-          <div><dt>Ambiente</dt><dd>{dados.assinatura.ambiente}</dd></div>
+          <div>
+            <dt>{testeGratis ? 'Teste válido até' : 'Ambiente'}</dt>
+            <dd>{testeGratis
+              ? formatarData((dados as CadastroEmpresaResponse).acesso.expiraEm)
+              : dados.assinatura.ambiente}</dd>
+          </div>
         </dl>
 
         <div className="completion-card__notice">
           <strong>
-            {modoTeste
+            {testeGratis
+              ? 'Nenhum cartão ou assinatura foi solicitado.'
+              : modoTeste
               ? 'Nenhuma cobrança real foi realizada.'
               : 'Assinatura recorrente ativada com sucesso.'}
           </strong>
           <p>
-            {modoTeste
+            {testeGratis
+              ? 'Tudo o que você cadastrar ficará salvo para continuar caso decida assinar ao final.'
+              : modoTeste
               ? 'Use somente dados de teste enquanto este ambiente estiver ativo.'
               : 'As próximas cobranças seguirão a periodicidade mensal informada no checkout.'}
           </p>
@@ -167,4 +183,15 @@ export default function CadastroConcluidoPage() {
       </div>
     </section>
   )
+}
+
+function formatarData(valor: string | null) {
+  if (!valor) return 'Data não informada'
+  const data = new Date(valor)
+  return Number.isNaN(data.getTime())
+    ? 'Data não informada'
+    : new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+      }).format(data)
 }

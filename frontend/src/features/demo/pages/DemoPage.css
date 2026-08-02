@@ -75,6 +75,11 @@
   display: grid;
   gap: 7px;
   margin-top: 22px;
+  min-height: 0;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-color: rgba(255, 255, 255, .2) transparent;
+  scrollbar-width: thin;
 }
 
 .demo-navigation button {
@@ -1725,6 +1730,213 @@
   border-radius: 9px;
 }
 
+.demo-feature-launchpad {
+  overflow: hidden;
+  border: 1px solid #cdddf2;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f9fbff, #eef5ff);
+  box-shadow: 0 9px 26px rgba(25, 63, 115, .055);
+}
+
+.demo-feature-launchpad > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 19px;
+  border-bottom: 1px solid #d9e5f4;
+}
+
+.demo-feature-launchpad > header div { display: grid; gap: 4px; }
+.demo-feature-launchpad > header span { color: #1262f3; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.demo-feature-launchpad > header h2 { font-size: 17px; letter-spacing: -.025em; }
+.demo-feature-launchpad > header small { color: #718198; font-size: 9px; }
+.demo-feature-launchpad > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.demo-feature-launchpad button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 76px; padding: 13px 16px; text-align: left; border: 0; border-right: 1px solid #dbe5f2; border-bottom: 1px solid #dbe5f2; background: rgba(255,255,255,.62); transition: background .16s ease, transform .16s ease; }
+.demo-feature-launchpad button:nth-child(3n) { border-right: 0; }
+.demo-feature-launchpad button:nth-last-child(-n+3) { border-bottom: 0; }
+.demo-feature-launchpad button:hover { z-index: 1; background: #fff; transform: translateY(-1px); }
+.demo-feature-launchpad button > span { display: grid; place-items: center; width: 34px; height: 34px; color: #fff; font-size: 11px; font-weight: 900; border-radius: 10px; background: linear-gradient(135deg, #0648d8, #2378f6); box-shadow: 0 7px 16px rgba(6,72,216,.18); }
+.demo-feature-launchpad button > div { display: grid; gap: 3px; }
+.demo-feature-launchpad button strong { color: #243650; font-size: 11px; }
+.demo-feature-launchpad button small { color: #77869a; font-size: 9px; }
+.demo-feature-launchpad button i { color: #1262f3; font-size: 15px; font-style: normal; }
+
+.demo-kanban-summary,
+.demo-inventory-overview,
+.demo-warranty-summary,
+.demo-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.demo-kanban-summary article,
+.demo-inventory-overview article,
+.demo-warranty-summary article,
+.demo-report-metrics article {
+  display: grid;
+  gap: 4px;
+  padding: 15px 17px;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.demo-kanban-summary span,
+.demo-inventory-overview span,
+.demo-warranty-summary span,
+.demo-report-metrics span { color: var(--color-text-muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.demo-kanban-summary strong,
+.demo-inventory-overview strong,
+.demo-warranty-summary strong,
+.demo-report-metrics strong { color: #18385e; font-size: 21px; letter-spacing: -.03em; }
+.demo-kanban-summary small,
+.demo-inventory-overview small,
+.demo-warranty-summary small,
+.demo-report-metrics small { color: #8290a3; font-size: 9px; }
+.demo-inventory-overview .is-alert { border-color: #edd2a1; background: #fff9ec; }
+.demo-inventory-overview .is-alert strong { color: #9a5700; }
+
+.demo-kanban-board { display: grid; grid-template-columns: repeat(4, minmax(210px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+.demo-kanban-column { min-height: 440px; padding: 11px; border: 1px solid #dfe5ed; border-radius: 12px; background: #eef2f7; }
+.demo-kanban-column > header { display: flex; align-items: center; justify-content: space-between; padding: 3px 2px 12px; }
+.demo-kanban-column > header div { display: flex; align-items: center; gap: 7px; }
+.demo-kanban-column > header i { width: 8px; height: 8px; border-radius: 50%; background: #8190a4; }
+.demo-kanban-column--blue > header i { background: #2c78e6; }
+.demo-kanban-column--purple > header i { background: #7652cc; }
+.demo-kanban-column--green > header i { background: #0ba75a; }
+.demo-kanban-column > header strong { font-size: 10px; }
+.demo-kanban-column > header > span { display: grid; place-items: center; min-width: 21px; height: 21px; color: #657489; font-size: 9px; font-weight: 800; border-radius: 999px; background: #fff; }
+.demo-kanban-column > div { display: grid; align-content: start; gap: 9px; }
+.demo-kanban-column article { display: grid; gap: 6px; padding: 13px; border: 1px solid #dce2ea; border-radius: 9px; background: #fff; box-shadow: 0 5px 14px rgba(25,49,86,.045); }
+.demo-kanban-column article.is-featured { border-color: #69a0e6; box-shadow: 0 0 0 2px rgba(43,115,221,.09), 0 7px 18px rgba(25,49,86,.07); }
+.demo-kanban-column article > header { display: flex; justify-content: space-between; color: #6c7b8f; font-size: 8px; }
+.demo-kanban-column article h3 { color: #263850; font-size: 11px; }
+.demo-kanban-column article p { color: #7b899c; font-size: 9px; }
+.demo-kanban-column article footer { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; margin-top: 6px; padding-top: 9px; border-top: 1px solid #edf0f4; }
+.demo-kanban-column article footer > span { display: grid; place-items: center; width: 22px; height: 22px; color: #fff; font-size: 8px; font-weight: 800; border-radius: 50%; background: #1a64ba; }
+.demo-kanban-column article footer small,
+.demo-kanban-column article footer time { color: #7c8a9d; font-size: 8px; }
+
+.demo-inventory-grid,
+.demo-warranty-grid,
+.demo-whatsapp-grid,
+.demo-reports-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .75fr); gap: 14px; align-items: start; }
+.demo-stock-list { display: grid; }
+.demo-stock-list article { display: grid; grid-template-columns: minmax(0, 1fr) 70px 95px; align-items: center; gap: 12px; padding: 13px 2px; border-bottom: 1px solid #edf0f4; }
+.demo-stock-list article:last-child { border-bottom: 0; }
+.demo-stock-list article > div { display: grid; gap: 3px; }
+.demo-stock-list strong { font-size: 10px; }
+.demo-stock-list small { color: #8390a3; font-size: 8px; }
+.demo-stock-list article > span { padding: 6px 7px; color: #17643e; font-size: 9px; font-weight: 850; text-align: center; border-radius: 999px; background: #e9f7ef; }
+.demo-stock-list article > span.is-low { color: #9a5700; background: #fff0d1; }
+.demo-stock-list b { font-size: 10px; }
+.demo-movement-card { display: grid; gap: 13px; padding: 20px; color: #fff; border-radius: 13px; background: linear-gradient(145deg, #092f59, #061f39); box-shadow: 0 12px 28px rgba(6,31,57,.14); }
+.demo-movement-card > span { color: #7faeff; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.demo-movement-card h2 { font-size: 18px; }
+.demo-movement-card > div { display: grid; }
+.demo-movement-card article { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 9px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+.demo-movement-card article > span { display: grid; place-items: center; width: 28px; height: 28px; font-size: 13px; font-weight: 900; border-radius: 8px; background: rgba(255,255,255,.08); }
+.demo-movement-card article > span.is-green { color: #4ee39a; }
+.demo-movement-card article > span.is-blue { color: #75abff; }
+.demo-movement-card article > div { display: grid; gap: 3px; }
+.demo-movement-card article strong { font-size: 10px; }
+.demo-movement-card article small,
+.demo-movement-card > p { color: #afc3d8; font-size: 9px; line-height: 1.5; }
+
+.demo-warranty-list { display: grid; }
+.demo-warranty-list article { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; padding: 13px 2px; border-bottom: 1px solid #edf0f4; }
+.demo-warranty-list article:last-child { border-bottom: 0; }
+.demo-warranty-list article > span { display: grid; place-items: center; width: 36px; height: 36px; color: #17643e; font-size: 10px; font-weight: 850; border-radius: 10px; background: #e8f7ef; }
+.demo-warranty-list article > div { display: grid; gap: 3px; }
+.demo-warranty-list strong,
+.demo-warranty-list b { font-size: 10px; }
+.demo-warranty-list small { color: #7f8da0; font-size: 8px; }
+.demo-warranty-list article > div:last-child { justify-items: end; }
+.demo-warranty-list small.is-active,
+.demo-warranty-list small.is-warning { padding: 3px 6px; color: #17643e; font-weight: 800; border-radius: 999px; background: #e8f7ef; }
+.demo-warranty-list small.is-warning { color: #9a5700; background: #fff0d1; }
+.demo-certificate-card { display: grid; gap: 14px; padding: 20px; border: 1px solid #cdd8e6; border-radius: 13px; background: #fff; box-shadow: 0 12px 30px rgba(25,49,86,.08); }
+.demo-certificate-card > header { display: flex; align-items: center; gap: 10px; padding-bottom: 13px; border-bottom: 2px solid #153658; }
+.demo-certificate-card > header img { width: 34px; height: 34px; }
+.demo-certificate-card > header div,
+.demo-certificate-card__customer { display: grid; gap: 3px; }
+.demo-certificate-card > header strong { font-size: 12px; }
+.demo-certificate-card > header span,
+.demo-certificate-card__customer span { color: #738196; font-size: 8px; text-transform: uppercase; }
+.demo-certificate-card__customer strong { font-size: 16px; }
+.demo-certificate-card__customer small { color: #748297; font-size: 9px; }
+.demo-certificate-card dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; }
+.demo-certificate-card dl div { display: grid; gap: 3px; padding: 9px; border: 1px solid #e0e5ec; }
+.demo-certificate-card dt { color: #7e8b9e; font-size: 7px; text-transform: uppercase; }
+.demo-certificate-card dd { margin: 0; font-size: 9px; font-weight: 750; }
+.demo-certificate-card p { color: #657489; font-size: 9px; line-height: 1.55; }
+.demo-certificate-card button { min-height: 39px; color: #fff; font-size: 10px; font-weight: 850; border: 0; border-radius: 8px; background: #1262f3; }
+
+.demo-button--whatsapp { color: #fff; border-color: #15975b; background: #15975b; }
+.demo-whatsapp-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; color: #17643e; border: 1px solid #bfe4d0; border-radius: 11px; background: #eefaf3; }
+.demo-whatsapp-mode > div { display: flex; align-items: center; gap: 9px; }
+.demo-whatsapp-mode i { width: 9px; height: 9px; border-radius: 50%; background: #15975b; box-shadow: 0 0 0 5px rgba(21,151,91,.11); }
+.demo-whatsapp-mode div span { display: grid; gap: 2px; }
+.demo-whatsapp-mode strong { font-size: 10px; }
+.demo-whatsapp-mode small { color: #5d816d; font-size: 8px; }
+.demo-whatsapp-api-badge { padding: 6px 8px; color: #285a9e; font-size: 8px; font-weight: 800; border-radius: 999px; background: #e3edfb; }
+.demo-whatsapp-tabs { display: flex; gap: 5px; margin-bottom: 8px; }
+.demo-whatsapp-tabs button { padding: 7px 9px; color: #69778b; font-size: 9px; font-weight: 800; border: 0; border-radius: 7px; background: #f3f5f8; }
+.demo-whatsapp-tabs button.is-active { color: #17643e; background: #e8f7ef; }
+.demo-whatsapp-tabs span { margin-left: 4px; }
+.demo-whatsapp-list { display: grid; }
+.demo-whatsapp-list article { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px 2px; border-bottom: 1px solid #edf0f4; }
+.demo-whatsapp-list article.is-highlighted { margin: 0 -8px; padding: 12px 10px; border: 1px solid #bfe4d0; border-radius: 9px; background: #f0faf4; }
+.demo-whatsapp-list article > span { display: grid; place-items: center; width: 36px; height: 36px; color: #17643e; font-size: 9px; font-weight: 850; border-radius: 50%; background: #dcf5e7; }
+.demo-whatsapp-list article > div { min-width: 0; }
+.demo-whatsapp-list article header { display: flex; justify-content: space-between; gap: 8px; }
+.demo-whatsapp-list strong { font-size: 10px; }
+.demo-whatsapp-list small { color: #7b899c; font-size: 8px; }
+.demo-whatsapp-list p { margin-top: 3px; color: #657489; font-size: 9px; }
+.demo-whatsapp-list article > i { color: #7f8ea1; font-size: 16px; font-style: normal; }
+.demo-chat-card { overflow: hidden; border: 1px solid #d8e0e9; border-radius: 14px; background: #e9f1ed; box-shadow: 0 12px 30px rgba(25,49,86,.08); }
+.demo-chat-card > header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; padding: 13px 15px; color: #fff; background: #136f4a; }
+.demo-chat-card > header > span { display: grid; place-items: center; width: 34px; height: 34px; font-size: 9px; font-weight: 850; border-radius: 50%; background: rgba(255,255,255,.18); }
+.demo-chat-card > header div { display: grid; gap: 2px; }
+.demo-chat-card > header strong { font-size: 10px; }
+.demo-chat-card > header small { color: #cbe6d8; font-size: 8px; }
+.demo-chat-card > header i { width: 7px; height: 7px; border-radius: 50%; background: #4ee39a; }
+.demo-chat-card__body { display: grid; gap: 9px; padding: 23px 16px 30px; background: radial-gradient(circle at 15% 20%, rgba(255,255,255,.55), transparent 140px), #e8efeb; }
+.demo-chat-card__body > span { color: #5f7469; font-size: 8px; text-align: center; }
+.demo-chat-card blockquote { position: relative; margin: 0 0 0 auto; max-width: 92%; padding: 12px; color: #385145; font-size: 9px; line-height: 1.55; border-radius: 10px 2px 10px 10px; background: #d8f7e4; box-shadow: 0 3px 10px rgba(32,80,56,.08); }
+.demo-chat-card__body small { color: #677c70; font-size: 8px; text-align: right; }
+.demo-chat-card > footer { padding: 11px; background: #fff; }
+.demo-chat-card > footer button { width: 100%; min-height: 38px; color: #fff; font-size: 10px; font-weight: 850; border: 0; border-radius: 8px; background: #15975b; }
+.demo-whatsapp-benefits { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 9px; }
+.demo-whatsapp-benefits article { display: grid; gap: 4px; padding: 13px; border: 1px solid #dce4ed; border-radius: 10px; background: #fff; }
+.demo-whatsapp-benefits strong { color: #17643e; font-size: 10px; }
+.demo-whatsapp-benefits span { color: #7b899c; font-size: 8px; }
+
+.demo-report-filters { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid #dce3ec; border-radius: 10px; background: #fff; }
+.demo-report-filters button { padding: 7px 9px; color: #265a99; font-size: 9px; font-weight: 800; border: 1px solid #cddcf0; border-radius: 7px; background: #f0f6ff; }
+.demo-report-filters span { color: #536379; font-size: 9px; }
+.demo-report-filters small { margin-left: auto; color: #7e8da0; font-size: 8px; }
+.demo-report-metrics { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.demo-report-metrics article small { color: #168154; }
+.demo-bars { display: grid; gap: 15px; padding: 8px 0; }
+.demo-bars > div { display: grid; grid-template-columns: 65px 1fr 25px; align-items: center; gap: 10px; }
+.demo-bars span { color: #6e7d91; font-size: 9px; }
+.demo-bars > div > div { height: 12px; overflow: hidden; border-radius: 999px; background: #eef2f7; }
+.demo-bars i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0648d8, #2f87f7); }
+.demo-bars strong { color: #2d405a; font-size: 10px; }
+.demo-ranking { display: grid; margin: 0; padding: 0; list-style: none; }
+.demo-ranking li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 11px 2px; border-bottom: 1px solid #edf0f4; }
+.demo-ranking li > span { display: grid; place-items: center; width: 29px; height: 29px; color: #235caa; font-size: 8px; font-weight: 900; border-radius: 8px; background: #eaf2fd; }
+.demo-ranking li div { display: grid; gap: 3px; }
+.demo-ranking strong,
+.demo-ranking b { font-size: 10px; }
+.demo-ranking small { color: #7f8da0; font-size: 8px; }
+.demo-report-insight { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 13px; padding: 14px 16px; color: #244f80; border: 1px solid #cdddf0; border-radius: 10px; background: #edf5ff; }
+.demo-report-insight > span { padding: 6px 8px; color: #fff; font-size: 8px; font-weight: 900; text-transform: uppercase; border-radius: 7px; background: #1262f3; }
+.demo-report-insight p { font-size: 10px; line-height: 1.5; }
+
 .demo-conversion-card__primary {
   gap: 8px;
   color: #fff;
@@ -1750,6 +1962,10 @@
   .demo-tracking-layout {
     grid-template-columns: 1fr;
   }
+  .demo-inventory-grid,
+  .demo-warranty-grid,
+  .demo-whatsapp-grid,
+  .demo-reports-grid { grid-template-columns: 1fr; }
   .demo-tracking-copy { position: static; }
   .demo-order-tools { grid-template-columns: 1fr; }
   .demo-benefit-card,
@@ -1803,6 +2019,12 @@
   .demo-tour__actions { grid-column: 1 / -1; justify-content: flex-end; }
   .demo-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .demo-value-strip { grid-template-columns: 1fr; }
+  .demo-feature-launchpad > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .demo-feature-launchpad button:nth-child(3n) { border-right: 1px solid #dbe5f2; }
+  .demo-feature-launchpad button:nth-child(2n) { border-right: 0; }
+  .demo-feature-launchpad button:nth-last-child(-n+3) { border-bottom: 1px solid #dbe5f2; }
+  .demo-feature-launchpad button:nth-last-child(-n+2) { border-bottom: 0; }
+  .demo-report-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -1862,6 +2084,26 @@
   .demo-conversion-card__actions { align-items: stretch; flex-direction: column; }
   .demo-conversion-card__actions a,
   .demo-conversion-card__actions button { width: 100%; }
+  .demo-feature-launchpad > header { align-items: flex-start; flex-direction: column; }
+  .demo-feature-launchpad > div { grid-template-columns: 1fr; }
+  .demo-feature-launchpad button,
+  .demo-feature-launchpad button:nth-child(2n),
+  .demo-feature-launchpad button:nth-child(3n),
+  .demo-feature-launchpad button:nth-last-child(-n+3),
+  .demo-feature-launchpad button:nth-last-child(-n+2) { border-right: 0; border-bottom: 1px solid #dbe5f2; }
+  .demo-feature-launchpad button:last-child { border-bottom: 0; }
+  .demo-kanban-summary,
+  .demo-inventory-overview,
+  .demo-warranty-summary { grid-template-columns: 1fr; }
+  .demo-stock-list article { grid-template-columns: minmax(0, 1fr) auto; }
+  .demo-stock-list article > div:last-child { grid-column: 1 / -1; }
+  .demo-warranty-list article { grid-template-columns: auto 1fr; }
+  .demo-warranty-list article > div:last-child { grid-column: 2; justify-items: start; }
+  .demo-whatsapp-mode { align-items: flex-start; flex-direction: column; }
+  .demo-whatsapp-benefits { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .demo-report-filters { align-items: flex-start; flex-direction: column; }
+  .demo-report-filters small { margin-left: 0; }
+  .demo-report-insight { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

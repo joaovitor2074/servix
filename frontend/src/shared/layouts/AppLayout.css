@@ -26,6 +26,9 @@
   transition:
     transform 220ms ease,
     visibility 220ms ease;
+
+  /* Keep the shell fixed while the menu items scroll on short screens. */
+  overflow: hidden;
 }
 
 .app-layout--menu-open .app-sidebar {
@@ -37,6 +40,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex: 0 0 auto;
   min-height: 48px;
   padding-inline: 8px 2px;
 }
@@ -83,8 +87,29 @@
 
 .app-sidebar__navigation {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 8px;
+  min-height: 0;
   margin-top: 30px;
+  margin-right: -4px;
+  padding-right: 4px;
+  padding-bottom: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-sidebar__navigation::-webkit-scrollbar {
+  width: 5px;
+}
+
+.app-sidebar__navigation::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.24);
 }
 
 .app-sidebar__navigation a,
@@ -153,8 +178,9 @@
 }
 
 .app-sidebar__logout {
+  flex: 0 0 auto;
   width: 100%;
-  margin-top: auto;
+  margin-top: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0 0 9px 9px;
 }
@@ -188,6 +214,7 @@
 
 .app-layout__body {
   min-width: 0;
+  max-width: 100%;
 }
 
 .app-topbar {
@@ -307,10 +334,76 @@
 }
 
 .app-layout__content {
+  min-width: 0;
+  max-width: 100%;
   min-height: calc(100vh - 64px);
   min-height: calc(100dvh - 64px);
   padding: 16px;
   background-color: #f5f7fb;
+}
+
+.app-layout__content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-access-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 16px 0;
+  padding: 12px 16px;
+  border: 1px solid #f1c66d;
+  border-radius: 12px;
+  background: #fff8e8;
+  color: #65460b;
+}
+
+.app-access-banner div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-access-banner span {
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.app-access-banner a {
+  flex: 0 0 auto;
+  color: #76530e;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .app-access-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 12px 0;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 767px) and (max-height: 700px) {
+  .app-sidebar {
+    padding-block: 10px;
+  }
+
+  .app-sidebar__navigation {
+    gap: 4px;
+    margin-top: 12px;
+    padding-bottom: 8px;
+  }
+
+  .app-sidebar__navigation a,
+  .app-sidebar__logout {
+    min-height: 42px;
+    padding-block: 9px;
+  }
 }
 
 .sr-only {

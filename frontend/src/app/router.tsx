@@ -23,15 +23,22 @@ const EditOrderPage = lazy(() => import('../features/orders/pages/EditOrderPage'
 const NewOrderPage = lazy(() => import('../features/orders/pages/NewOrderPage'))
 const OrderDetailsPage = lazy(() => import('../features/orders/pages/OrderDetailsPage'))
 const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'))
+const KanbanPage = lazy(() => import('../features/kanban/pages/KanbanPage'))
+const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPage'))
+const WarrantiesPage = lazy(() => import('../features/warranties/pages/WarrantiesPage'))
+const WhatsAppPage = lazy(() => import('../features/communication/pages/WhatsAppPage'))
+const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage'))
 const PublicTrackingPage = lazy(() => import('../features/tracking/pages/PublicTrackingPage'))
 const DemoPage = lazy(() => import('../features/demo/pages/DemoPage'))
 const PaymentSettingsPage = lazy(() => import('../features/settings/payments/pages/PaymentSettingsPage'))
+const WhatsAppSettingsPage = lazy(() => import('../features/settings/whatsapp/pages/WhatsAppSettingsPage'))
 const SubscriptionSettingsPage = lazy(() => import('../features/settings/subscription/pages/SubscriptionSettingsPage'))
 const UsersSettingsPage = lazy(() => import('../features/settings/users/pages/UsersSettingsPage'))
 const CadastroConcluidoPage = lazy(() => import('../features/site/pages/CadastroConcluidoPage'))
 const CadastroEmpresaPage = lazy(() => import('../features/site/pages/CadastroEmpresaPage'))
 const CheckoutPage = lazy(() => import('../features/site/pages/CheckoutPage'))
 const ContatoPage = lazy(() => import('../features/site/pages/ContatoPage'))
+const CriacaoSitesPage = lazy(() => import('../features/site/pages/CriacaoSitesPage'))
 const HomePage = lazy(() => import('../features/site/pages/HomePage'))
 const PlanosPage = lazy(() => import('../features/site/pages/PlanosPage'))
 const AssinaturaSuspensaPage = lazy(() => import('../features/site/pages/AssinaturaSuspensaPage'))
@@ -100,6 +107,11 @@ export default function AppRouter({
         <Route path="ordens/nova" element={<NewOrderPage />} />
         <Route path="ordens/:id/editar" element={<EditOrderPage />} />
         <Route path="ordens/:id" element={<OrderDetailsPage />} />
+        <Route path="kanban" element={<KanbanPage />} />
+        <Route path="estoque" element={<InventoryPage />} />
+        <Route path="garantias" element={<WarrantiesPage />} />
+        <Route path="whatsapp" element={<WhatsAppPage podeConfigurar={usuario?.papel === 'ADMIN'} />} />
+        <Route path="relatorios" element={<ReportsPage />} />
         <Route
           path="financeiro"
           element={
@@ -148,6 +160,16 @@ export default function AppRouter({
           }
         />
         <Route
+          path="configuracoes/whatsapp"
+          element={
+            usuario?.papel === 'ADMIN' ? (
+              <WhatsAppSettingsPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
+        <Route
           path="configuracoes/assinatura"
           element={
             usuario?.papel === 'ADMIN' ? (
@@ -172,13 +194,17 @@ export default function AppRouter({
             />
           }
         />
-        <Route path="cadastro" element={<CadastroEmpresaPage />} />
+        <Route
+          path="cadastro"
+          element={<CadastroEmpresaPage onNovaEmpresaCriada={onLogout} />}
+        />
         <Route path="cadastro/concluido" element={<CadastroConcluidoPage />} />
         <Route
           path="cadastro/concluido/:checkoutToken"
           element={<CadastroConcluidoPage />}
         />
         <Route path="checkout/:token" element={<CheckoutPage />} />
+        <Route path="criacao-de-sites" element={<CriacaoSitesPage />} />
         <Route path="contato" element={<ContatoPage />} />
         <Route path="suporte" element={<SuportePage />} />
         <Route path="politica-de-privacidade" element={<PoliticaPrivacidadePage />} />

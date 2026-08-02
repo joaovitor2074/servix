@@ -1,7 +1,7 @@
 export const SERVIX_PLAN = {
   codigo: 'servix-mensal',
   nome: 'Plano Servix',
-  valorMensal: 79.9,
+  valorMensal: 34.9,
   periodicidade: 'mês',
   ambiente: 'TESTE',
   recursos: [

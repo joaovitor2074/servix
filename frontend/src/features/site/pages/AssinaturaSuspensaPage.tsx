@@ -134,7 +134,11 @@ export default function AssinaturaSuspensaPage({
 
   const assinatura = portal?.assinatura
   const aguardando = assinatura?.status === 'PENDENTE'
-  const podeReativar = assinatura?.status === 'CANCELADA'
+  const testeGratisEncerrado = Boolean(
+    assinatura?.testeGratisExpiraEm &&
+    !assinatura.checkoutUrl,
+  )
+  const podeReativar = assinatura?.status === 'CANCELADA' || testeGratisEncerrado
 
   return (
     <section className="subscription-recovery-page">
@@ -142,8 +146,12 @@ export default function AssinaturaSuspensaPage({
         <header className="subscription-recovery__header">
           <div>
             <span>Portal de assinatura</span>
-            <h1>Acesso protegido enquanto a assinatura não está ativa.</h1>
-            <p>Os dados operacionais permanecem bloqueados. A liberação acontece somente depois da confirmação do webhook do Mercado Pago.</p>
+            <h1>{testeGratisEncerrado
+              ? 'Seu teste gratuito de 5 dias terminou.'
+              : 'Acesso protegido enquanto a assinatura não está ativa.'}</h1>
+            <p>{testeGratisEncerrado
+              ? 'Seus dados continuam salvos. Assine o Servix para retomar de onde parou.'
+              : 'Os dados operacionais permanecem bloqueados. A liberação acontece somente depois da confirmação do webhook do Mercado Pago.'}</p>
           </div>
           <button type="button" onClick={onLogout}>Sair da conta</button>
         </header>
@@ -174,9 +182,13 @@ export default function AssinaturaSuspensaPage({
 
             <section className="subscription-recovery__panel subscription-recovery__action">
               <span>Recuperação segura</span>
-              <h2>{aguardando ? 'Aguardando confirmação' : 'Crie uma nova assinatura'}</h2>
+              <h2>{testeGratisEncerrado
+                ? 'Continue com o Servix'
+                : aguardando ? 'Aguardando confirmação' : 'Crie uma nova assinatura'}</h2>
               <p>
-                {aguardando
+                {testeGratisEncerrado
+                  ? 'A contratação começa somente agora e será confirmada no checkout seguro do Mercado Pago.'
+                  : aguardando
                   ? 'Se você já concluiu o checkout, mantenha esta página aberta. Verificaremos a confirmação automaticamente.'
                   : 'Como a assinatura anterior foi cancelada, o Mercado Pago exige um novo checkout.'}
               </p>
@@ -208,7 +220,9 @@ export default function AssinaturaSuspensaPage({
                   onClick={() => void handleReativar()}
                   disabled={!podeReativar || processando}
                 >
-                  {processando ? 'Gerando checkout...' : 'Reativar assinatura'}
+                  {processando
+                    ? 'Gerando checkout...'
+                    : testeGratisEncerrado ? 'Assinar o Servix' : 'Reativar assinatura'}
                 </button>
               )}
               {aguardando && <small className="subscription-recovery__polling">Verificando o webhook a cada 5 segundos...</small>}

@@ -19,6 +19,22 @@ interface RequestOptions {
   signal?: AbortSignal
 }
 
+export interface UsuarioAtribuivel {
+  id: number
+  nome: string
+  papel: 'ADMIN' | 'ATENDENTE' | 'TECNICO'
+}
+
+export async function buscarUsuariosAtribuiveis(
+  signal?: AbortSignal,
+): Promise<UsuarioAtribuivel[]> {
+  const resposta = await apiFetch('/usuarios/atribuiveis', { signal })
+  return lerResposta<UsuarioAtribuivel[]>(
+    resposta,
+    'Não foi possível carregar os responsáveis.',
+  )
+}
+
 // As duas consultas da tela de detalhes aceitam AbortSignal. Ao sair da página,
 // o componente cancela ambas e evita que uma resposta antiga atualize a tela.
 export async function buscarOrdem(
@@ -76,6 +92,26 @@ export async function atualizarOrdem(
   return lerResposta<OrdemServico>(
     resposta,
     'Não foi possível atualizar a ordem de serviço',
+  )
+}
+
+export async function alterarStatusOrdem(
+  id: number,
+  dados: {
+    statusEsperado: StatusOrdem
+    versaoEsperada: number
+    status: StatusOrdem
+    mensagemPublica?: string
+  },
+): Promise<OrdemServico> {
+  const resposta = await apiFetch(`/ordens/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(dados),
+  })
+
+  return lerResposta<OrdemServico>(
+    resposta,
+    'Não foi possível mover a ordem para esta etapa',
   )
 }
 

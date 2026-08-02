@@ -109,15 +109,22 @@ export default function SubscriptionSettingsPage() {
 
   if (carregando) return <SubscriptionSettingsSkeleton />
 
+  const testeGratisAtivo = Boolean(
+    assinatura?.testeGratisExpiraEm &&
+    !assinatura.mercadoPagoAssinaturaId,
+  )
+
   return (
     <div className="subscription-settings">
       <header className="subscription-settings__header">
         <div>
           <span>Conta Servix</span>
           <h1>Assinatura</h1>
-          <p>Consulte a recorrência da empresa e recupere atualizações do Mercado Pago.</p>
+          <p>{testeGratisAtivo
+            ? 'Acompanhe o prazo do teste. Nenhuma cobrança ou assinatura foi criada.'
+            : 'Consulte a recorrência da empresa e recupere atualizações do Mercado Pago.'}</p>
         </div>
-        {assinatura && <StatusBadge status={assinatura.status} />}
+        {assinatura && <StatusBadge status={assinatura.status} testeGratis={testeGratisAtivo} />}
       </header>
 
       {erro && (
@@ -146,36 +153,49 @@ export default function SubscriptionSettingsPage() {
         <>
           <section className="subscription-summary-card">
             <div className="subscription-summary-card__main">
-              <span className="subscription-summary-card__eyebrow">Plano atual</span>
+              <span className="subscription-summary-card__eyebrow">
+                {testeGratisAtivo ? 'Teste gratuito' : 'Plano atual'}
+              </span>
               <h2>{assinatura.planoNome}</h2>
               <strong>{formatarMoeda(assinatura.valorMensal)}<small>/mês</small></strong>
               <span className="subscription-summary-card__environment">
-                Ambiente {assinatura.ambiente === 'TESTE' ? 'de teste' : 'de produção'}
+                {testeGratisAtivo
+                  ? 'Sem cartão e sem renovação automática'
+                  : `Ambiente ${assinatura.ambiente === 'TESTE' ? 'de teste' : 'de produção'}`}
               </span>
             </div>
 
             <dl className="subscription-summary-card__details">
               <div>
-                <dt>Próxima cobrança</dt>
-                <dd>{formatarData(assinatura.proximaCobrancaEm, 'Não informada')}</dd>
+                <dt>{testeGratisAtivo ? 'Teste termina em' : 'Próxima cobrança'}</dt>
+                <dd>{formatarData(
+                  testeGratisAtivo ? assinatura.testeGratisExpiraEm : assinatura.proximaCobrancaEm,
+                  'Não informada',
+                )}</dd>
               </div>
               <div>
-                <dt>Ativada em</dt>
-                <dd>{formatarData(assinatura.ativadaEm, 'Aguardando ativação')}</dd>
+                <dt>{testeGratisAtivo ? 'Teste iniciado em' : 'Ativada em'}</dt>
+                <dd>{formatarData(
+                  testeGratisAtivo ? assinatura.testeGratisIniciadoEm : assinatura.ativadaEm,
+                  testeGratisAtivo ? 'Não informada' : 'Aguardando ativação',
+                )}</dd>
               </div>
               <div>
-                <dt>E-mail pagador</dt>
+                <dt>{testeGratisAtivo ? 'E-mail da conta' : 'E-mail pagador'}</dt>
                 <dd>{assinatura.emailPagador || 'Não informado'}</dd>
               </div>
               <div>
-                <dt>Identificador</dt>
+                <dt>{testeGratisAtivo ? 'Cobrança' : 'Identificador'}</dt>
                 <dd className="subscription-summary-card__identifier">
-                  {assinatura.mercadoPagoAssinaturaId || 'Ainda não criado'}
+                  {testeGratisAtivo
+                    ? 'Nenhuma cobrança criada'
+                    : assinatura.mercadoPagoAssinaturaId || 'Ainda não criado'}
                 </dd>
               </div>
             </dl>
           </section>
 
+          {!testeGratisAtivo && <>
           <section className="subscription-monitor-card">
             <div className="subscription-monitor-card__header">
               <div>
@@ -285,6 +305,7 @@ export default function SubscriptionSettingsPage() {
               Cancelar assinatura
             </button>
           </section>
+          </>}
         </>
       )}
 
@@ -333,7 +354,13 @@ export default function SubscriptionSettingsPage() {
   )
 }
 
-function StatusBadge({ status }: { status: StatusAssinatura }) {
+function StatusBadge({
+  status,
+  testeGratis,
+}: {
+  status: StatusAssinatura
+  testeGratis: boolean
+}) {
   const tone = status === 'ATIVA'
     ? 'active'
     : status === 'INADIMPLENTE' || status === 'PENDENTE'
@@ -343,7 +370,7 @@ function StatusBadge({ status }: { status: StatusAssinatura }) {
   return (
     <span className={`subscription-status subscription-status--${tone}`}>
       <i aria-hidden="true" />
-      {ROTULOS_STATUS[status]}
+      {testeGratis ? 'Teste gratuito' : ROTULOS_STATUS[status]}
     </span>
   )
 }

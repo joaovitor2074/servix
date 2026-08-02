@@ -33,6 +33,16 @@ export interface AssinaturaResumo {
   ambiente: string
   status: string
   proximaCobranca?: string | null
+  testeGratisIniciadoEm?: string | null
+  testeGratisExpiraEm?: string | null
+  acessoPilotoAte?: string | null
+}
+
+export interface ResumoAcessoCadastro {
+  tipo: 'TESTE_GRATUITO' | 'PILOTO' | 'ASSINATURA' | 'BLOQUEADO'
+  ativo: boolean
+  diasRestantes: number | null
+  expiraEm: string | null
 }
 
 export interface CheckoutData {
@@ -60,4 +70,6 @@ export interface CatalogoAssinaturasData {
   planos: PlanoAssinaturaPublico[]
 }
 
-export type CadastroEmpresaResponse = CheckoutData
+export type CadastroEmpresaResponse = CheckoutData & {
+  acesso: ResumoAcessoCadastro
+}
