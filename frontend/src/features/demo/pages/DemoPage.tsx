@@ -122,6 +122,7 @@ export default function DemoPage() {
 
   const activeIndex = navigation.findIndex(item => item.id === activeView)
   const activeItem = navigation[activeIndex]
+  const tourProgress = Math.round(((activeIndex + 1) / navigation.length) * 100)
 
   const orderStatusIndex = useMemo(
     () => orderFlow.indexOf(orderStatus),
@@ -140,6 +141,18 @@ export default function DemoPage() {
       .querySelector('meta[name="robots"]')
       ?.setAttribute('content', 'index, follow')
   }, [])
+
+  useEffect(() => {
+    const activeNavigationItem = document.querySelector<HTMLButtonElement>(
+      `[data-demo-view="${activeView}"]`,
+    )
+
+    activeNavigationItem?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    })
+  }, [activeView])
 
   function selectView(view: DemoView) {
     setActiveView(view)
@@ -208,13 +221,13 @@ export default function DemoPage() {
   return (
     <div className="demo-shell">
       <aside className="demo-sidebar" aria-label="Etapas da demonstração">
-        <div className="demo-brand">
+        <Link to="/" className="demo-brand" aria-label="Voltar para a página inicial do Servix">
           <img src={servixSymbol} alt="" />
           <div>
             <strong>servix</strong>
             <span>Demonstração</span>
           </div>
-        </div>
+        </Link>
 
         <div className="demo-sidebar__intro">
           <span>Conheça o produto</span>
@@ -226,8 +239,11 @@ export default function DemoPage() {
             <button
               key={item.id}
               type="button"
+              data-demo-view={item.id}
               className={item.id === activeView ? 'is-active' : ''}
               onClick={() => selectView(item.id)}
+              aria-current={item.id === activeView ? 'step' : undefined}
+              title={item.description}
             >
               <span aria-hidden="true">{item.shortLabel}</span>
               <strong>{item.label}</strong>
@@ -236,28 +252,33 @@ export default function DemoPage() {
         </nav>
 
         <div className="demo-sidebar__footer">
-          <span className="demo-sidebar__privacy-dot" />
-          <div>
-            <strong>Ambiente seguro</strong>
-            <span>Nenhum dado é armazenado</span>
+          <div className="demo-sidebar__privacy">
+            <span className="demo-sidebar__privacy-dot" />
+            <div>
+              <strong>Ambiente seguro</strong>
+              <span>Nenhum dado é armazenado</span>
+            </div>
           </div>
+          <Link to="/">Voltar ao site <span aria-hidden="true">↗</span></Link>
         </div>
       </aside>
 
       <div className="demo-shell__body">
         <header className="demo-topbar">
-          <div className="demo-topbar__mobile-brand">
-            <img src={servixSymbol} alt="" />
-            <strong>servix</strong>
+          <div className="demo-topbar__context">
+            <Link to="/" className="demo-topbar__mobile-brand" aria-label="Página inicial do Servix">
+              <img src={servixSymbol} alt="" />
+              <strong>servix</strong>
+            </Link>
+
+            <span className="demo-environment-badge">
+              <i /> Ambiente demonstrativo
+            </span>
           </div>
 
-          <span className="demo-environment-badge">
-            <i /> Ambiente demonstrativo
-          </span>
-
           <div className="demo-topbar__actions">
-            <Link to="/planos" className="demo-topbar__plans-link">
-              Ver planos
+            <Link to="/cadastro" className="demo-topbar__plans-link">
+              Começar agora
             </Link>
 
             <div className="demo-topbar__account">
@@ -285,21 +306,39 @@ export default function DemoPage() {
             </div>
 
             <div className="demo-tour__actions">
-              <button
-                type="button"
-                onClick={() => moveTour(-1)}
-                disabled={activeIndex === 0}
+              <div
+                className="demo-tour__progress"
+                role="progressbar"
+                aria-label="Progresso da demonstração"
+                aria-valuemin={1}
+                aria-valuemax={navigation.length}
+                aria-valuenow={activeIndex + 1}
               >
-                Anterior
-              </button>
-              <button
-                type="button"
-                className="demo-button demo-button--primary"
-                onClick={() => moveTour(1)}
-                disabled={activeIndex === navigation.length - 1}
-              >
-                Próxima etapa
-              </button>
+                <span>
+                  <strong>Etapa {activeIndex + 1} de {navigation.length}</strong>
+                  <small>{tourProgress}% explorado</small>
+                </span>
+                <i aria-hidden="true">
+                  <span style={{ width: `${tourProgress}%` }} />
+                </i>
+              </div>
+              <div className="demo-tour__controls">
+                <button
+                  type="button"
+                  onClick={() => moveTour(-1)}
+                  disabled={activeIndex === 0}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  className="demo-button demo-button--primary"
+                  onClick={() => moveTour(1)}
+                  disabled={activeIndex === navigation.length - 1}
+                >
+                  Próxima etapa
+                </button>
+              </div>
             </div>
           </section>
 
@@ -398,12 +437,15 @@ export default function DemoPage() {
               </p>
             </div>
             <div className="demo-conversion-card__actions">
-              <Link to="/planos" className="demo-conversion-card__primary">
-                Conhecer os planos
+              <Link to="/cadastro" className="demo-conversion-card__primary">
+                Começar teste grátis
                 <span aria-hidden="true">→</span>
               </Link>
+              <Link to="/planos" className="demo-conversion-card__secondary">
+                Ver planos
+              </Link>
               <button type="button" onClick={resetDemo}>
-                Reiniciar demonstração
+                Reiniciar tour
               </button>
             </div>
           </section>
