@@ -1,10 +1,10 @@
-export const VERSAO_TERMOS_SERVIX = "2026-08-01"
+export const VERSAO_TERMOS_SERVIX = "2026-08-04"
 
 export const PLANO_SERVIX_MENSAL = {
   codigo: "servix-mensal",
   nome: "Plano Servix",
   descricao: "Gestao completa para empresas de servicos.",
-  valorMensal: "34.90",
+  valorMensal: "24.90",
   moeda: "BRL",
   recursos: [
     "Clientes ilimitados",

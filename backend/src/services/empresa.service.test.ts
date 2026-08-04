@@ -55,7 +55,7 @@ beforeEach(() => {
       checkoutToken: "123e4567-e89b-12d3-a456-426614174000",
       planoCodigo: "servix-mensal",
       planoNome: "Plano Servix",
-      valorMensal: new Prisma.Decimal("34.90"),
+      valorMensal: new Prisma.Decimal("24.90"),
       ambiente: AmbienteAssinatura.TESTE,
       status: StatusAssinatura.PENDENTE,
       testeGratisIniciadoEm: new Date("2026-07-31T12:00:00.000Z"),
@@ -78,7 +78,7 @@ describe("criacao publica da empresa", () => {
         assinatura: {
           create: expect.objectContaining({
             planoCodigo: "servix-mensal",
-            valorMensal: "34.90",
+            valorMensal: "24.90",
             ambiente: AmbienteAssinatura.TESTE,
             provedor: ProvedorAssinatura.SIMULADO,
             status: StatusAssinatura.PENDENTE,
@@ -93,7 +93,7 @@ describe("criacao publica da empresa", () => {
     expect(resultado).toMatchObject({
       empresa: { id: 8, slug: "oficina-central" },
       assinatura: {
-        valorMensal: "34.90",
+        valorMensal: "24.90",
         status: StatusAssinatura.PENDENTE
       },
       acesso: {
@@ -116,7 +116,7 @@ describe("criacao publica da empresa", () => {
         checkoutToken: "123e4567-e89b-12d3-a456-426614174000",
         planoCodigo: "servix-mensal",
         planoNome: "Plano Servix",
-        valorMensal: new Prisma.Decimal("34.90"),
+        valorMensal: new Prisma.Decimal("24.90"),
         ambiente: AmbienteAssinatura.PRODUCAO,
         status: StatusAssinatura.PENDENTE,
         testeGratisIniciadoEm: new Date("2026-07-31T12:00:00.000Z"),

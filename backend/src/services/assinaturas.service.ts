@@ -24,7 +24,7 @@ import { prisma } from "../lib/prisma.js"
 
 const PLANO_CODIGO = "SERVIX_MENSAL"
 const PLANO_NOME = "Servix Mensal"
-const VALOR_MENSAL = new Prisma.Decimal("34.90")
+const VALOR_MENSAL = new Prisma.Decimal("24.90")
 const NAMESPACE_LOCK_ASSINATURA = 1_397_902_418
 const OPCOES_TRANSACAO_ASSINATURA = {
   maxWait: 10_000,

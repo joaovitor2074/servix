@@ -48,7 +48,7 @@ const pendente = {
   checkoutToken: token,
   planoCodigo: "servix-mensal",
   planoNome: "Plano Servix",
-  valorMensal: new Prisma.Decimal("34.90"),
+  valorMensal: new Prisma.Decimal("24.90"),
   ambiente: AmbienteAssinatura.TESTE,
   provedor: ProvedorAssinatura.SIMULADO,
   status: StatusAssinatura.PENDENTE,
@@ -88,8 +88,8 @@ describe("assinaturas do Servix", () => {
     expect(catalogo).toMatchObject({
       ambiente: AmbienteAssinatura.TESTE,
       checkoutDisponivel: true,
-      versaoTermos: "2026-08-01",
-      planos: [{ codigo: "servix-mensal", valorMensal: "34.90" }]
+      versaoTermos: "2026-08-04",
+      planos: [{ codigo: "servix-mensal", valorMensal: "24.90" }]
     })
   })
 

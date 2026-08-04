@@ -75,7 +75,7 @@ const solucoes = [
     label: 'Operação completa',
     title: 'Site + Servix',
     price: 'R$ 1.500',
-    priceDetail: 'Inclui 3 meses de Servix. Depois, R$ 34,90/mês.',
+    priceDetail: 'Inclui 3 meses de Servix. Depois, R$ 24,90/mês.',
     description:
       'Presença profissional para captar clientes e o Servix para organizar o atendimento depois do contato.',
     format: 'Site + implantação do sistema',
