@@ -5,6 +5,7 @@ const projectRoot = resolve(import.meta.dirname, '..')
 const distDirectory = join(projectRoot, 'dist')
 const clientDirectory = join(distDirectory, 'client')
 const serverDirectory = join(distDirectory, 'server')
+const hostingDirectory = join(distDirectory, '.openai')
 
 await rm(clientDirectory, { recursive: true, force: true })
 await rm(serverDirectory, { recursive: true, force: true })
@@ -26,4 +27,10 @@ for (const entry of entries) {
 await cp(
   join(projectRoot, 'sites-worker', 'index.js'),
   join(serverDirectory, 'index.js'),
+)
+
+await mkdir(hostingDirectory, { recursive: true })
+await cp(
+  join(projectRoot, '.openai', 'hosting.json'),
+  join(hostingDirectory, 'hosting.json'),
 )
