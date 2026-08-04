@@ -17,6 +17,7 @@
     "db:deploy": "tsx src/scripts/deploy-migrations.ts",
     "prisma:migrate:deploy:raw": "prisma migrate deploy",
     "admin:create": "tsx src/scripts/criar-admin.ts",
+    "empresa:piloto": "tsx src/scripts/liberar-piloto.ts",
     "demo:seed": "tsx src/scripts/popular-demonstracao.ts",
     "demo:seed:railway": "tsx src/scripts/popular-demonstracao-railway.ts",
     "finance:preview:seed": "tsx src/scripts/popular-financeiro-preview.ts",

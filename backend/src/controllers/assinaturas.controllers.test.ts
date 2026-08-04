@@ -87,7 +87,7 @@ describe("aceite dos Termos no checkout", () => {
       params: { token: "checkout-token" },
       body: {
         emailPagador: "comprador@testuser.com",
-        versaoTermos: "2026-07-28",
+        versaoTermos: "2026-08-01",
         aceiteModoTeste: true
       }
     } as unknown as Request
@@ -106,7 +106,7 @@ describe("aceite dos Termos no checkout", () => {
       "checkout-token",
       {
         emailPagador: "comprador@testuser.com",
-        versaoTermos: "2026-07-28"
+        versaoTermos: "2026-08-01"
       }
     )
     expect(status).toHaveBeenCalledWith(201)

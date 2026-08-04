@@ -122,6 +122,20 @@ export async function criarUsuarioService(empresaId: number, dados: CriarUsuario
     }
 }
 
+// Lista reduzida para atribuição operacional. Não expõe e-mail, telefone nem
+// permite gerenciar usuários, por isso pode ser usada por toda a equipe.
+export function listarUsuariosAtribuiveisService(empresaId: number) {
+  return prisma.usuario.findMany({
+    where: { empresaId, ativo: true },
+    orderBy: [{ papel: "asc" }, { nome: "asc" }],
+    select: {
+      id: true,
+      nome: true,
+      papel: true
+    }
+  })
+}
+
 // Atualiza os dados permitidos e protege a empresa contra ficar sem um
 // administrador ativo.
 export async function atualizarUsuarioService(

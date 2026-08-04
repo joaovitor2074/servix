@@ -33,6 +33,7 @@ describe("cliente OAuth Mercado Pago", () => {
       clientId: "app-123",
       clientSecret: "client-secret",
       redirectUri: "https://api.servix.test/integracoes/mercado-pago/callback",
+      testToken: true,
       fetchImpl
     })
 
@@ -61,6 +62,29 @@ describe("cliente OAuth Mercado Pago", () => {
     expect(init.redirect).toBe("error")
   })
 
+  it("solicita token real quando o servidor esta em producao", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      resposta(tokens("APP_USR-access-live", "TG-refresh-live"))
+    )
+    const client = new MercadoPagoOAuthClient({
+      clientId: "app-123",
+      clientSecret: "client-secret",
+      redirectUri: "https://api.servix.com.br/integracoes/mercado-pago/callback",
+      testToken: false,
+      fetchImpl
+    })
+
+    await client.trocarCodigoPorTokens(
+      "authorization-code",
+      "code-verifier"
+    )
+
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toMatchObject({
+      grant_type: "authorization_code",
+      test_token: "false"
+    })
+  })
+
   it("renova e devolve o refresh_token rotacionado", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       resposta(tokens("APP_USR-novo", "TG-refresh-novo"))
@@ -69,6 +93,7 @@ describe("cliente OAuth Mercado Pago", () => {
       clientId: "app-123",
       clientSecret: "client-secret",
       redirectUri: "https://api.servix.test/callback",
+      testToken: true,
       fetchImpl
     })
 
@@ -93,6 +118,7 @@ describe("cliente OAuth Mercado Pago", () => {
       clientId: "app-123",
       clientSecret: "client-secret",
       redirectUri: "https://api.servix.test/callback",
+      testToken: true,
       fetchImpl
     })
 
@@ -123,6 +149,7 @@ describe("cliente OAuth Mercado Pago", () => {
       clientId: "app-123",
       clientSecret: "client-secret",
       redirectUri: "https://api.servix.test/callback",
+      testToken: true,
       fetchImpl
     })
 

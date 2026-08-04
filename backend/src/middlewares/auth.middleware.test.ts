@@ -8,7 +8,11 @@ import {
 } from "../generated/prisma/enums.js"
 
 const prismaMock = vi.hoisted(() => ({
-  findUnique: vi.fn()
+  findUnique: vi.fn(),
+  sincronizarAcesso: vi.fn()
+}))
+vi.mock("../services/acesso-empresa.service.js", () => ({
+  sincronizarAcessoEmpresaService: prismaMock.sincronizarAcesso
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -71,11 +75,27 @@ function usuario(
 beforeEach(() => {
   process.env.JWT_SECRET = JWT_SECRET
   prismaMock.findUnique.mockReset()
+  prismaMock.sincronizarAcesso.mockReset()
 })
+
+function acesso(statusEmpresa: StatusEmpresa) {
+  return {
+    statusEmpresa,
+    acesso: {
+      tipo: statusEmpresa === StatusEmpresa.ATIVA
+        ? "LIBERADO_MANUALMENTE"
+        : "BLOQUEADO",
+      ativo: statusEmpresa === StatusEmpresa.ATIVA,
+      diasRestantes: statusEmpresa === StatusEmpresa.ATIVA ? null : 0,
+      expiraEm: null
+    }
+  }
+}
 
 describe("autenticação por situação da empresa", () => {
   it("libera o token quando usuário e empresa continuam ativos", async () => {
     prismaMock.findUnique.mockResolvedValueOnce(usuario(StatusEmpresa.ATIVA))
+    prismaMock.sincronizarAcesso.mockResolvedValueOnce(acesso(StatusEmpresa.ATIVA))
     const req = requisicaoAutenticada()
     const res = respostaMock()
     const next = vi.fn() as NextFunction
@@ -93,25 +113,29 @@ describe("autenticação por situação da empresa", () => {
 
   it("bloqueia imediatamente uma sessão emitida antes da suspensão", async () => {
     prismaMock.findUnique.mockResolvedValueOnce(usuario(StatusEmpresa.SUSPENSA))
+    prismaMock.sincronizarAcesso.mockResolvedValueOnce(acesso(StatusEmpresa.SUSPENSA))
     const res = respostaMock()
     const next = vi.fn() as NextFunction
 
     await autenticar(requisicaoAutenticada(), res, next)
 
     expect(res.status).toHaveBeenCalledWith(403)
-    expect(res.json).toHaveBeenCalledWith({
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       erro: "Acesso suspenso porque a assinatura da empresa não está ativa.",
       codigo: "EMPRESA_SUSPENSA",
-      detalhes: {
+      detalhes: expect.objectContaining({
         statusEmpresa: StatusEmpresa.SUSPENSA
-      }
-    })
+      })
+    }))
     expect(next).not.toHaveBeenCalled()
   })
 
   it("também bloqueia empresa que voltou a aguardar assinatura", async () => {
     prismaMock.findUnique.mockResolvedValueOnce(
       usuario(StatusEmpresa.PENDENTE_ASSINATURA)
+    )
+    prismaMock.sincronizarAcesso.mockResolvedValueOnce(
+      acesso(StatusEmpresa.PENDENTE_ASSINATURA)
     )
     const res = respostaMock()
     const next = vi.fn() as NextFunction
@@ -124,6 +148,7 @@ describe("autenticação por situação da empresa", () => {
 
   it("permite somente ao admin suspenso acessar a recuperacao", async () => {
     prismaMock.findUnique.mockResolvedValueOnce(usuario(StatusEmpresa.SUSPENSA))
+    prismaMock.sincronizarAcesso.mockResolvedValueOnce(acesso(StatusEmpresa.SUSPENSA))
     const req = requisicaoAutenticada()
     const res = respostaMock()
     const next = vi.fn() as NextFunction
@@ -138,6 +163,7 @@ describe("autenticação por situação da empresa", () => {
     prismaMock.findUnique.mockResolvedValueOnce(
       usuario(StatusEmpresa.SUSPENSA, PapelUsuario.ATENDENTE)
     )
+    prismaMock.sincronizarAcesso.mockResolvedValueOnce(acesso(StatusEmpresa.SUSPENSA))
     const res = respostaMock()
     const next = vi.fn() as NextFunction
 

@@ -55,9 +55,11 @@ beforeEach(() => {
       checkoutToken: "123e4567-e89b-12d3-a456-426614174000",
       planoCodigo: "servix-mensal",
       planoNome: "Plano Servix",
-      valorMensal: new Prisma.Decimal("79.90"),
+      valorMensal: new Prisma.Decimal("34.90"),
       ambiente: AmbienteAssinatura.TESTE,
-      status: StatusAssinatura.PENDENTE
+      status: StatusAssinatura.PENDENTE,
+      testeGratisIniciadoEm: new Date("2026-07-31T12:00:00.000Z"),
+      testeGratisExpiraEm: new Date("2026-08-05T12:00:00.000Z")
     }
   })
 })
@@ -72,14 +74,17 @@ describe("criacao publica da empresa", () => {
 
     expect(mocks.criarEmpresa).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        status: StatusEmpresa.PENDENTE_ASSINATURA,
+        status: StatusEmpresa.ATIVA,
         assinatura: {
           create: expect.objectContaining({
             planoCodigo: "servix-mensal",
-            valorMensal: "79.90",
+            valorMensal: "34.90",
             ambiente: AmbienteAssinatura.TESTE,
             provedor: ProvedorAssinatura.SIMULADO,
-            status: StatusAssinatura.PENDENTE
+            status: StatusAssinatura.PENDENTE,
+            emailPagador: dados.administrador.email,
+            testeGratisIniciadoEm: expect.any(Date),
+            testeGratisExpiraEm: expect.any(Date)
           })
         },
         configuracaoPagamento: { create: {} }
@@ -88,8 +93,13 @@ describe("criacao publica da empresa", () => {
     expect(resultado).toMatchObject({
       empresa: { id: 8, slug: "oficina-central" },
       assinatura: {
-        valorMensal: "79.90",
+        valorMensal: "34.90",
         status: StatusAssinatura.PENDENTE
+      },
+      acesso: {
+        tipo: "TESTE_GRATUITO",
+        ativo: true,
+        diasRestantes: 5
       }
     })
   })
@@ -106,9 +116,11 @@ describe("criacao publica da empresa", () => {
         checkoutToken: "123e4567-e89b-12d3-a456-426614174000",
         planoCodigo: "servix-mensal",
         planoNome: "Plano Servix",
-        valorMensal: new Prisma.Decimal("79.90"),
+        valorMensal: new Prisma.Decimal("34.90"),
         ambiente: AmbienteAssinatura.PRODUCAO,
-        status: StatusAssinatura.PENDENTE
+        status: StatusAssinatura.PENDENTE,
+        testeGratisIniciadoEm: new Date("2026-07-31T12:00:00.000Z"),
+        testeGratisExpiraEm: new Date("2026-08-05T12:00:00.000Z")
       }
     })
 
@@ -128,26 +140,22 @@ describe("criacao publica da empresa", () => {
     expect(resultado.assinatura.ambiente).toBe(AmbienteAssinatura.PRODUCAO)
   })
 
-  it("nao cria empresa em producao enquanto a identidade legal estiver pendente", async () => {
+  it("permite iniciar o teste mesmo com a identidade legal de producao pendente", async () => {
     vi.stubEnv("SERVIX_BILLING_MODE", "PRODUCAO")
     vi.stubEnv("SERVIX_LEGAL_IDENTITY_READY", "false")
 
-    await expect(criarEmpresaService(dados)).rejects.toMatchObject({
-      statusCode: 503,
-      codigo: "IDENTIDADE_LEGAL_NAO_CONFIGURADA"
+    await expect(criarEmpresaService(dados)).resolves.toMatchObject({
+      acesso: { tipo: "TESTE_GRATUITO", diasRestantes: 5 }
     })
-    expect(mocks.hash).not.toHaveBeenCalled()
-    expect(mocks.criarEmpresa).not.toHaveBeenCalled()
+    expect(mocks.criarEmpresa).toHaveBeenCalledOnce()
   })
 
-  it("falha sem gravar quando o billing esta bloqueado", async () => {
+  it("permite iniciar o teste mesmo quando o billing esta bloqueado", async () => {
     vi.stubEnv("SERVIX_BILLING_MODE", "BLOQUEADO")
 
-    await expect(criarEmpresaService(dados)).rejects.toMatchObject({
-      statusCode: 503,
-      codigo: "ASSINATURAS_NAO_CONFIGURADAS"
+    await expect(criarEmpresaService(dados)).resolves.toMatchObject({
+      acesso: { tipo: "TESTE_GRATUITO", diasRestantes: 5 }
     })
-    expect(mocks.hash).not.toHaveBeenCalled()
-    expect(mocks.criarEmpresa).not.toHaveBeenCalled()
+    expect(mocks.criarEmpresa).toHaveBeenCalledOnce()
   })
 })

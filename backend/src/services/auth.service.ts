@@ -5,6 +5,7 @@ import { obterJwtSecret } from "../config/env.js"
 import { PapelUsuario, StatusEmpresa } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import type { LoginInput } from "../validators/auth.validators.js"
+import { sincronizarAcessoEmpresaService } from "./acesso-empresa.service.js"
 
 // Procura o usuário pelo par empresa/e-mail. O slug faz parte do login porque o
 // mesmo endereço de e-mail pode existir em empresas diferentes.
@@ -34,10 +35,14 @@ export async function autenticarUsuarioService(dados: LoginInput) {
   if (!usuario || !(await compare(dados.senha, usuario.senhaHash))) {
     return null
   }
+
+  const acessoAtual = await sincronizarAcessoEmpresaService(usuario.empresaId)
+  if (!acessoAtual) return null
+
   // Uma empresa suspensa pode autenticar somente seu ADMIN para recuperar a
   // assinatura. O token continua bloqueado em todas as APIs operacionais.
   if (
-    usuario.empresa.status !== StatusEmpresa.ATIVA &&
+    acessoAtual.statusEmpresa !== StatusEmpresa.ATIVA &&
     usuario.papel !== PapelUsuario.ADMIN
   ) {
     return null
@@ -67,18 +72,25 @@ export async function autenticarUsuarioService(dados: LoginInput) {
       nome: usuario.nome,
       email: usuario.email,
       papel: usuario.papel,
-      empresa: usuario.empresa
+      empresa: {
+        ...usuario.empresa,
+        status: acessoAtual.statusEmpresa,
+        acesso: acessoAtual.acesso
+      }
     }
   }
 }
 
 // Recarrega o usuário para `/auth/me`, garantindo que ele ainda esteja ativo e
 // continue pertencendo à empresa contida na autenticação.
-export function buscarUsuarioAutenticadoService(
+export async function buscarUsuarioAutenticadoService(
   usuarioId: number,
   empresaId: number
 ) {
-  return prisma.usuario.findFirst({
+  const acessoAtual = await sincronizarAcessoEmpresaService(empresaId)
+  if (!acessoAtual) return null
+
+  const usuario = await prisma.usuario.findFirst({
     where: {
       id: usuarioId,
       empresaId,
@@ -99,4 +111,15 @@ export function buscarUsuarioAutenticadoService(
       }
     }
   })
+
+  if (!usuario) return null
+
+  return {
+    ...usuario,
+    empresa: {
+      ...usuario.empresa,
+      status: acessoAtual.statusEmpresa,
+      acesso: acessoAtual.acesso
+    }
+  }
 }

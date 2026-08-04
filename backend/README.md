@@ -241,15 +241,16 @@ até a homologação da integração:
 SERVIX_CUSTOMER_PAYMENTS_MP_MODE=DESABILITADO
 MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID=""
 MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET=""
-MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI="http://localhost:3005/integracoes/mercado-pago/callback"
+MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI="https://SEU-BACKEND-TESTE.example.com/integracoes/mercado-pago/callback"
 MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY=""
 FRONTEND_URL="http://localhost:5173"
 MERCADO_PAGO_TIMEOUT_MS=8000
 ```
 
-O `MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI` precisa coincidir exatamente com a URL cadastrada
-no provedor. `FRONTEND_URL` é a origem para a qual o callback redireciona o
-administrador após concluir ou rejeitar a conexão.
+O `MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI` precisa ser uma URL HTTPS pública e
+coincidir exatamente com a URL cadastrada no provedor. `FRONTEND_URL` é a
+origem para a qual o callback redireciona o administrador após concluir ou
+rejeitar a conexão.
 
 `MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY` não é uma senha: deve ser uma chave Base64 que represente
 exatamente 32 bytes. Gere uma chave diferente para cada ambiente e mantenha uma

@@ -80,6 +80,7 @@ function criarClienteOAuth() {
       clientId: configuracao.clientId,
       clientSecret: configuracao.clientSecret,
       redirectUri: configuracao.redirectUri,
+      testToken: !configuracao.liveModeEsperado,
       timeoutMs: configuracao.timeoutMs
     })
   }
@@ -703,6 +704,7 @@ export async function obterCredencialMercadoPagoService(
     clientId: configuracao.clientId,
     clientSecret: configuracao.clientSecret,
     redirectUri: configuracao.redirectUri,
+    testToken: !configuracao.liveModeEsperado,
     timeoutMs: configuracao.timeoutMs
   })
 

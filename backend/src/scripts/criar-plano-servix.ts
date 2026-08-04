@@ -1,6 +1,7 @@
 import {
   obterConfiguracaoAssinaturasMercadoPago
 } from "../config/env.js"
+import { PLANO_SERVIX_MENSAL } from "../billing/planos-servix.js"
 import {
   criarPlanoAssinaturaMercadoPago,
   ErroMercadoPagoAssinaturas
@@ -25,7 +26,7 @@ async function main(): Promise<void> {
 
   const plano = await criarPlanoAssinaturaMercadoPago({
     reason: "Servix - Plano mensal",
-    transactionAmount: 79.9,
+    transactionAmount: Number(PLANO_SERVIX_MENSAL.valorMensal),
     currencyId: "BRL"
   })
 

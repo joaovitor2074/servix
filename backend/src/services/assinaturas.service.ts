@@ -24,7 +24,7 @@ import { prisma } from "../lib/prisma.js"
 
 const PLANO_CODIGO = "SERVIX_MENSAL"
 const PLANO_NOME = "Servix Mensal"
-const VALOR_MENSAL = new Prisma.Decimal("79.90")
+const VALOR_MENSAL = new Prisma.Decimal("34.90")
 const NAMESPACE_LOCK_ASSINATURA = 1_397_902_418
 const OPCOES_TRANSACAO_ASSINATURA = {
   maxWait: 10_000,
@@ -45,6 +45,9 @@ const assinaturaSelect = {
   referenciaExterna: true,
   emailPagador: true,
   checkoutUrl: true,
+  testeGratisIniciadoEm: true,
+  testeGratisExpiraEm: true,
+  acessoPilotoAte: true,
   ativadaEm: true,
   proximaCobrancaEm: true,
   ultimaSincronizacaoEm: true,
@@ -52,6 +55,16 @@ const assinaturaSelect = {
   criadoEm: true,
   atualizadoEm: true
 } as const
+
+function exigirFimDoTesteGratis(testeGratisExpiraEm: Date | null) {
+  if (testeGratisExpiraEm && testeGratisExpiraEm.getTime() > Date.now()) {
+    throw new AppError(
+      "A assinatura poderá ser iniciada quando o teste gratuito terminar.",
+      409,
+      "TESTE_GRATUITO_EM_ANDAMENTO"
+    )
+  }
+}
 
 export type IniciarAssinaturaInput = {
   emailPagador: string
@@ -410,7 +423,8 @@ export async function iniciarAssinaturaEmpresaService(
             status: true,
             mercadoPagoAssinaturaId: true,
             referenciaExterna: true,
-            checkoutToken: true
+            checkoutToken: true,
+            testeGratisExpiraEm: true
           }
         }
       }
@@ -427,6 +441,9 @@ export async function iniciarAssinaturaEmpresaService(
         "ASSINATURA_NAO_PREPARADA"
       )
     }
+
+
+    exigirFimDoTesteGratis(empresa.assinatura.testeGratisExpiraEm)
 
     if (empresa.assinatura.status === StatusAssinatura.ATIVA) {
       throw new AppError(
@@ -773,7 +790,7 @@ export async function reativarAssinaturaEmpresaService(
   // sequencial em "novo checkout" de duas requisicoes concorrentes iguais.
   const assinaturaObservada = await prisma.assinaturaEmpresa.findUnique({
     where: { empresaId },
-    select: { versao: true }
+    select: { versao: true, testeGratisExpiraEm: true }
   })
 
   if (!assinaturaObservada) {
@@ -783,6 +800,9 @@ export async function reativarAssinaturaEmpresaService(
       "ASSINATURA_NAO_ENCONTRADA"
     )
   }
+
+
+  exigirFimDoTesteGratis(assinaturaObservada.testeGratisExpiraEm)
 
   const resultado = await prisma.$transaction(async tx => {
     await bloquearAssinaturaDaEmpresaTx(tx, empresaId)
@@ -913,6 +933,7 @@ export async function reativarAssinaturaEmpresaService(
           ambiente,
           provedor,
           status: StatusAssinatura.PENDENTE,
+          valorMensal: VALOR_MENSAL,
           referenciaExterna,
           mercadoPagoAssinaturaId: null,
           checkoutUrl: null,
@@ -944,6 +965,7 @@ export async function reativarAssinaturaEmpresaService(
         ambiente,
         provedor,
         status: StatusAssinatura.PENDENTE,
+        valorMensal: VALOR_MENSAL,
         referenciaExterna,
         mercadoPagoAssinaturaId: null,
         checkoutUrl: null,

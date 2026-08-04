@@ -204,6 +204,13 @@ export async function atualizarOrdem(
         })
       }
 
+      if (resultado.motivo === "tecnico_nao_encontrado") {
+        return res.status(400).json({
+          erro: "Selecione um usuário ativo da empresa como técnico responsável.",
+          codigo: "TECNICO_RESPONSAVEL_INVALIDO"
+        })
+      }
+
       if (resultado.motivo === "conflito_atualizacao") {
         return responderConflitoAtualizacao(res, {
           statusEsperado: resultado.statusEsperado,

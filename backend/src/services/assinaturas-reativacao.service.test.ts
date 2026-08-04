@@ -68,7 +68,7 @@ beforeEach(() => {
     referenciaExterna: "servix_empresa_8",
     mercadoPagoAssinaturaId: "preapproval-antiga",
     checkoutUrl: null,
-    valorMensal: "79.90",
+    valorMensal: "34.90",
     versao: 5,
     ativadaEm: new Date("2026-07-25T10:00:00.000Z"),
     canceladaEm: new Date("2026-07-26T10:00:00.000Z")
@@ -147,7 +147,7 @@ describe("reativacao de assinatura cancelada", () => {
       referenciaExterna: "servix_empresa_8_reativacao_anterior",
       mercadoPagoAssinaturaId: "preapproval-pendente",
       checkoutUrl: "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=preapproval-pendente",
-      valorMensal: "79.90",
+      valorMensal: "34.90",
       versao: 5,
       ativadaEm: null,
       canceladaEm: null
@@ -187,7 +187,7 @@ describe("reativacao de assinatura cancelada", () => {
       referenciaExterna: "servix_empresa_8_reativacao_6",
       mercadoPagoAssinaturaId: "preapproval-concorrente",
       checkoutUrl: "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=preapproval-concorrente",
-      valorMensal: "79.90",
+      valorMensal: "34.90",
       versao: 7,
       ativadaEm: null,
       canceladaEm: null
@@ -223,7 +223,7 @@ describe("reativacao de assinatura cancelada", () => {
       referenciaExterna: "servix_empresa_8",
       mercadoPagoAssinaturaId: null,
       checkoutUrl: null,
-      valorMensal: "79.90",
+      valorMensal: "34.90",
       versao: 5,
       ativadaEm: null,
       canceladaEm: new Date("2026-07-26T10:00:00.000Z")

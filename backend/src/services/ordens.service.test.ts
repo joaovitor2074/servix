@@ -13,7 +13,8 @@ const prismaMocks = vi.hoisted(() => ({
   criarHistorico: vi.fn(),
   agruparPagamentos: vi.fn(),
   cancelarCobrancas: vi.fn(),
-  buscarCobrancaPaga: vi.fn()
+  buscarCobrancaPaga: vi.fn(),
+  criarGarantia: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
@@ -43,6 +44,9 @@ const txMock = {
   cobranca: {
     updateMany: prismaMocks.cancelarCobrancas,
     findFirst: prismaMocks.buscarCobrancaPaga
+  },
+  garantiaServico: {
+    upsert: prismaMocks.criarGarantia
   }
 }
 
@@ -80,6 +84,7 @@ beforeEach(() => {
   prismaMocks.bloquearPagamento.mockResolvedValue([])
   prismaMocks.cancelarCobrancas.mockResolvedValue({ count: 0 })
   prismaMocks.buscarCobrancaPaga.mockResolvedValue(null)
+  prismaMocks.criarGarantia.mockResolvedValue({ id: 1 })
 })
 
 describe("alterarStatusOrdemService", () => {
@@ -284,6 +289,7 @@ describe("alterarStatusOrdemService", () => {
         alteradoPorId: 23
       }
     })
+    expect(prismaMocks.criarGarantia).toHaveBeenCalledOnce()
   })
 
   it("bloqueia status terminal com cobranca paga ainda nao conciliada", async () => {

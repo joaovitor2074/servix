@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { Prisma } from "../generated/prisma/client.js"
 import {
@@ -114,6 +114,10 @@ function lancamentoSemBaixas() {
 beforeEach(() => {
   vi.clearAllMocks()
   transacaoMocks.bloquear.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("financeiro-lancamentos.service", () => {
@@ -275,6 +279,9 @@ describe("financeiro-lancamentos.service", () => {
   })
 
   it("reabre como parcial ao estornar uma das baixas de um título quitado", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-07-29T12:00:00.000Z"))
+
     const atual = lancamentoSemBaixas()
     const primeiraBaixa = {
       id: 40,

@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js"
 import { obterJwtSecret } from "../config/env.js"
 import { PapelUsuario, StatusEmpresa } from "../generated/prisma/enums.js"
 import type { PapelUsuario as PapelUsuarioType } from "../generated/prisma/enums.js"
+import { sincronizarAcessoEmpresaService } from "../services/acesso-empresa.service.js"
 
 // Autentica a requisição em três etapas: extrai o Bearer token, valida o JWT e
 // confirma no banco que o usuário continua ativo. A consulta ao banco impede
@@ -80,15 +81,25 @@ async function autenticarComPolitica(
       })
     }
 
+    const acessoAtual = await sincronizarAcessoEmpresaService(usuario.empresaId)
+    if (!acessoAtual) {
+      return res.status(401).json({
+        erro: "Empresa não encontrada"
+      })
+    }
+
     // A validade do JWT não substitui a situação comercial atual da empresa.
     // Consultar o status em toda requisição encerra imediatamente o acesso de
     // sessões emitidas antes de uma assinatura ser pausada ou cancelada.
-    if (exigirEmpresaAtiva && usuario.empresa.status !== StatusEmpresa.ATIVA) {
+    if (exigirEmpresaAtiva && acessoAtual.statusEmpresa !== StatusEmpresa.ATIVA) {
       return res.status(403).json({
-        erro: "Acesso suspenso porque a assinatura da empresa não está ativa.",
+        erro: acessoAtual.acesso.expiraEm
+          ? "O período de acesso da empresa terminou. Assine o Servix para continuar."
+          : "Acesso suspenso porque a assinatura da empresa não está ativa.",
         codigo: "EMPRESA_SUSPENSA",
         detalhes: {
-          statusEmpresa: usuario.empresa.status
+          statusEmpresa: acessoAtual.statusEmpresa,
+          acesso: acessoAtual.acesso
         }
       })
     }

@@ -36,6 +36,33 @@ describe("validação de ordens", () => {
     expect(resultado.valido).toBe(true)
   })
 
+  it("aceita os dados estruturados da entrada segura", () => {
+    const resultado = validarAtualizacaoOrdem({
+      statusEsperado: StatusOrdem.RECEBIDO,
+      versaoEsperada: 1,
+      marcaAparelho: "Apple",
+      modeloAparelho: "iPhone 13",
+      imei: "123456789012345",
+      numeroSerie: "SERIE-123",
+      acessoriosEntrada: "Capa e chip",
+      checklistEntrada: ["RISCOS", "MARCAS_DE_QUEDA"],
+      defeitosVisiveis: "Risco no canto inferior",
+      aparelhoJaAberto: false,
+      aceiteCliente: true,
+      tecnicoResponsavelId: 7
+    })
+
+    expect(resultado.valido).toBe(true)
+  })
+
+  it("recusa item desconhecido no checklist de entrada", () => {
+    expect(validarAtualizacaoOrdem({
+      statusEsperado: StatusOrdem.RECEBIDO,
+      versaoEsperada: 1,
+      checklistEntrada: ["ITEM_INVENTADO"]
+    }).valido).toBe(false)
+  })
+
   it("exige status e versão esperados em toda atualização", () => {
     expect(
       validarAtualizacaoOrdem({ diagnostico: "Teste" }).valido

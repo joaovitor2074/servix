@@ -99,6 +99,9 @@ URL e aberta diretamente.
 
 ## 3. Callback OAuth publico
 
+A aplicação e as credenciais do Mercado Pago devem ser administradas pelo
+titular adulto responsável pela conta da empresa.
+
 Cadastre no aplicativo Mercado Pago exatamente:
 
 ```txt

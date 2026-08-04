@@ -115,6 +115,30 @@ function lerModoMercadoPago(valor: string | undefined): ModoMercadoPago {
     : "DESABILITADO"
 }
 
+function redirectOAuthMercadoPagoValido(valor: string): boolean {
+  try {
+    const url = new URL(valor)
+    const hostname = url.hostname.toLowerCase()
+    const loopback =
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+
+    return (
+      url.protocol === "https:" &&
+      !loopback &&
+      !url.username &&
+      !url.password &&
+      !valor.includes("?") &&
+      !valor.includes("#") &&
+      url.pathname === "/integracoes/mercado-pago/callback"
+    )
+  } catch {
+    return false
+  }
+}
+
 // O ambiente técnico do Node não determina se uma integração financeira pode
 // operar. Valor ausente ou invalido mantem o gateway fechado.
 export function obterModoPagamentosClientesMercadoPago():
@@ -306,23 +330,12 @@ export function obterConfiguracaoOAuthMercadoPago():
   }
 
   const prefixo = `MERCADO_PAGO_OAUTH_${modo}`
-  const legadoTeste = modo === "TESTE"
-  const clientId = (
-    process.env[`${prefixo}_CLIENT_ID`] ??
-    (legadoTeste ? process.env.MERCADO_PAGO_CLIENT_ID : undefined)
-  )?.trim()
-  const clientSecret = (
-    process.env[`${prefixo}_CLIENT_SECRET`] ??
-    (legadoTeste ? process.env.MERCADO_PAGO_CLIENT_SECRET : undefined)
-  )?.trim()
-  const redirectUri = (
-    process.env[`${prefixo}_REDIRECT_URI`] ??
-    (legadoTeste ? process.env.MERCADO_PAGO_REDIRECT_URI : undefined)
-  )?.trim()
-  const tokenEncryptionKey = (
-    process.env[`${prefixo}_TOKEN_ENCRYPTION_KEY`] ??
-    (legadoTeste ? process.env.TOKEN_ENCRYPTION_KEY : undefined)
-  )?.trim()
+  const clientId = process.env[`${prefixo}_CLIENT_ID`]?.trim()
+  const clientSecret = process.env[`${prefixo}_CLIENT_SECRET`]?.trim()
+  const redirectUri = process.env[`${prefixo}_REDIRECT_URI`]?.trim()
+  const tokenEncryptionKey = process.env[
+    `${prefixo}_TOKEN_ENCRYPTION_KEY`
+  ]?.trim()
 
   const timeoutMs = lerTimeoutMercadoPago(
     process.env.MERCADO_PAGO_TIMEOUT_MS
@@ -345,7 +358,7 @@ export function obterConfiguracaoOAuthMercadoPago():
     !clientId ||
     !clientSecret ||
     !redirectUri ||
-    !redirectOAuthValido(redirectUri) ||
+    !redirectOAuthMercadoPagoValido(redirectUri) ||
     !tokenEncryptionKey ||
     !validarChaveCriptografiaTokens(tokenEncryptionKey)
   ) {
@@ -410,6 +423,21 @@ export function obterJwtSecret(): string {
   }
 
   return segredo
+}
+
+export function obterConfiguracaoWhatsAppServidor() {
+  const chave = process.env.WHATSAPP_TOKEN_ENCRYPTION_KEY?.trim()
+  const versaoRecebida = process.env.WHATSAPP_GRAPH_API_VERSION?.trim()
+  const graphApiVersion = versaoRecebida && /^v\d+\.\d+$/.test(versaoRecebida)
+    ? versaoRecebida
+    : "v25.0"
+
+  return {
+    graphApiVersion,
+    tokenEncryptionKey:
+      chave && validarChaveCriptografiaTokens(chave) ? chave : null,
+    timeoutMs: 10_000
+  }
 }
 export function obterSegredoWebhookAssinaturasMercadoPago(): string {
   const modo = obterModoAssinaturasMercadoPago()

@@ -1,12 +1,10 @@
 import { hash } from "bcryptjs"
 
 import { obterModoBillingServix } from "../billing/billing-servix.config.js"
-import { identidadeLegalProducaoConfirmada } from "../config/legal-readiness.js"
 import {
   buscarPlanoServix,
   VERSAO_TERMOS_SERVIX
 } from "../billing/planos-servix.js"
-import { AppError } from "../errors/app-error.js"
 import {
   AmbienteAssinatura,
   PapelUsuario,
@@ -16,10 +14,13 @@ import {
 } from "../generated/prisma/enums.js"
 import { prisma } from "../lib/prisma.js"
 import type { CriarEmpresaInput } from "../validators/empresa.validators.js"
+import {
+  DURACAO_TESTE_GRATUITO_DIAS,
+  DURACAO_TESTE_GRATUITO_MS
+} from "./acesso-empresa.service.js"
 
-// Cria empresa, administrador, configuracao de recebimento e assinatura SaaS
-// na mesma operacao. A empresa so podera entrar depois que o checkout de teste
-// ativar a assinatura.
+// Cria empresa, administrador e o direito local de teste na mesma operacao.
+// Nenhum checkout ou recurso do provedor e acionado durante o cadastro.
 export async function criarEmpresaService(dados: CriarEmpresaInput) {
   const plano = buscarPlanoServix(dados.planoCodigo)
 
@@ -29,25 +30,6 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
 
   const modoBilling = obterModoBillingServix()
 
-  if (modoBilling === "BLOQUEADO") {
-    throw new AppError(
-      "As assinaturas do Servix nao estao configuradas no servidor.",
-      503,
-      "ASSINATURAS_NAO_CONFIGURADAS"
-    )
-  }
-
-  if (
-    modoBilling === "PRODUCAO" &&
-    !identidadeLegalProducaoConfirmada()
-  ) {
-    throw new AppError(
-      "A contratacao em producao ainda nao foi liberada.",
-      503,
-      "IDENTIDADE_LEGAL_NAO_CONFIGURADA"
-    )
-  }
-
   const ambienteAssinatura = modoBilling === "PRODUCAO"
     ? AmbienteAssinatura.PRODUCAO
     : AmbienteAssinatura.TESTE
@@ -55,12 +37,16 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
     ? ProvedorAssinatura.MERCADO_PAGO_SERVIX
     : ProvedorAssinatura.SIMULADO
 
+  const agora = new Date()
+  const testeGratisExpiraEm = new Date(
+    agora.getTime() + DURACAO_TESTE_GRATUITO_MS
+  )
   const administradorSenha = await hash(dados.administrador.senha, 12)
   const empresa = await prisma.empresa.create({
     data: {
       nome: dados.nome,
       slug: dados.slug,
-      status: StatusEmpresa.PENDENTE_ASSINATURA,
+      status: StatusEmpresa.ATIVA,
       tipoNegocio: dados.tipoNegocio,
       cpfCnpj: dados.cpfCnpj,
       cidade: dados.cidade,
@@ -92,8 +78,11 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
           ambiente: ambienteAssinatura,
           provedor: provedorAssinatura,
           status: StatusAssinatura.PENDENTE,
+          emailPagador: dados.administrador.email,
           versaoTermos: VERSAO_TERMOS_SERVIX,
-          termosAceitosEm: new Date()
+          termosAceitosEm: agora,
+          testeGratisIniciadoEm: agora,
+          testeGratisExpiraEm
         }
       }
     },
@@ -109,7 +98,9 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
           planoNome: true,
           valorMensal: true,
           ambiente: true,
-          status: true
+          status: true,
+          testeGratisIniciadoEm: true,
+          testeGratisExpiraEm: true
         }
       }
     }
@@ -129,6 +120,12 @@ export async function criarEmpresaService(dados: CriarEmpresaInput) {
     assinatura: {
       ...empresa.assinatura,
       valorMensal: empresa.assinatura.valorMensal.toFixed(2)
+    },
+    acesso: {
+      tipo: "TESTE_GRATUITO" as const,
+      ativo: true,
+      diasRestantes: DURACAO_TESTE_GRATUITO_DIAS,
+      expiraEm: empresa.assinatura.testeGratisExpiraEm
     }
   }
 }

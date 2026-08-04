@@ -26,6 +26,20 @@ const credencialAcessoSchema = z.preprocess(
   z.string().min(1).max(120).nullable().optional()
 )
 
+export const ITENS_CHECKLIST_ENTRADA = [
+  "TELA_TRINCADA",
+  "RISCOS",
+  "AMASSADOS",
+  "MARCAS_DE_QUEDA",
+  "SINAIS_DE_LIQUIDO",
+  "NAO_LIGA"
+] as const
+
+const idUsuarioOpcional = z.preprocess(
+  valor => valor === "" ? null : valor,
+  z.number().int().positive().nullable().optional()
+)
+
 // A mensagem pública é separada dos campos técnicos. Texto vazio vira nulo e
 // uma mensagem real só pode acompanhar uma mudança efetiva de status.
 const mensagemPublicaSchema = z.preprocess(
@@ -72,7 +86,19 @@ const camposEditaveis = {
   diagnostico: textoOpcional(4000),
   servicoRealizado: textoOpcional(4000),
   pecasUtilizadas: textoOpcional(4000),
+  marcaAparelho: textoOpcional(80),
+  modeloAparelho: textoOpcional(120),
+  imei: textoOpcional(30),
+  numeroSerie: textoOpcional(80),
+  corAparelho: textoOpcional(60),
+  capacidadeAparelho: textoOpcional(60),
+  acessoriosEntrada: textoOpcional(1000),
+  checklistEntrada: z.array(z.enum(ITENS_CHECKLIST_ENTRADA)).max(6).optional(),
+  defeitosVisiveis: textoOpcional(2000),
+  aparelhoJaAberto: z.boolean().nullable().optional(),
+  aceiteCliente: z.boolean().optional(),
   tecnicoResponsavel: textoOpcional(120),
+  tecnicoResponsavelId: idUsuarioOpcional,
   previsaoDeEntrega: dataOpcional,
   status: statusSchema
 }
@@ -92,8 +118,20 @@ export const atualizarOrdemSchema = z
     diagnostico: camposEditaveis.diagnostico,
     servicoRealizado: camposEditaveis.servicoRealizado,
     pecasUtilizadas: camposEditaveis.pecasUtilizadas,
+    marcaAparelho: camposEditaveis.marcaAparelho,
+    modeloAparelho: camposEditaveis.modeloAparelho,
+    imei: camposEditaveis.imei,
+    numeroSerie: camposEditaveis.numeroSerie,
+    corAparelho: camposEditaveis.corAparelho,
+    capacidadeAparelho: camposEditaveis.capacidadeAparelho,
+    acessoriosEntrada: camposEditaveis.acessoriosEntrada,
+    checklistEntrada: camposEditaveis.checklistEntrada,
+    defeitosVisiveis: camposEditaveis.defeitosVisiveis,
+    aparelhoJaAberto: camposEditaveis.aparelhoJaAberto,
+    aceiteCliente: camposEditaveis.aceiteCliente,
     credencialAcesso: credencialAcessoSchema,
     tecnicoResponsavel: camposEditaveis.tecnicoResponsavel,
+    tecnicoResponsavelId: camposEditaveis.tecnicoResponsavelId,
     previsaoDeEntrega: camposEditaveis.previsaoDeEntrega,
     status: camposEditaveis.status.optional(),
     mensagemPublica: mensagemPublicaSchema

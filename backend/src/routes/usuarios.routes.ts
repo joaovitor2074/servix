@@ -4,6 +4,7 @@ import {
     atualizarUsuarioController,
     buscarUsuarioController,
     criarUsuarioController,
+    listarUsuariosAtribuiveisController,
     listarUsuariosController,
     redefinirSenhaUsuarioController
 } from "../controllers/usuario.controller.js";
@@ -14,6 +15,7 @@ import { PapelUsuario } from "../generated/prisma/enums.js";
 // acrescenta a regra de que apenas administradores gerenciam outras contas.
 const router = Router()
 
+router.get("/atribuiveis", listarUsuariosAtribuiveisController)
 router.post("/",autorizar(PapelUsuario.ADMIN),criarUsuarioController)
 router.get( "/:id", autorizar(PapelUsuario.ADMIN),buscarUsuarioController)
 router.get( "/", autorizar(PapelUsuario.ADMIN),listarUsuariosController)

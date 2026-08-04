@@ -3,13 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { StatusEmpresa } from "../generated/prisma/enums.js"
 
 const mocks = vi.hoisted(() => ({
-  findFirst: vi.fn()
+  findFirst: vi.fn(),
+  sincronizarAcesso: vi.fn()
 }))
 
 vi.mock("../lib/prisma.js", () => ({
   prisma: {
     usuario: { findFirst: mocks.findFirst }
   }
+}))
+vi.mock("./acesso-empresa.service.js", () => ({
+  sincronizarAcessoEmpresaService: mocks.sincronizarAcesso
 }))
 
 import {
@@ -20,6 +24,15 @@ import {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.findFirst.mockResolvedValue(null)
+  mocks.sincronizarAcesso.mockResolvedValue({
+    statusEmpresa: StatusEmpresa.ATIVA,
+    acesso: {
+      tipo: "TESTE_GRATUITO",
+      ativo: true,
+      diasRestantes: 5,
+      expiraEm: new Date("2026-08-05T12:00:00.000Z")
+    }
+  })
 })
 
 describe("bloqueio de acesso por assinatura", () => {
@@ -40,6 +53,18 @@ describe("bloqueio de acesso por assinatura", () => {
   })
 
   it("recarrega o status da empresa em sessoes existentes", async () => {
+    mocks.findFirst.mockResolvedValueOnce({
+      id: 3,
+      nome: "Ana",
+      email: "ana@oficina.com",
+      papel: "ADMIN",
+      empresa: {
+        id: 8,
+        nome: "Oficina",
+        slug: "oficina-central",
+        status: StatusEmpresa.ATIVA
+      }
+    })
     await buscarUsuarioAutenticadoService(3, 8)
 
     expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({
@@ -53,5 +78,6 @@ describe("bloqueio de acesso por assinatura", () => {
         empresa: { select: expect.objectContaining({ status: true }) }
       })
     }))
+    expect(mocks.sincronizarAcesso).toHaveBeenCalledWith(8)
   })
 })

@@ -43,6 +43,7 @@ type OpcoesClienteOAuthMercadoPago = {
   clientId: string
   clientSecret: string
   redirectUri: string
+  testToken: boolean
   timeoutMs?: number
   fetchImpl?: typeof globalThis.fetch
 }
@@ -117,6 +118,7 @@ export class MercadoPagoOAuthClient {
   private readonly clientId: string
   private readonly clientSecret: string
   private readonly redirectUri: string
+  private readonly testToken: boolean
   private readonly timeoutMs: number
   private readonly fetchImpl: typeof globalThis.fetch
 
@@ -124,6 +126,7 @@ export class MercadoPagoOAuthClient {
     this.clientId = opcoes.clientId
     this.clientSecret = opcoes.clientSecret
     this.redirectUri = opcoes.redirectUri
+    this.testToken = opcoes.testToken
     this.timeoutMs = opcoes.timeoutMs ?? 8000
     this.fetchImpl = opcoes.fetchImpl ?? globalThis.fetch
   }
@@ -196,9 +199,9 @@ export class MercadoPagoOAuthClient {
       code,
       redirect_uri: this.redirectUri,
       code_verifier: codeVerifier,
-      // Esta etapa do Servix e deliberadamente sandbox. O Mercado Pago exige
-      // este parametro para emitir a credencial de teste no authorization_code.
-      test_token: "true"
+      // O Mercado Pago usa este parametro para distinguir credenciais sandbox
+      // das credenciais reais concedidas pelo vendedor.
+      test_token: this.testToken ? "true" : "false"
     })
   }
 

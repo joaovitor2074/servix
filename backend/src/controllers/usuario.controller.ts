@@ -5,6 +5,7 @@ import {
     atualizarUsuarioService,
     buscarUsuarioService,
     criarUsuarioService,
+    listarUsuariosAtribuiveisService,
     listarUsuariosService,
     redefinirSenhaUsuarioService
 } from "../services/usuario.service.js";
@@ -209,6 +210,20 @@ export async function atualizarUsuarioController(
         }
 
         return res.status(200).json(resultado.usuario)
+    } catch (error) {
+        return next(error)
+    }
+}
+
+export async function listarUsuariosAtribuiveisController(
+    req: Request,
+    res: Response,
+    next: NextFunction
+) {
+    try {
+        return res.status(200).json(
+            await listarUsuariosAtribuiveisService(req.auth.empresaId)
+        )
     } catch (error) {
         return next(error)
     }

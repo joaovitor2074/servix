@@ -139,6 +139,13 @@ describe("OAuth Mercado Pago por empresa", () => {
     const url = new URL(resultado.authorizationUrl)
     const state = url.searchParams.get("state")
 
+    expect(url.origin).toBe("https://auth.mercadopago.com")
+    expect(url.pathname).toBe("/authorization")
+    expect(url.searchParams.get("response_type")).toBe("code")
+    expect(url.searchParams.get("client_id")).toBe(configuracaoOAuth.clientId)
+    expect(url.searchParams.get("platform_id")).toBe("mp")
+    expect(url.searchParams.get("redirect_uri"))
+      .toBe(configuracaoOAuth.redirectUri)
     expect(state).toBeTruthy()
     expect(url.searchParams.get("scope")).toBe("offline_access read write")
     expect(url.searchParams.get("code_challenge_method")).toBe("S256")

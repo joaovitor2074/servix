@@ -25,6 +25,7 @@ import {
   buscarCobrancaPagaNaoConciliadaTx,
   cancelarCobrancasPendentesTx
 } from "./cobrancas.service.js"
+import { criarGarantiaDaEntregaTx } from "./garantias.service.js"
 import type {
   AlterarStatusOrdemInput,
   AtualizarOrdemInput,
@@ -48,6 +49,15 @@ const orcamentoResumo = {
     numero: true,
     status: true,
     total: true
+  }
+} as const
+
+const tecnicoResponsavelResumo = {
+  select: {
+    id: true,
+    nome: true,
+    papel: true,
+    ativo: true
   }
 } as const
 
@@ -266,7 +276,8 @@ export async function listarOrdensService(
       where,
       include: {
         cliente: clienteResumo,
-        orcamento: orcamentoResumo
+        orcamento: orcamentoResumo,
+        tecnicoResponsavelUsuario: tecnicoResponsavelResumo
       },
       orderBy: { criadoEm: "desc" },
       skip,
@@ -313,7 +324,9 @@ export async function buscarOrdemService(id: number, empresaId: number) {
           valor: true,
           status: true
         }
-      }
+      },
+      tecnicoResponsavelUsuario: tecnicoResponsavelResumo,
+      garantia: true
     }
   })
 
@@ -442,6 +455,27 @@ export async function atualizarOrdemService(
       )
     }
 
+    let tecnicoResponsavelSelecionado: { id: number; nome: string } | null | undefined
+    if (dados.tecnicoResponsavelId !== undefined) {
+      tecnicoResponsavelSelecionado = dados.tecnicoResponsavelId === null
+        ? null
+        : await tx.usuario.findFirst({
+            where: {
+              id: dados.tecnicoResponsavelId,
+              empresaId,
+              ativo: true
+            },
+            select: { id: true, nome: true }
+          })
+
+      if (dados.tecnicoResponsavelId !== null && !tecnicoResponsavelSelecionado) {
+        return {
+          sucesso: false as const,
+          motivo: "tecnico_nao_encontrado" as const
+        }
+      }
+    }
+
     // Spreads condicionais diferenciam campo ausente de um valor enviado.
     const data: Prisma.OrdemServicoUncheckedUpdateManyInput = {
       ...(dados.diagnostico !== undefined && {
@@ -453,6 +487,33 @@ export async function atualizarOrdemService(
       ...(dados.pecasUtilizadas !== undefined && {
         pecasUtilizadas: dados.pecasUtilizadas
       }),
+      ...(dados.marcaAparelho !== undefined && {
+        marcaAparelho: dados.marcaAparelho
+      }),
+      ...(dados.modeloAparelho !== undefined && {
+        modeloAparelho: dados.modeloAparelho
+      }),
+      ...(dados.imei !== undefined && { imei: dados.imei }),
+      ...(dados.numeroSerie !== undefined && { numeroSerie: dados.numeroSerie }),
+      ...(dados.corAparelho !== undefined && { corAparelho: dados.corAparelho }),
+      ...(dados.capacidadeAparelho !== undefined && {
+        capacidadeAparelho: dados.capacidadeAparelho
+      }),
+      ...(dados.acessoriosEntrada !== undefined && {
+        acessoriosEntrada: dados.acessoriosEntrada
+      }),
+      ...(dados.checklistEntrada !== undefined && {
+        checklistEntrada: dados.checklistEntrada
+      }),
+      ...(dados.defeitosVisiveis !== undefined && {
+        defeitosVisiveis: dados.defeitosVisiveis
+      }),
+      ...(dados.aparelhoJaAberto !== undefined && {
+        aparelhoJaAberto: dados.aparelhoJaAberto
+      }),
+      ...(dados.aceiteCliente !== undefined && {
+        aceiteClienteEm: dados.aceiteCliente ? new Date() : null
+      }),
       ...(dados.credencialAcesso !== undefined && {
         credencialAcessoCifrada: dados.credencialAcesso === null
           ? null
@@ -463,6 +524,10 @@ export async function atualizarOrdemService(
       }),
       ...(dados.tecnicoResponsavel !== undefined && {
         tecnicoResponsavel: dados.tecnicoResponsavel
+      }),
+      ...(tecnicoResponsavelSelecionado !== undefined && {
+        tecnicoResponsavelId: tecnicoResponsavelSelecionado?.id ?? null,
+        tecnicoResponsavel: tecnicoResponsavelSelecionado?.nome ?? null
       }),
       ...(dados.previsaoDeEntrega !== undefined && {
         previsaoDeEntrega: dados.previsaoDeEntrega
@@ -511,6 +576,10 @@ export async function atualizarOrdemService(
       })
     }
 
+    if (dados.status === StatusOrdem.ENTREGUE) {
+      await criarGarantiaDaEntregaTx(tx, { ordemId: id, empresaId, usuarioId })
+    }
+
     const ordem = await tx.ordemServico.findUnique({
       where: {
         id_empresaId: {
@@ -518,7 +587,10 @@ export async function atualizarOrdemService(
           empresaId
         }
       },
-      include: { cliente: clienteResumo }
+      include: {
+        cliente: clienteResumo,
+        tecnicoResponsavelUsuario: tecnicoResponsavelResumo
+      }
     })
 
     return {
@@ -662,6 +734,10 @@ export async function alterarStatusOrdemService(
           alteradoPorId: usuarioId
         }
       })
+    }
+
+    if (dados.status === StatusOrdem.ENTREGUE) {
+      await criarGarantiaDaEntregaTx(tx, { ordemId: id, empresaId, usuarioId })
     }
 
     const ordem = await tx.ordemServico.findUnique({

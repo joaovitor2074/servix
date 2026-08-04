@@ -122,7 +122,7 @@ describe("inicio da assinatura no Mercado Pago", () => {
 
     await expect(iniciarAssinaturaEmpresaService(8, {
       emailPagador: "cliente@example.com",
-      versaoTermos: "2026-07-28"
+      versaoTermos: "2026-08-01"
     })).rejects.toMatchObject({
       statusCode: 503,
       codigo: "IDENTIDADE_LEGAL_NAO_CONFIGURADA"

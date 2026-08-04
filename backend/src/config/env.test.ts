@@ -8,6 +8,14 @@ import {
 
 const chave = Buffer.alloc(32, 9).toString("base64")
 
+function configurarOAuthTeste(redirectUri: string) {
+  vi.stubEnv("SERVIX_CUSTOMER_PAYMENTS_MP_MODE", "TESTE")
+  vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID", "client-id-teste")
+  vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET", "secret-teste")
+  vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI", redirectUri)
+  vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY", chave)
+}
+
 afterEach(() => {
   vi.unstubAllEnvs()
 })
@@ -83,6 +91,83 @@ describe("separacao de ambientes do Mercado Pago", () => {
       modo: "PRODUCAO",
       liveModeEsperado: true,
       clientId: "client-id-producao"
+    })
+  })
+
+  it("ignora variaveis OAuth legadas em TESTE", () => {
+    vi.stubEnv("SERVIX_CUSTOMER_PAYMENTS_MP_MODE", "TESTE")
+    vi.stubEnv("MERCADO_PAGO_CLIENT_ID", "client-id-legado")
+    vi.stubEnv("MERCADO_PAGO_CLIENT_SECRET", "secret-legado")
+    vi.stubEnv(
+      "MERCADO_PAGO_REDIRECT_URI",
+      "https://api.servix.test/integracoes/mercado-pago/callback"
+    )
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", chave)
+    vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_CLIENT_ID", "")
+    vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_CLIENT_SECRET", "")
+    vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_REDIRECT_URI", "")
+    vi.stubEnv("MERCADO_PAGO_OAUTH_TESTE_TOKEN_ENCRYPTION_KEY", "")
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "NAO_CONFIGURADA"
+    })
+  })
+
+  it("rejeita callback OAuth HTTP mesmo em localhost", () => {
+    configurarOAuthTeste(
+      "http://localhost:3005/integracoes/mercado-pago/callback"
+    )
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "ERRO"
+    })
+  })
+
+  it.each([
+    "https://localhost/integracoes/mercado-pago/callback",
+    "https://127.0.0.1/integracoes/mercado-pago/callback",
+    "https://[::1]/integracoes/mercado-pago/callback"
+  ])("rejeita callback OAuth HTTPS em host local ou loopback: %s", redirectUri => {
+    configurarOAuthTeste(redirectUri)
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "ERRO"
+    })
+  })
+
+  it("rejeita callback OAuth com path diferente", () => {
+    configurarOAuthTeste(
+      "https://api.servix.test/integracoes/mercado-pago/outro-callback"
+    )
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "ERRO"
+    })
+  })
+
+  it.each([
+    "https://usuario:senha@api.servix.test/integracoes/mercado-pago/callback",
+    "https://api.servix.test/integracoes/mercado-pago/callback?origem=teste",
+    "https://api.servix.test/integracoes/mercado-pago/callback#retorno"
+  ])("rejeita callback OAuth com componentes extras: %s", redirectUri => {
+    configurarOAuthTeste(redirectUri)
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "ERRO"
+    })
+  })
+
+  it("aceita callback OAuth HTTPS com path exato", () => {
+    const redirectUri =
+      "https://api.servix.test/integracoes/mercado-pago/callback"
+    configurarOAuthTeste(redirectUri)
+
+    expect(obterConfiguracaoOAuthMercadoPago()).toMatchObject({
+      status: "CONFIGURADA",
+      modo: "TESTE",
+      liveModeEsperado: false,
+      clientId: "client-id-teste",
+      redirectUri
     })
   })
 })

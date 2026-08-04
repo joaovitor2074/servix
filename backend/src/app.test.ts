@@ -87,7 +87,7 @@ describe("API HTTP", () => {
       ambiente: "TESTE",
       planos: [{
         codigo: "servix-mensal",
-        valorMensal: "79.90"
+        valorMensal: "34.90"
       }]
     })
     expect(JSON.stringify(resposta.body)).not.toContain("accessToken")
