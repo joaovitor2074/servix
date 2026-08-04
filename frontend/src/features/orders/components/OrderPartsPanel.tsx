@@ -46,8 +46,6 @@ export default function OrderPartsPanel({
     }
 
     window.addEventListener('keydown', fecharComEscape)
-    setCarregando(true)
-    setErro('')
 
     void Promise.all([
       listarProdutosEstoque(controller.signal),
@@ -195,7 +193,14 @@ export default function OrderPartsPanel({
           <div className="order-parts-panel__error" role="alert">
             <span>{erro}</span>
             {!produtos.length && (
-              <button type="button" onClick={() => setTentativa(valor => valor + 1)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCarregando(true)
+                  setErro('')
+                  setTentativa(valor => valor + 1)
+                }}
+              >
                 Tentar novamente
               </button>
             )}

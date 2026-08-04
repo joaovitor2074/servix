@@ -10,6 +10,10 @@ const WHATSAPP_HREF = criarLinkWhatsApp(
   'Olá! Vi a página de criação de sites da Servix e quero pedir um orçamento.',
 )
 
+const COMBO_WHATSAPP_HREF = criarLinkWhatsApp(
+  'Olá! Quero saber mais sobre o pacote Site + Servix para minha empresa.',
+)
+
 const beneficios = [
   {
     marker: '01',
@@ -38,6 +42,10 @@ const solucoes = [
     price: 'R$ 600',
     description:
       'Uma página completa para apresentar a empresa, os serviços e os caminhos de contato.',
+    format: 'Página única completa',
+    bestFor: 'Começar a divulgar a empresa',
+    whatsappMessage:
+      'Olá! Tenho interesse no Site Essencial da Servix. Quero contar um pouco sobre minha empresa e receber um orçamento.',
     items: [
       'Página responsiva e personalizada',
       'Apresentação dos principais serviços',
@@ -51,6 +59,10 @@ const solucoes = [
     price: 'R$ 1.200',
     description:
       'Mais espaço para explicar seus diferenciais, fortalecer a marca e organizar seus serviços.',
+    format: 'Site com várias páginas',
+    bestFor: 'Apresentar mais serviços e diferenciais',
+    whatsappMessage:
+      'Olá! Tenho interesse no Site Profissional da Servix. Quero contar um pouco sobre minha empresa e receber um orçamento.',
     items: [
       'Páginas institucionais completas',
       'Galeria, depoimentos e dúvidas frequentes',
@@ -66,6 +78,10 @@ const solucoes = [
     priceDetail: 'Inclui 3 meses de Servix. Depois, R$ 34,90/mês.',
     description:
       'Presença profissional para captar clientes e o Servix para organizar o atendimento depois do contato.',
+    format: 'Site + implantação do sistema',
+    bestFor: 'Divulgação e operação integradas',
+    whatsappMessage:
+      'Olá! Tenho interesse no pacote Site + Servix. Quero contar um pouco sobre minha empresa e receber um orçamento.',
     items: [
       'Site profissional sob medida',
       'Implantação guiada do Servix',
@@ -103,6 +119,13 @@ const etapas = [
   ['4', 'Site no ar', 'Publicamos, conferimos o funcionamento e orientamos os próximos passos.'],
 ] as const
 
+const briefingItems = [
+  ['01', 'Empresa', 'Nome, segmento e uma descrição curta do que sua empresa faz.'],
+  ['02', 'Serviços', 'Os principais serviços ou produtos que precisam aparecer no site.'],
+  ['03', 'Atendimento', 'Cidade, região atendida e os canais que seus clientes podem usar.'],
+  ['04', 'Identidade', 'Logo, cores, fotos e referências que já representam bem sua marca.'],
+] as const
+
 export default function CriacaoSitesPage() {
   return (
     <>
@@ -126,8 +149,8 @@ export default function CriacaoSitesPage() {
                 Falar no WhatsApp
                 <span aria-hidden="true">→</span>
               </a>
-              <a className="button button--secondary button--large" href="#modelos">
-                Ver modelos
+              <a className="button button--secondary button--large" href="#pacotes">
+                Ver pacotes
               </a>
             </div>
 
@@ -184,7 +207,7 @@ export default function CriacaoSitesPage() {
         </div>
       </section>
 
-      <section className="site-section site-section--tinted" aria-labelledby="sites-solutions-title">
+      <section id="pacotes" className="site-section site-section--tinted" aria-labelledby="sites-solutions-title">
         <div className="site-container">
           <div className="section-heading">
             <p className="eyebrow">Uma solução para cada momento</p>
@@ -209,10 +232,14 @@ export default function CriacaoSitesPage() {
                   <strong>{solucao.price}</strong>
                   {'priceDetail' in solucao && solucao.priceDetail ? <small>{solucao.priceDetail}</small> : null}
                 </div>
+                <dl className="sites-offer-card__details">
+                  <div><dt>Formato</dt><dd>{solucao.format}</dd></div>
+                  <div><dt>Indicado para</dt><dd>{solucao.bestFor}</dd></div>
+                </dl>
                 <ul>
                   {solucao.items.map(item => <li key={item}><span aria-hidden="true">✓</span>{item}</li>)}
                 </ul>
-                <a className={solucao.featured ? 'button button--primary' : 'button button--secondary'} href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
+                <a className={solucao.featured ? 'button button--primary' : 'button button--secondary'} href={criarLinkWhatsApp(solucao.whatsappMessage)} target="_blank" rel="noreferrer">
                   Quero este pacote
                 </a>
               </article>
@@ -297,7 +324,32 @@ export default function CriacaoSitesPage() {
         </div>
       </section>
 
-      <section className="site-section" aria-labelledby="sites-combo-title">
+      <section className="site-section" aria-labelledby="sites-briefing-title">
+        <div className="site-container sites-briefing">
+          <div className="section-heading">
+            <p className="eyebrow">Orçamento mais rápido</p>
+            <h2 id="sites-briefing-title">Já separe estas informações para receber uma proposta mais precisa.</h2>
+            <p>
+              Não precisa ter tudo pronto. Esses pontos só ajudam a entender o
+              projeto e indicar o pacote certo para a sua empresa.
+            </p>
+            <a className="button button--primary" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">
+              Enviar informações no WhatsApp
+            </a>
+          </div>
+
+          <ol className="sites-briefing__list">
+            {briefingItems.map(([numero, titulo, descricao]) => (
+              <li key={numero}>
+                <span>{numero}</span>
+                <div><h3>{titulo}</h3><p>{descricao}</p></div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="site-section site-section--tinted" aria-labelledby="sites-combo-title">
         <div className="site-container sites-combo">
           <div>
             <p className="eyebrow">Site + Servix</p>
@@ -316,13 +368,13 @@ export default function CriacaoSitesPage() {
             <span>Equipe organiza no Servix</span>
           </div>
           <div className="sites-combo__actions">
-            <a className="button button--primary button--large" href={WHATSAPP_HREF} target="_blank" rel="noreferrer">Quero o combo</a>
+            <a className="button button--primary button--large" href={COMBO_WHATSAPP_HREF} target="_blank" rel="noreferrer">Quero o combo</a>
             <Link className="text-link" to="/demonstracao">Conhecer o sistema <span aria-hidden="true">→</span></Link>
           </div>
         </div>
       </section>
 
-      <section className="site-section site-section--tinted" aria-labelledby="sites-faq-title">
+      <section className="site-section" aria-labelledby="sites-faq-title">
         <div className="site-container faq-layout">
           <div className="section-heading">
             <p className="eyebrow">Perguntas frequentes</p>
@@ -344,6 +396,14 @@ export default function CriacaoSitesPage() {
             <details>
               <summary>Preciso contratar o sistema Servix?</summary>
               <p>Não. O site pode ser contratado separadamente. O combo é uma opção para empresas que também querem organizar a operação.</p>
+            </details>
+            <details>
+              <summary>Em quanto tempo o site fica pronto?</summary>
+              <p>O prazo é informado na proposta depois da definição do escopo. A produção começa após o recebimento do conteúdo combinado e do pagamento inicial.</p>
+            </details>
+            <details>
+              <summary>O que preciso enviar para começar?</summary>
+              <p>As informações da empresa, os serviços, os contatos e, se já tiver, logo, cores e fotos. Também ajudamos a organizar esse material durante o briefing.</p>
             </details>
           </div>
         </div>
