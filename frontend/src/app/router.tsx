@@ -107,7 +107,16 @@ export default function AppRouter({
         <Route path="ordens" element={<OrdersPage />} />
         <Route path="ordens/nova" element={<NewOrderPage />} />
         <Route path="ordens/:id/editar" element={<EditOrderPage />} />
-        <Route path="ordens/:id" element={<OrderDetailsPage />} />
+        <Route
+          path="ordens/:id"
+          element={
+            <OrderDetailsPage
+              podeMovimentarEstoque={Boolean(
+                usuario && ['ADMIN', 'TECNICO'].includes(usuario.papel),
+              )}
+            />
+          }
+        />
         <Route path="kanban" element={<KanbanPage />} />
         <Route path="estoque" element={<InventoryPage />} />
         <Route path="garantias" element={<WarrantiesPage />} />

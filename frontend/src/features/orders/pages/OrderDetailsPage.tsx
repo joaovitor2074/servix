@@ -6,6 +6,7 @@ import {
 import { Link, useLocation, useParams } from 'react-router'
 import { QRCodeSVG } from 'qrcode.react'
 import PaymentPanel from '../../payments/components/PaymentPanel'
+import OrderPartsPanel from '../components/OrderPartsPanel'
 import {
   STATUS_ORDEM_LABELS,
   type HistoricoStatusOrdem,
@@ -36,7 +37,11 @@ interface FalhaCarregamento {
   naoEncontrado?: boolean
 }
 
-export default function OrderDetailsPage() {
+export default function OrderDetailsPage({
+  podeMovimentarEstoque,
+}: {
+  podeMovimentarEstoque: boolean
+}) {
   const { id } = useParams()
   const location = useLocation()
   const ordemId = Number(id)
@@ -60,6 +65,7 @@ export default function OrderDetailsPage() {
   const [credencialAcesso, setCredencialAcesso] = useState<string | null>(null)
   const [carregandoCredencial, setCarregandoCredencial] = useState(false)
   const [erroCredencial, setErroCredencial] = useState('')
+  const [painelPecasAberto, setPainelPecasAberto] = useState(false)
 
   useEffect(() => {
     // A listagem pode estar rolada no celular quando o funcionário toca em
@@ -261,6 +267,14 @@ export default function OrderDetailsPage() {
 
         <div className="order-details-header__actions">
           <OrderStatusBadge status={ordemAtual.status} />
+          <button
+            className="order-details-header__parts"
+            type="button"
+            onClick={() => setPainelPecasAberto(true)}
+          >
+            <PartsIcon />
+            Peças
+          </button>
           <button
             className="order-details-header__print"
             type="button"
@@ -483,6 +497,16 @@ export default function OrderDetailsPage() {
                 value={ordemAtual.pecasUtilizadas}
                 placeholder="Nenhuma peça foi registrada."
               />
+              <div className="order-details-parts-shortcut">
+                <div>
+                  <strong>Estoque da assistência</strong>
+                  <p>Veja os saldos disponíveis e as peças já vinculadas a esta ordem.</p>
+                </div>
+                <button type="button" onClick={() => setPainelPecasAberto(true)}>
+                  <PartsIcon />
+                  Consultar peças
+                </button>
+              </div>
             </div>
           </DetailsCard>
 
@@ -599,6 +623,15 @@ export default function OrderDetailsPage() {
         </aside>
       </div>
       <ServiceDocument ordem={ordemAtual} linkAcompanhamento={linkAcompanhamento} />
+      {painelPecasAberto && (
+        <OrderPartsPanel
+          ordemId={ordemAtual.id}
+          ordemNumero={ordemAtual.numero}
+          podeMovimentar={podeMovimentarEstoque}
+          ordemEncerrada={['ENTREGUE', 'CANCELADO'].includes(ordemAtual.status)}
+          onClose={() => setPainelPecasAberto(false)}
+        />
+      )}
     </div>
   )
 }
@@ -1115,6 +1148,10 @@ function UserIcon() {
 
 function WalletIcon() {
   return <Icon><path d="M3 6h15a2 2 0 0 1 2 2v11H5a2 2 0 0 1-2-2V6Z" /><path d="M3 6V5a2 2 0 0 1 2-2h12M15 12h6v4h-6a2 2 0 0 1 0-4Z" /></Icon>
+}
+
+function PartsIcon() {
+  return <Icon><path d="m12 3 8 4-8 4-8-4 8-4Z" /><path d="m4 7 8 4 8-4v9l-8 5-8-5V7Z" /><path d="M12 11v10" /></Icon>
 }
 
 function WarrantyIcon() {

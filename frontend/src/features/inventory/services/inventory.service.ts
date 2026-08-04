@@ -15,6 +15,17 @@ export async function listarMovimentacoesEstoque(signal?: AbortSignal) {
   return ler<MovimentacaoEstoque[]>(await apiFetch('/estoque/movimentacoes?limite=30', { signal }))
 }
 
+export async function listarMovimentacoesOrdemEstoque(ordemId: number, signal?: AbortSignal) {
+  const parametros = new URLSearchParams({
+    limite: '100',
+    ordemId: String(ordemId),
+  })
+
+  return ler<MovimentacaoEstoque[]>(
+    await apiFetch(`/estoque/movimentacoes?${parametros.toString()}`, { signal }),
+  )
+}
+
 export async function criarProdutoEstoque(dados: {
   nome: string; sku?: string; unidade: string; quantidade: number; estoqueMinimo: number; custoUnitario: number; precoVenda: number
 }) {

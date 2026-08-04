@@ -136,7 +136,8 @@
   outline-offset: 2px;
 }
 
-.order-details-header__print {
+.order-details-header__print,
+.order-details-header__parts {
   display: inline-flex;
   min-height: 40px;
   align-items: center;
@@ -152,9 +153,21 @@
   cursor: pointer;
 }
 
-.order-details-header__print:hover {
+.order-details-header__print:hover,
+.order-details-header__parts:hover {
   border-color: #98a2b3;
   background: #f9fafb;
+}
+
+.order-details-header__parts {
+  border-color: #b9cdf4;
+  color: #155eef;
+  background: #f4f7ff;
+}
+
+.order-details-header__parts:hover {
+  border-color: #84adff;
+  background: #edf4ff;
 }
 
 .order-device-credential {
@@ -194,6 +207,50 @@
   flex-basis: 100%;
   margin: 0;
   color: #b42318;
+}
+
+.order-details-parts-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px;
+  border: 1px solid #cdddf2;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #f8fbff, #eef5ff);
+}
+
+.order-details-parts-shortcut > div {
+  display: grid;
+  gap: 4px;
+}
+
+.order-details-parts-shortcut strong {
+  color: #183c65;
+  font-size: 0.82rem;
+}
+
+.order-details-parts-shortcut p {
+  margin: 0;
+  color: #667b94;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.order-details-parts-shortcut button {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid #155eef;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #155eef;
 }
 
 .service-document {
@@ -1258,6 +1315,11 @@
     min-height: 44px;
   }
 
+  .order-details-header__parts,
+  .order-details-header__print {
+    min-height: 44px;
+  }
+
   .order-details-summary,
   .order-details-layout__aside,
   .order-details-fields {
@@ -1267,6 +1329,11 @@
   .order-details-field--wide,
   .order-details-help {
     grid-column: auto;
+  }
+
+  .order-details-parts-shortcut {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .order-details-card__header,
