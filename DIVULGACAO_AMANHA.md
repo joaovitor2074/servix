@@ -2,9 +2,9 @@
 
 ## Links prontos
 
-- Sistema: https://servix-c2ra2bvai-joao-vitors-projects-cd5185d4.vercel.app/
-- Demonstração: https://servix-c2ra2bvai-joao-vitors-projects-cd5185d4.vercel.app/demonstracao
-- Criação de sites: https://servix-c2ra2bvai-joao-vitors-projects-cd5185d4.vercel.app/criacao-de-sites
+- Sistema: https://servix-beta.vercel.app/
+- Demonstração: https://servix-beta.vercel.app/demonstracao
+- Criação de sites: https://servix-beta.vercel.app/criacao-de-sites
 - Instagram: https://www.instagram.com/servixso/
 
 ## Texto curto — Servix
@@ -13,7 +13,7 @@ Sua assistência ainda organiza atendimentos em conversas e anotações espalhad
 
 Conheça o Servix: clientes, ordens de serviço, orçamentos, estoque, garantias e acompanhamento em um só lugar. Veja a demonstração e teste por 5 dias.
 
-https://servix-c2ra2bvai-joao-vitors-projects-cd5185d4.vercel.app/demonstracao
+https://servix-beta.vercel.app/demonstracao
 
 ## Texto curto — criação de sites
 
@@ -21,7 +21,7 @@ Sua empresa merece uma apresentação profissional na internet.
 
 A Servix cria sites responsivos, personalizados e preparados para transformar visitas em contatos pelo WhatsApp. Projetos a partir de R$ 600.
 
-https://servix-c2ra2bvai-joao-vitors-projects-cd5185d4.vercel.app/criacao-de-sites
+https://servix-beta.vercel.app/criacao-de-sites
 
 ## Resposta rápida para interessados
 
